@@ -41,7 +41,7 @@ whereelement :
     NOT?
     (
      ((MIN|MAX|UCC) OPEN id CLOSE) |
-     ((IND | FD | SPLIT) OPEN id COMMA id CLOSE) |
+     ((IND | FD | SPLIT | CONTAINS | COALESCE) OPEN id COMMA id CLOSE) |
      (numericFunctions (SMALLER|GREATER|((SMALLER|GREATER) EQUAL)|EQUAL)  (DECIMAL_LITERAL | numericFunctions))
     )
     ;

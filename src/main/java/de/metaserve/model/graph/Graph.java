@@ -9,12 +9,10 @@ import de.metanome.algorithm_integration.results.InclusionDependency;
 import de.metanome.algorithm_integration.results.Result;
 import de.metanome.algorithm_integration.results.UniqueColumnCombination;
 import de.metaserve.engine.QueryEngine;
-import de.metaserve.model.constraints.Pair;
 import de.metaserve.model.query.Query;
 import de.metaserve.model.result.ResultSet;
 
 import java.util.*;
-import java.util.function.Function;
 
 public class Graph {
     public Map<String, Node> nodes = new HashMap<>();

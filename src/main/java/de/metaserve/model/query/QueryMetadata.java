@@ -1,11 +1,14 @@
 package de.metaserve.model.query;
 
 import de.metaserve.engine.QueryEngine;
+import jnr.ffi.annotations.In;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class QueryMetadata {
     HashMap<String, Integer> numberOfReduction = new HashMap<>();
+    HashMap<String, Integer> numberOfEdges = new HashMap<>();
     long currentTime = -1L;
     long startTime = -1L;
     long overallTime = -1L;
@@ -43,10 +46,23 @@ public class QueryMetadata {
         currentTime = timeNow;
     }
 
+    public Map<String, Integer> getMap(){
+        return numberOfReduction;
+    }
     public Integer getNumberOfReduction(){
         return numberOfReduction.values().stream().mapToInt(x -> x).sum();
     }
+
+    public Integer getNumberOfCandidates(){
+        Integer result = 1;
+        for (String name : numberOfReduction.keySet()){
+            result = result * numberOfReduction.get(name) * numberOfEdges.get(name);
+        }
+        return result;
+    }
+
     public void addStat(String name, Integer number){
+        numberOfEdges.put(name, numberOfEdges.getOrDefault(name, 0) + 1);
         if(numberOfReduction.containsKey(name))
             number += numberOfReduction.get(name);
         numberOfReduction.put(name, number);

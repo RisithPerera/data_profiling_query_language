@@ -1,5 +1,7 @@
 package de.metaserve.model.dpal;
 
+import java.util.HashMap;
+
 public class FDEdge extends Edge{
 
     public FDEdge(String left, String right) {
@@ -17,11 +19,7 @@ public class FDEdge extends Edge{
 
     @Override
     public String toString() {
-        return "Edge{" +
-                "leftName='" + leftName + '\'' +
-                ", rightName='" + rightName + '\'' +
-                ", type='FD'" +
-                '}';
+        return "FD(" + leftName + ',' + rightName + ')';
     }
 
     @Override
@@ -34,5 +32,10 @@ public class FDEdge extends Edge{
     @Override
     public int hashCode() {
         return toString().hashCode();
+    }
+
+    @Override
+    public Edge copy(HashMap<String, String> mapping) {
+        return new FDEdge(mapping.get(leftName), mapping.get(rightName));
     }
 }

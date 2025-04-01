@@ -1,5 +1,7 @@
 package de.metaserve.model.dpal;
 
+import java.util.HashMap;
+
 public class UCCEdge extends Edge{
 
     public UCCEdge(String left) {
@@ -16,11 +18,7 @@ public class UCCEdge extends Edge{
 
     @Override
     public String toString() {
-        return "Edge{" +
-                "leftName='" + leftName + '\'' +
-                ", rightName='" + rightName + '\'' +
-                ", type='UCC'" +
-                '}';
+        return "UCC(" + leftName + ')';
     }
     @Override
     public boolean equals(Object obj) {
@@ -31,5 +29,10 @@ public class UCCEdge extends Edge{
     @Override
     public int hashCode() {
         return toString().hashCode();
+    }
+
+    @Override
+    public Edge copy(HashMap<String, String> mapping) {
+        return new UCCEdge(mapping.get(leftName));
     }
 }

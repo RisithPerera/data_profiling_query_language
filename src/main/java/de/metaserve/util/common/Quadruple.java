@@ -1,10 +1,8 @@
-package de.metaserve.model.dpal;
+package de.metaserve.util.common;
 
-import de.metaserve.model.constraints.Pair;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
 import java.util.Objects;
 
 @Getter @Setter

@@ -1,5 +1,7 @@
 package de.metaserve.model.constraints;
 
+import de.metaserve.util.common.Pair;
+
 import java.util.*;
 
 public class FD extends Dependency{
@@ -46,5 +48,10 @@ public class FD extends Dependency{
     @Override
     public String getName() {
         return NAME;
+    }
+
+    @Override
+    public String toString() {
+        return "FD("+ leftName + " -> " + rightName + ")";
     }
 }

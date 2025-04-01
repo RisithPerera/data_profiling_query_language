@@ -4,9 +4,13 @@ import de.metanome.algorithm_integration.*;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metanome.algorithm_integration.results.*;
 import de.metanome.algorithms.binder.BINDERFile;
+import de.metanome.algorithms.cfdfinder.CFDFinder;
 import de.metanome.algorithms.dva.DVA;
 import de.metanome.algorithms.hyfd.HyFD;
 import de.metanome.algorithms.hyucc.HyUCC;
+import de.metanome.algorithms.pbinder.PBINDERFile;
+import de.metanome.algorithms.pspider.PSPIDERFile;
+import de.metanome.algorithms.spind.SpindFile;
 import de.metanome.backend.result_receiver.ResultCache;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 
@@ -34,6 +38,8 @@ public class MetanomeImpl implements Metanome{
 
 	@Override
 	public List<Result> executeIND(String... names) {
+		//return executeSPIND(names);
+		//return executePBINDER(names);
 		return executeBinder(names);
 	}
 
@@ -49,6 +55,7 @@ public class MetanomeImpl implements Metanome{
 
 	@Override
 	public List<Result> executeFD(String... names) {
+		//return executeCFDFinder(names);
 		return executeHyFD(names);
 	}
 
@@ -176,11 +183,9 @@ public class MetanomeImpl implements Metanome{
 
 		 */
 	}
-
-	//@TODO Refactor like the other methods when left, right problem is solved
-	public static List<Result> executeBinder(String... names) {
+	public static List<Result> executeSPIND(String... names) {
 		try {
-			BINDERFile binder = new BINDERFile();
+			SpindFile spind;
 
 			RelationalInputGenerator[] inputs = new RelationalInputGenerator[names.length];
 			List<ColumnIdentifier> columnIdentifiers = new ArrayList<>();
@@ -192,13 +197,75 @@ public class MetanomeImpl implements Metanome{
 			ResultCache resultReceiver = new ResultCache("MetanomeMock", columnIdentifiers);
 			//ResultReceiver resultReceiver = new ResultCounter("MetanomeMock", getAcceptedColumns(relationalInputGenerator));
 
+			spind = MetanomeHelper.createSPIND(inputs, resultReceiver);
 
-			binder.setRelationalInputConfigurationValue(BINDERFile.Identifier.INPUT_FILES.name(), inputs);
-			binder.setBooleanConfigurationValue(BINDERFile.Identifier.DETECT_NARY.name(), InputConfigurationSingleton.get().getNARY());
-			binder.setIntegerConfigurationValue(BINDERFile.Identifier.MAX_NARY_LEVEL.name(), InputConfigurationSingleton.get().getMAX_SEARCH_SPACE_LEVEL());
-			binder.setIntegerConfigurationValue(BINDERFile.Identifier.INPUT_ROW_LIMIT.name(), InputConfigurationSingleton.get().getFILE_MAX_ROWS());
-			binder.setBooleanConfigurationValue(BINDERFile.Identifier.DETECT_NARY.name(), true);//@TODO IDIOT
-			binder.setResultReceiver(resultReceiver);
+			long time = System.currentTimeMillis();
+			spind.execute();
+			time = System.currentTimeMillis() - time;
+
+			for (int i = 0; i < names.length; i++) {
+				List<Result> results = resultReceiver.fetchNewResults();
+				if (InputConfigurationSingleton.get().getWRITE_RESULTS()) {
+					MetanomeHelper.writeResultsToFile(DependencyType.IND, spind.toString(), names[i], time, results);
+				}
+				return results;
+			}
+		}
+		catch (AlgorithmExecutionException | IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public static List<Result> executePSPIDER(String... names) {
+		try {
+			PSPIDERFile spider;
+
+			RelationalInputGenerator[] inputs = new RelationalInputGenerator[names.length];
+			List<ColumnIdentifier> columnIdentifiers = new ArrayList<>();
+			for (int i = 0; i < names.length; i++) {
+				inputs[i] =  MetanomeHelper.getInput(names[i]);
+				columnIdentifiers.addAll(MetanomeHelper.getAcceptedColumns(inputs[i]));
+			}
+
+			ResultCache resultReceiver = new ResultCache("MetanomeMock", columnIdentifiers);
+			//ResultReceiver resultReceiver = new ResultCounter("MetanomeMock", getAcceptedColumns(relationalInputGenerator));
+
+			spider = MetanomeHelper.createPartialSPIDER(inputs, resultReceiver);
+
+			long time = System.currentTimeMillis();
+			spider.execute();
+			time = System.currentTimeMillis() - time;
+
+			for (int i = 0; i < names.length; i++) {
+				List<Result> results = resultReceiver.fetchNewResults();
+				if (InputConfigurationSingleton.get().getWRITE_RESULTS()) {
+					MetanomeHelper.writeResultsToFile(DependencyType.IND, spider.toString(), names[i], time, results);
+				}
+				return results;
+			}
+		}
+		catch (AlgorithmExecutionException | IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public static List<Result> executePBINDER(String... names) {
+		try {
+			PBINDERFile binder;
+
+			RelationalInputGenerator[] inputs = new RelationalInputGenerator[names.length];
+			List<ColumnIdentifier> columnIdentifiers = new ArrayList<>();
+			for (int i = 0; i < names.length; i++) {
+				inputs[i] =  MetanomeHelper.getInput(names[i]);
+				columnIdentifiers.addAll(MetanomeHelper.getAcceptedColumns(inputs[i]));
+			}
+
+			ResultCache resultReceiver = new ResultCache("MetanomeMock", columnIdentifiers);
+			//ResultReceiver resultReceiver = new ResultCounter("MetanomeMock", getAcceptedColumns(relationalInputGenerator));
+
+			binder = MetanomeHelper.createPartialBIDNER(inputs, resultReceiver);
 
 			long time = System.currentTimeMillis();
 			binder.execute();
@@ -216,6 +283,65 @@ public class MetanomeImpl implements Metanome{
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	public static List<Result> executeBinder(String... names) {
+		try {
+			BINDERFile binder;
+
+			RelationalInputGenerator[] inputs = new RelationalInputGenerator[names.length];
+			List<ColumnIdentifier> columnIdentifiers = new ArrayList<>();
+			for (int i = 0; i < names.length; i++) {
+				inputs[i] =  MetanomeHelper.getInput(names[i]);
+				columnIdentifiers.addAll(MetanomeHelper.getAcceptedColumns(inputs[i]));
+			}
+
+			ResultCache resultReceiver = new ResultCache("MetanomeMock", columnIdentifiers);
+			//ResultReceiver resultReceiver = new ResultCounter("MetanomeMock", getAcceptedColumns(relationalInputGenerator));
+
+			binder = MetanomeHelper.createBINDER(inputs, resultReceiver);
+
+			long time = System.currentTimeMillis();
+			binder.execute();
+			time = System.currentTimeMillis() - time;
+
+			for (int i = 0; i < names.length; i++) {
+				List<Result> results = resultReceiver.fetchNewResults();
+				if (InputConfigurationSingleton.get().getWRITE_RESULTS()) {
+					MetanomeHelper.writeResultsToFile(DependencyType.IND, binder.toString(), names[i], time, results);
+				}
+				return results;
+			}
+		}
+		catch (AlgorithmExecutionException | IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public static List<Result> executeCFDFinder(String... names) {
+		List<Result> allResults = new ArrayList<>();
+		try {
+			for (String fileName : names) {
+				RelationalInputGenerator input = MetanomeHelper.getInput(fileName);
+				ResultCache resultReceiver = new ResultCache("MetanomeMock", MetanomeHelper.getAcceptedColumns(input));
+
+				CFDFinder hyFD = MetanomeHelper.createCFDFinder(input, resultReceiver);
+
+				long time = System.currentTimeMillis();
+				hyFD.execute();
+				time = System.currentTimeMillis() - time;
+
+				List<Result> results = resultReceiver.fetchNewResults();
+				if (InputConfigurationSingleton.get().getWRITE_RESULTS()) {
+					MetanomeHelper.writeResultsToFile(DependencyType.CFD, hyFD.toString(), fileName, time, results);
+				}
+				allResults.addAll(results);
+			}
+		} catch (AlgorithmExecutionException | IOException e) {
+			e.printStackTrace();
+		}
+		return allResults;
 	}
 
 	public static List<Result> executeHyFD(String... names) {

@@ -53,7 +53,6 @@ public class ForeignKeyChecker {
                 equalMatches++;
             } else {
                 falseNegatives++;
-                System.out.println(trueKey);
             }
         }
 
@@ -90,13 +89,16 @@ public class ForeignKeyChecker {
         }
  */
 
+        //System.out.println(trueList);
+        //System.out.println(actualList);
         for (ForeignKey trueKey : trueList) {
 
             if(actualList.contains(trueKey)){
                 equalMatches++;
+                //System.out.println(trueKey);
             } else {
                 falseNegatives++;
-                //System.out.println(trueKey);
+                System.out.println(trueKey);
                 //System.out.println("["+trueKey.fk_table.toLowerCase()+".csv."+trueKey.fk_column.get(0).toLowerCase()+"] --> ["+trueKey.pk_table.toLowerCase()+".csv."+trueKey.pk_column.get(0).toLowerCase()+"]");
 
             }
@@ -140,8 +142,8 @@ public class ForeignKeyChecker {
 
     private Set<ForeignKey> convert(ResultSet resultSet) {
         Set<ForeignKey> fkList = new HashSet<>();
-        for (List<String> row : resultSet.getRows()){
-            fkList.add(resultRowToForeignKey(row));
+        for (List<Set<ColumnIdentifier>> row : resultSet.getRows2()){
+            fkList.add(resultRowSetToForeignKey(row));
         }
         return fkList;
     }
@@ -156,6 +158,17 @@ public class ForeignKeyChecker {
             fkList.add(cc);
         }
         return fkList;
+    }
+
+    public ForeignKey resultRowSetToForeignKey(List<Set<ColumnIdentifier>> row){
+        ForeignKey foreignKey = new ForeignKey();
+        if(row.size() != 2)
+            throw new RuntimeException("Could not build FK from " + row);
+        List<ColumnIdentifier> fk = row.get(0).stream().toList();
+        List<ColumnIdentifier> pk = row.get(1).stream().toList();
+
+        foreignKey.parse(fk,pk);
+        return foreignKey;
     }
 
     public ForeignKey resultRowToForeignKey(List<String> row){

@@ -9,6 +9,8 @@ import de.metanome.algorithm_integration.results.BasicStatistic;
 import de.metanome.algorithm_integration.results.Result;
 import de.metanome.backend.input.file.DefaultFileInputGenerator;
 import de.metanome.Metanome;
+import de.metanome.util.ExtendedConfigurationSettingFileInput;
+import de.metanome.util.ExtendedDefaultFileInputGenerator;
 import de.metaserve.util.CardMap;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
@@ -39,7 +41,7 @@ public class InputConfiguration implements Configuration {
 	private String FILE_NULL_STRING = "";
 	private Boolean FILE_NULL_EQUALS_NULL = true;
 	private Integer FILE_MAX_ROWS = -1;
-	private Charset FILE_CHAR_SET = StandardCharsets.UTF_8;
+	private Charset FILE_CHAR_SET = Charset.defaultCharset();
 	private String FILE_STATISTIC_NAME = "statistics.txt";
 	private String FILE_RESULT_NAME = "results.txt";
 	private Boolean WRITE_RESULTS = true;
@@ -109,7 +111,7 @@ public class InputConfiguration implements Configuration {
 
 	public void setDATA_SET(String dataSetName) {
 		this.DATA_SET = dataSetName;
-		loadDataSetSettings();
+		//loadDataSetSettings(); //@TODO BROKEN? File seems to be overwritten sometime ago
 	}
 
 	private void loadDataSets() {
@@ -166,7 +168,7 @@ public class InputConfiguration implements Configuration {
 	}
 
 	public RelationalInputGenerator getInputGenerator(String fileName) throws AlgorithmConfigurationException {
-		return new DefaultFileInputGenerator(new ConfigurationSettingFileInput(
+		return new ExtendedDefaultFileInputGenerator(new ExtendedConfigurationSettingFileInput(
 				getFileInputPath(fileName),
 				true,
 				FILE_VALUE_SEPARATOR.charAt(0),
@@ -177,7 +179,8 @@ public class InputConfiguration implements Configuration {
 				FILE_SKIP_LINES,
 				FILE_HAS_HEADER,
 				FILE_SKIP_DIFFERING_LINES,
-				FILE_NULL_STRING
+				FILE_NULL_STRING,
+				FILE_CHAR_SET
 		));
 	}
 

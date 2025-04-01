@@ -4,7 +4,8 @@ public enum DependencyType {
     IND,
     FD,
     UCC,
-    CARD;
+    CARD,
+    CFD;
 
     public String toString() {
         switch (this) {
@@ -12,6 +13,8 @@ public enum DependencyType {
                 return "IND";
             case FD:
                 return "FD";
+            case CFD:
+                return "CFD";
             case UCC:
                 return "UCC";
             case CARD:

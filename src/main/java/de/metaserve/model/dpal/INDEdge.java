@@ -1,6 +1,8 @@
 package de.metaserve.model.dpal;
 
 
+import java.util.HashMap;
+
 public class INDEdge extends Edge{
 
     public INDEdge(String left, String right) {
@@ -16,11 +18,7 @@ public class INDEdge extends Edge{
 
     @Override
     public String toString() {
-        return "Edge{" +
-                "leftName='" + leftName + '\'' +
-                ", rightName='" + rightName + '\'' +
-                ", type='IND'" +
-                '}';
+        return "IND(" + leftName + "," + rightName + ')';
     }
     @Override
     public boolean equals(Object obj) {
@@ -31,5 +29,10 @@ public class INDEdge extends Edge{
     @Override
     public int hashCode() {
         return toString().hashCode();
+    }
+
+    @Override
+    public Edge copy(HashMap<String, String> mapping) {
+        return new INDEdge(mapping.get(leftName), mapping.get(rightName));
     }
 }

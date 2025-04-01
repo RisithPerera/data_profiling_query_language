@@ -38,7 +38,17 @@ public interface Condition {
                 String left_split = ids_split[0].trim();
                 String right_split = ids_split[1].trim();
                 //Config.split = true; @TODO
-                break;
+                return new Split(left_split, right_split);
+            case "CON":
+                String[] ids_con = getIDS(condition);
+                String left_con = ids_con[0].trim();
+                String right_con = ids_con[1].trim();
+                return new Contains(left_con, right_con);
+            case "COA":
+                String[] ids_coa = getIDS(condition);
+                String left_coa = ids_coa[0].trim();
+                String right_coa = ids_coa[1].trim();
+                return new Coalesce(left_coa, right_coa);
             case "SIZ": //SIZE @TODO
                 String id_size = getID(condition).trim();
                 int maxSize = getNumberFromCondition(condition);

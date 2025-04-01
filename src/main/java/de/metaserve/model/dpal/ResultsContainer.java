@@ -3,15 +3,19 @@ package de.metaserve.model.dpal;
 public class ResultsContainer {
     
     public Iterable<? extends ResultWrapper> getResults() {
+        return null;
     }
 
     public boolean isValid(ResultWrapper result, Boolean mainSide, Boolean rightSide) {
+        return false;
     }
 
     public boolean isSpezable(ResultWrapper result, Boolean mainSide, Boolean rightSide) {
+        return false;
     }
 
     public boolean isSpezableWithChange(ResultWrapper result, Boolean mainSide, Boolean rightSide) {
+        return false;
     }
 
     public void spez(ResultWrapper result, Boolean mainSide, Boolean rightSide) {
@@ -19,6 +23,7 @@ public class ResultsContainer {
     
 
     public ResultWrapper getCounter(ResultWrapper result, Boolean mainSide, Boolean rightSide) {
+        return null;
     }
 
 
@@ -26,5 +31,6 @@ public class ResultsContainer {
     }
 
     public boolean reciveCounter(ResultWrapper first, Boolean second, ResultWrapper third, Boolean fourth) {
+        return false;
     }
 }

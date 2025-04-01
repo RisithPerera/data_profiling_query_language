@@ -83,6 +83,8 @@ public class CustomDPQLParseListener implements ParseTreeListener {
                 }
             }
         }
+        if (tables.isEmpty())
+            throw new RuntimeException("No files found which match in folder: " + new File(InputConfigurationSingleton.get().getInputPath()).getName());
         return tables;
     }
 

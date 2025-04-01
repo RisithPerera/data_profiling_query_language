@@ -1,5 +1,7 @@
 package de.metaserve.model.constraints;
 
+import de.metaserve.util.common.Pair;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,5 +38,10 @@ public class IND extends Dependency{
     @Override
     public String getName() {
         return NAME;
+    }
+
+    @Override
+    public String toString() {
+        return "IND("+ leftName + " < " + rightName + ")";
     }
 }

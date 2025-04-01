@@ -1,4 +1,4 @@
-package de.metaserve.model.dpal;
+package de.metaserve.util.common;
 
 import lombok.Getter;
 import lombok.Setter;

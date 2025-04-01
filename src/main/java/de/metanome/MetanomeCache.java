@@ -148,7 +148,7 @@ public class MetanomeCache implements Metanome {
     private List<String> readFile(String fileLocation){
         List<String> results = new ArrayList<>();
         if(!(new File(fileLocation)).exists()){
-            return results;
+            return new ArrayList<>(); //@TODO Should be exception but then INDs do not work because other quickhack
         }
         try (BufferedReader br = new BufferedReader(new FileReader(fileLocation))) {
             String line;

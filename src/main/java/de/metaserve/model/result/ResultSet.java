@@ -1,20 +1,41 @@
 package de.metaserve.model.result;
 
+import de.metanome.Metanome;
+import de.metanome.algorithm_integration.ColumnCombination;
+import de.metanome.algorithm_integration.ColumnIdentifier;
+import de.metanome.algorithm_integration.ColumnPermutation;
+import de.metanome.algorithm_integration.results.FunctionalDependency;
+import de.metanome.algorithm_integration.results.InclusionDependency;
+import de.metanome.algorithm_integration.results.Result;
+import de.metanome.algorithm_integration.results.UniqueColumnCombination;
+import de.metanome.backend.result_postprocessing.results.InclusionDependencyResult;
+import de.metaserve.model.dpal.FDEdge;
+import de.metaserve.model.dpal.INDEdge;
+import de.metaserve.model.dpal.UCCEdge;
 import de.metaserve.model.graph.AggregateFunction;
+import de.metaserve.util.common.Pair;
+import de.metaserve.util.configuration.InputConfiguration;
 import de.vandermeer.asciitable.AsciiTable;
 import de.vandermeer.asciithemes.u8.U8_Grids;
 import de.vandermeer.skb.interfaces.transformers.textformat.TextAlignment;
+import it.unimi.dsi.fastutil.Hash;
+import lombok.Getter;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class ResultSet implements Collection<List<String>> {
+
     private List<String> columnNames;
+    private Set<String> addedColumns = new HashSet<>();
     private List<List<String>> rows;
+    private List<List<Set<ColumnIdentifier>>> rows2;
 
     public ResultSet(List<String> columnNames) {
         this.columnNames = columnNames;
         this.rows = new ArrayList<>();
+        this.rows2 = new ArrayList<>();
     }
 
     public void orderBy(List<String> columnNames) {
@@ -289,9 +310,17 @@ public class ResultSet implements Collection<List<String>> {
         return rows;
     }
 
+    public List<List<Set<ColumnIdentifier>>> getRows2() {
+        return rows2;
+    }
+
+    public void setRows2(List<List<Set<ColumnIdentifier>>> newRows){
+        this.rows2 = newRows;
+    }
+
     @Override
     public int size() {
-        return rows.size();
+        return rows2.size();
     }
 
     @Override
@@ -317,6 +346,210 @@ public class ResultSet implements Collection<List<String>> {
     @Override
     public <T> T[] toArray(T[] a) {
         return rows.toArray(a);
+    }
+
+
+    public void addFD(FDEdge edge) {
+        String sourceColumn = edge.leftName;
+        String targetColumn = edge.rightName;
+        int sourceIndex = columnNames.indexOf(sourceColumn);
+        int targetIndex = columnNames.indexOf(targetColumn);
+
+        if (rows2.isEmpty()){
+            for (Result result : edge.getResults()){
+                FunctionalDependency dep = (FunctionalDependency) result;
+                List<Set<ColumnIdentifier>> newRow = new ArrayList<>(columnNames.size());
+                Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> fd = fdFromDep(dep);
+                for (int i = 0; i < columnNames.size(); i++){
+                    if (sourceIndex == i)
+                        newRow.add(fd.getFirst());
+                    else if(targetIndex == i)
+                        newRow.add(fd.getSecond());
+                    else
+                        newRow.add(null);
+                }
+                rows2.add(newRow);
+            }
+        } else {
+            if ((!addedColumns.contains(sourceColumn)) && (!addedColumns.contains(targetColumn))){
+                throw new RuntimeException("Result collection found an error!");
+            } else if (addedColumns.contains(sourceColumn) && addedColumns.contains(targetColumn)){
+                //throw new RuntimeException("Not implemented yet! (loop)");  @TODO
+                System.out.println("Loop!");
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = fdsToMap(edge.getResults());
+                loopVerify(sourceIndex, targetIndex, map);
+            } else if (addedColumns.contains(sourceColumn)) {
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = fdsToMap(edge.getResults());
+                addValuesInRow(targetIndex, sourceIndex, map);
+            } else if (addedColumns.contains(targetColumn)) {
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = fdsToMap(edge.getResults(), true);
+                addValuesInRow(sourceIndex, targetIndex, map);
+            }
+        }
+        addedColumns.add(sourceColumn);
+        addedColumns.add(targetColumn);
+    }
+
+    private Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> fdFromDep(FunctionalDependency dep) {
+        return new Pair<>(ccsToSet(dep.getDeterminant()), idToSet(dep.getDependant()));
+    }
+
+    private Set<ColumnIdentifier> idToSet(ColumnIdentifier dependant) {
+        Set<ColumnIdentifier> set = new HashSet<>();
+        set.add(dependant);
+        return set;
+    }
+
+    private Set<ColumnIdentifier> ccsToSet(ColumnCombination determinant) {
+        return new HashSet<>(determinant.getColumnIdentifiers());
+    }
+
+    private HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> fdsToMap(List<Result> results) {
+        return fdsToMap(results, false);
+    }
+    private HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> fdsToMap(List<Result> results, boolean reverse) {
+        HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = new HashMap<>();
+        for (Result result : results){
+            FunctionalDependency dep = (FunctionalDependency) result;
+            Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> ind = fdFromDep(dep);
+            buildMapForDep(reverse, map, ind);
+        }
+        return map;
+    }
+
+    private void buildMapForDep(boolean reverse, HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map, Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> ind) {
+        Set<ColumnIdentifier> key = ind.getFirst();
+        Set<ColumnIdentifier> value = ind.getSecond();
+        if (reverse){
+            key = ind.getSecond();
+            value = ind.getFirst();
+        }
+        if (!map.containsKey(key)){
+            map.put(key, new ArrayList<>());
+        }
+        if (!map.get(key).contains(value))
+            map.get(key).add(value);
+    }
+    public void addUCC(UCCEdge edge) {
+        String column = edge.leftName;
+        int columnIndex = columnNames.indexOf(column);
+        if (!rows2.isEmpty())
+            throw new RuntimeException("Added UCC even though it is not requiered!");
+        for (Result result : edge.getResults()){
+            UniqueColumnCombination dep = (UniqueColumnCombination) result;
+            List<Set<ColumnIdentifier>> newRow = new ArrayList<>(columnNames.size());
+            Set<ColumnIdentifier> ccs = ccsToSet(dep.getColumnCombination());
+            for (int i = 0; i < columnNames.size(); i++){
+                if (columnIndex == i)
+                    newRow.add(ccs);
+                else
+                    newRow.add(null);
+            }
+            rows2.add(newRow);
+        }
+        addedColumns.add(column);
+    }
+
+    public void addIND(INDEdge edge) {
+        String sourceColumn = edge.leftName;
+        String targetColumn = edge.rightName;
+        int sourceIndex = columnNames.indexOf(sourceColumn);
+        int targetIndex = columnNames.indexOf(targetColumn);
+
+        if (rows2.isEmpty()){
+            HashSet<Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>>> copies = new HashSet<>();
+            for (Result result : edge.getResults()){
+                InclusionDependency dep = (InclusionDependency) result;
+                List<Set<ColumnIdentifier>> newRow = new ArrayList<>(columnNames.size());
+                Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> ind = indFromDep(dep);
+                if (copies.contains(ind)) continue;
+                copies.add(ind);
+                for (int i = 0; i < columnNames.size(); i++){
+                    if (sourceIndex == i)
+                        newRow.add(ind.getFirst());
+                    else if(targetIndex == i)
+                        newRow.add(ind.getSecond());
+                    else
+                        newRow.add(null);
+                }
+                rows2.add(newRow);
+            }
+        } else {
+            if ((!addedColumns.contains(sourceColumn)) && (!addedColumns.contains(targetColumn))){
+                throw new RuntimeException("Result collection found an error!");
+            } else if (addedColumns.contains(sourceColumn) && addedColumns.contains(targetColumn)){
+                //throw new RuntimeException("Not implemented yet! (loop)"); @TODO
+                System.out.println("Loop!");
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = indsToMap(edge.getResults());
+                loopVerify(sourceIndex, targetIndex, map);
+            } else if (addedColumns.contains(sourceColumn)) {
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = indsToMap(edge.getResults());
+                addValuesInRow(targetIndex, sourceIndex, map);
+            } else if (addedColumns.contains(targetColumn)) {
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = indsToMap(edge.getResults(), true);
+                addValuesInRow(sourceIndex, targetIndex, map);
+            }
+        }
+        addedColumns.add(sourceColumn);
+        addedColumns.add(targetColumn);
+    }
+
+    private void loopVerify(int sourceIndex, int targetIndex, HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map) {
+        List<List<Set<ColumnIdentifier>>> newRows = new ArrayList<>();
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> columnCombinationTarget = row.get(targetIndex);
+            Set<ColumnIdentifier> columnCombinationSource = row.get(sourceIndex);
+            if (map.containsKey(columnCombinationSource)){
+                if (map.get(columnCombinationSource).contains(columnCombinationTarget)){
+                    newRows.add(row);
+                }
+            }
+        }
+        rows2 = newRows;
+    }
+
+    private HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> indsToMap(List<Result> results) {
+        return indsToMap(results, false);
+    }
+
+    private HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> indsToMap(List<Result> results, boolean reverse) {
+        HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = new HashMap<>();
+        for (Result result : results){
+            InclusionDependency dep = (InclusionDependency) result;
+            Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> ind = indFromDep(dep);
+            buildMapForDep(reverse, map, ind);
+        }
+        return map;
+    }
+
+    private Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> indFromDep(InclusionDependency dep) {
+        return new Pair<>(permutationToSet(dep.getDependant()), permutationToSet(dep.getReferenced()));
+    }
+
+    private Set<ColumnIdentifier> permutationToSet(ColumnPermutation dependant) {
+        return new HashSet<>(dependant.getColumnIdentifiers());
+    }
+
+    private void addValuesInRow(int sourceIndex, int targetIndex, HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map) {
+        List<List<Set<ColumnIdentifier>>> newRows = new ArrayList<>();
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> columnCombination = row.get(targetIndex);
+            if (!map.containsKey(columnCombination)){
+                continue;
+                //throw new RuntimeException("Result Collection failed!"); @TODO
+            }
+            //row.add(targetIndex, columnCombination);
+            for (Set<ColumnIdentifier> value : map.get(columnCombination)){
+                List<Set<ColumnIdentifier>> newRow = new ArrayList<>(row);
+                newRow.set(sourceIndex, value);
+                newRows.add(newRow);
+            }
+        }
+        rows2 = newRows;
+    }
+
+    public Set<String> getActiveColumns(){
+        return addedColumns;
     }
 
     @Override
@@ -403,5 +636,98 @@ public class ResultSet implements Collection<List<String>> {
         asciiTable.setTextAlignment(TextAlignment.CENTER);
 
         return asciiTable.render();
+    }
+
+    public void contains(String x, String y) {
+        List<List<Set<ColumnIdentifier>>> newRows = new ArrayList<>();
+        int targetID = columnNames.indexOf(x);
+        int sourceID = columnNames.indexOf(y);
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> columnCombinationTarget = row.get(targetID);
+            Set<ColumnIdentifier> columnCombinationSource = row.get(sourceID);
+            if (columnCombinationTarget.containsAll(columnCombinationSource)){
+                newRows.add(row);
+            }
+        }
+        rows2 = newRows;
+    }
+
+    public void split(String x, String y) {
+        List<List<Set<ColumnIdentifier>>> newRows = new ArrayList<>();
+        int targetID = columnNames.indexOf(x);
+        int sourceID = columnNames.indexOf(y);
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> columnCombinationTarget = row.get(targetID);
+            Set<ColumnIdentifier> columnCombinationSource = row.get(sourceID);
+            if (!columnCombinationTarget.iterator().next().getTableIdentifier().equals(columnCombinationSource.iterator().next().getTableIdentifier())){
+                newRows.add(row);
+            }
+        }
+        rows2 = newRows;
+    }
+
+    public void coalesce(String x, String y) {
+        List<List<Set<ColumnIdentifier>>> newRows = new ArrayList<>();
+        int targetID = columnNames.indexOf(x);
+        int sourceID = columnNames.indexOf(y);
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> columnCombinationTarget = row.get(targetID);
+            Set<ColumnIdentifier> columnCombinationSource = row.get(sourceID);
+            if (columnCombinationTarget.iterator().next().getTableIdentifier().equals(columnCombinationSource.iterator().next().getTableIdentifier())){
+                newRows.add(row);
+            }
+        }
+        rows2 = newRows;
+    }
+
+    public void negativeUCC(String idName, String[] searchSpace) {
+        List<Result> result = Metanome.getInstance().executeUCC(searchSpace);
+        Set<Set<ColumnIdentifier>> uccs = uccsToSet(result);
+        int id = columnNames.indexOf(idName);
+        List<List<Set<ColumnIdentifier>>> newRows = new ArrayList<>();
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> columnCombination = row.get(id);
+            if (!uccs.contains(columnCombination)){
+                newRows.add(row);
+            }
+        }
+        rows2 = newRows;
+    }
+
+    public Set<Set<ColumnIdentifier>> uccsToSet(List<Result> results){
+        Set<Set<ColumnIdentifier>> set = new HashSet<>();
+        for (Result result : results){
+            UniqueColumnCombination dep = (UniqueColumnCombination) result;
+            Set<ColumnIdentifier> cc = ccsToSet(dep.getColumnCombination());
+            set.add(cc);
+        }
+        return set;
+    }
+
+    public HashMap<Set<ColumnIdentifier>, List<List<Set<ColumnIdentifier>>>> toMap(String columnKeyName){
+        HashMap<Set<ColumnIdentifier>, List<List<Set<ColumnIdentifier>>>> map = new HashMap<>();
+        int index = columnNames.indexOf(columnKeyName);
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> key = row.get(index);
+            map.getOrDefault(key, new ArrayList<>()).add(row);
+        }
+        return map;
+    }
+
+    public void cardinality(String target, String source, String operation) {
+        List<List<Set<ColumnIdentifier>>> newRows = new ArrayList<>();
+        int targetID = columnNames.indexOf(target);
+        int sourceID = columnNames.indexOf(source);
+        for (List<Set<ColumnIdentifier>> row : rows2){
+            Set<ColumnIdentifier> columnCombinationTarget = row.get(targetID);
+            Set<ColumnIdentifier> columnCombinationSource = row.get(sourceID);
+            long targetLong = InputConfiguration.getCard(columnCombinationTarget.stream().findFirst().get().toString());
+            long sourceLong = InputConfiguration.getCard(columnCombinationSource.stream().findFirst().get().toString());
+
+            if (targetLong > sourceLong * 0.3){
+                newRows.add(row);
+            }
+        }
+        rows2 = newRows;
     }
 }

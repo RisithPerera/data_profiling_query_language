@@ -10,6 +10,7 @@ public class UCC extends Dependency{
     public String id;
     public boolean not = false;
 
+
     public UCC(List<String> ccs, String id, boolean not){
         this.ccFunction = ccs;
         this.id = id;
@@ -20,6 +21,9 @@ public class UCC extends Dependency{
         this(ccs, id, false);
     }
 
+    public String[] getSearchSpace(){
+        return ccFunction.toArray(new String[ccFunction.size()]);
+    }
     public List<String> parse(List<List<String>> columns){
         List<String> result = new ArrayList<>();
         for (int i = 0; i < columns.size(); i++) {
@@ -34,5 +38,10 @@ public class UCC extends Dependency{
     @Override
     public String getName() {
         return NAME;
+    }
+
+    @Override
+    public String toString() {
+        return "UCC("+ id + ")";
     }
 }

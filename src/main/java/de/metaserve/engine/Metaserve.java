@@ -87,15 +87,15 @@ public class Metaserve implements QueryEngine, AutoCloseable, Listenable<QueryEx
             query.getMetaData().update(QueryState.QUERY_OPTIMIZING);
 
             state = QueryState.QUERY_EXECUTING;
-            System.out.println("Before Executed");
             List<ResultSet> resultSet = executor.executeQuery(optimizedQuery);
+            if(resultSet == null)
+                throw new RuntimeException("Query execution failed, due to a missing result set!");
             query.getMetaData().update(QueryState.QUERY_EXECUTING);
-            System.out.println("Executed");
             state = QueryState.QUERY_COMPLETED;
 
             // Notify all listeners of the query execution completion
             for (QueryExecutionListener listener : executionListeners) {
-                listener.onQueryCompleted(optimizedQuery, resultSet, optimizedQuery.getMetaData().getTime(), resultSet.size());
+                listener.onQueryCompleted(optimizedQuery, resultSet, optimizedQuery.getMetaData().getTime(), resultSet.get(0).size());
             }
 
             return resultSet;

@@ -3,9 +3,10 @@ package de.metaserve.executor.strategy;
 import de.metanome.Metanome;
 import de.metanome.algorithm_integration.results.Result;
 import de.metaserve.engine.QueryEngine;
-import de.metaserve.model.constraints.Pair;
 import de.metaserve.model.dpal.*;
 import de.metaserve.model.query.QueryMetadata;
+import de.metaserve.util.common.Quadruple;
+import de.metaserve.util.common.Triple;
 
 import java.util.*;
 
@@ -24,23 +25,71 @@ public class PreProfileStrategy implements Strategy{
         for (Edge edge : graph.getEdges()) {
             executeEdgeQuery(metanome, edge);
         }
+
         metadata.update(QueryEngine.QueryState.QUERY_WAITING_FOR_METANOME);
         Collection<Edge> minimal = graph.getMinimalEdges();
+        List<ResultNode> resultNodes = new ArrayList<>();
+        if (minimal.isEmpty()){
+            System.out.println("No minimal");//@TODO
+        }
         for (Edge min : minimal){
-            Queue<Quadruple<Edge, Boolean, Edge, Boolean>> queue = new LinkedList<>();
-            List<Triple<Boolean, Edge, Boolean>> neighbors = min.getNeighborsWithDir();
+            min.mark();
+            List<ResultNode> neighbors = graph.getResultNodes(min);
             if(neighbors.isEmpty())
                 continue;
-            for(Triple<Boolean, Edge, Boolean> triple : neighbors){
-                queue.add(new Quadruple<>(min, triple.getFirst(), triple.getSecond(), triple.getThird()));
-            }
+            Set<String> visited = new HashSet<>();
+            Queue<ResultNode> queue = new LinkedList<>(neighbors);
 
             while(!queue.isEmpty()){
-                Quadruple<Edge, Boolean, Edge, Boolean> quad = queue.poll();
+                ResultNode node = queue.poll();
+                resultNodes.add(node);
+                if(node.size() <= 1) continue;
                 //BFS
-                neighbors = quad.getFirst().getNeighborsWithDir();
-                for(Triple<Boolean, Edge, Boolean> triple : neighbors){
-                    queue.add(new Quadruple<>(min, triple.getFirst(), triple.getSecond(), triple.getThird()));
+                node.compute();
+                for(String nodeName : node.getNextNodes()){
+                    if(visited.contains(nodeName)) continue;
+                    visited.add(nodeName);
+                    ResultNode newNode = graph.getResultNode(nodeName);
+                    newNode.minEdgeConnectedTo(node.name());
+                    queue.add(newNode);
+                }
+            }
+        }
+        metadata.update(QueryEngine.QueryState.COMPUTED_MIN);
+
+
+    }
+
+
+    public void apply2(Metanome metanome) {
+
+        for (Edge edge : graph.getEdges()) {
+            executeEdgeQuery(metanome, edge);
+        }
+        metadata.update(QueryEngine.QueryState.QUERY_WAITING_FOR_METANOME);
+        Collection<Edge> minimal = graph.getMinimalEdges();
+        List<ResultNode> resultNodes = new ArrayList<>();
+        if (minimal.isEmpty())
+            throw new RuntimeException("No Minimal Found!");
+        List<ResultNode> neighbors = graph.getResultNodes(minimal.stream().findFirst().get());
+
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            Set<String> visited = new HashSet<>();
+            Queue<ResultNode> queue = new LinkedList<>(neighbors);
+            while(!queue.isEmpty()){
+                ResultNode node = queue.poll();
+                resultNodes.add(node);
+                if(node.size() <= 1) continue;
+                //BFS
+                boolean changes = node.compute();
+                if (changes)
+                    changed = true;
+                for(String nodeName : node.getNextNodes()){
+                    if(visited.contains(nodeName)) continue;
+                    visited.add(nodeName);
+                    queue.add(graph.getResultNode(nodeName));
                 }
             }
         }
@@ -85,6 +134,8 @@ public class PreProfileStrategy implements Strategy{
             case "UCC":
                 result = metanome.executeUCC(edge.getSearchSpace());
                 break;
+            default:
+                throw new RuntimeException("Found: " + type + " which is an unkown edge type!");
         }
 
         if (result != null) {

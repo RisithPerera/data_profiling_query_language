@@ -1,19 +1,30 @@
 package de.metaserve.model.constraints;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
-@AllArgsConstructor
-public class Cardinality implements PostCondition{
-    @Getter
+public class Cardinality implements PostCondition {
     String x;
-    @Getter
     String y;
-    @Getter
     String operation;
+
+    public Cardinality(String x, String y, String operation){
+        this.operation = operation;
+        this.x = x;
+        this.y = y;
+    }
 
     @Override
     public String getName() {
         return "Cardinality";
+    }
+
+    public String getX() {
+        return x;
+    }
+
+    public String getY() {
+        return y;
+    }
+
+    public String getOperation() {
+        return operation;
     }
 }

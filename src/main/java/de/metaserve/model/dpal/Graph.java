@@ -3,7 +3,6 @@ package de.metaserve.model.dpal;
 import de.metaserve.model.constraints.*;
 import de.metaserve.util.common.Pair;
 import de.metaserve.util.common.Triple;
-import lombok.Getter;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -12,15 +11,10 @@ import static de.metaserve.model.dpal.Graph.INDRelation.*;
 
 public class Graph {
 
-    @Getter
     HashSet<Edge> edges = new HashSet<>();
-    @Getter
     HashMap<String, Node> nodes = new HashMap<>();
-    @Getter
     HashMap<Edge, SetMembership> setMembershipMap;
-    @Getter
     Set<String> existsNodes = new HashSet<>();
-    @Getter
     GraphMetadata metadata = new GraphMetadata();
 
     public static HashMap<GraphAtom, List<GraphAtom>> decomposedGraphMap = new HashMap<>();
@@ -477,7 +471,7 @@ public class Graph {
             edgesAlreadyChanged.addAll(set);
             Map<String, List<String>> graph = buildGraph(set);
             for(Pair<String,String> pair : generateAllPairs(getAllNodesFromEdges(set))){
-                List<INDEdge> newEdges = findRelationEdges(graph, pair.getFirst(), pair.getSecond());
+                List<INDEdge> newEdges = findRelationEdges(graph, pair.first(), pair.second());
                 for (INDEdge newEdge : newEdges){
                     Graph newGraph = new Graph();
                     newGraph.addEdge(newEdge);
@@ -644,6 +638,30 @@ public class Graph {
             }
         }
         return edgesOrderList;
+    }
+
+    public HashSet<Edge> getEdges() {
+        return edges;
+    }
+
+    public HashMap<String, Node> getNodes() {
+        return nodes;
+    }
+
+    public HashMap<Edge, SetMembership> getSetMembershipMap() {
+        return setMembershipMap;
+    }
+
+    public Set<String> getExistsNodes() {
+        return existsNodes;
+    }
+
+    public GraphMetadata getMetadata() {
+        return metadata;
+    }
+
+    public static HashMap<GraphAtom, List<GraphAtom>> getDecomposedGraphMap() {
+        return decomposedGraphMap;
     }
 
     enum INDRelation{
@@ -982,7 +1000,7 @@ public class Graph {
         return result;
     }
 
-    @Getter
+
     public enum SetMembership {
         F(0),
         F_PLUS(1),
@@ -1007,6 +1025,10 @@ public class Graph {
             if(edge instanceof UCCEdge)
                 return U;
             return null;
+        }
+
+        public int getValue() {
+            return value;
         }
 
         public static boolean isMinimal(SetMembership set){
@@ -1116,4 +1138,5 @@ public class Graph {
     public int hashCode() {
         return Objects.hash(edges, nodes);
     }
+
 }

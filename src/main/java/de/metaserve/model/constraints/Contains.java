@@ -1,17 +1,19 @@
 package de.metaserve.model.constraints;
 
 import de.metaserve.model.result.ResultSet;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+
 
 import java.util.Set;
 
-@AllArgsConstructor
+
 public class Contains extends AbstractMerger implements PostCondition {
-    @Getter
     String x;
-    @Getter
     String y;
+
+    public Contains(String x, String y){
+        this.x = x;
+        this.y = y;
+    }
 
     @Override
     public String getName() {
@@ -76,5 +78,13 @@ public class Contains extends AbstractMerger implements PostCondition {
     @Override
     public String toString() {
         return getName() + "("+ getLeft() + "," + getRight() + ")";
+    }
+
+    public String getX() {
+        return x;
+    }
+
+    public String getY() {
+        return y;
     }
 }

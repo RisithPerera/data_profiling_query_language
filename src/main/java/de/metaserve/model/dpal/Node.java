@@ -1,11 +1,8 @@
 package de.metaserve.model.dpal;
 
-import de.metaserve.model.constraints.IND;
-import lombok.Getter;
-
 import java.util.*;
 
-@Getter
+
 public class Node {
     String name;
     List<Edge> edgesOutgoing = new ArrayList<>();
@@ -128,5 +125,17 @@ public class Node {
             }
         }
         throw new RuntimeException("No such edge found!");
+    }
+
+    public List<Edge> getEdgesIncoming() {
+        return edgesIncoming;
+    }
+
+    public List<Edge> getEdgesOutgoing() {
+        return edgesOutgoing;
+    }
+
+    public String getName() {
+        return name;
     }
 }

@@ -1,11 +1,9 @@
 package de.metaserve.util.configuration;
 
-import lombok.Data;
 
 import java.io.IOException;
 import java.util.*;
 
-@Data
 public class ParserConfiguration implements Configuration{
 
     private Parser PARSER_TYPE = Parser.ANTLR;

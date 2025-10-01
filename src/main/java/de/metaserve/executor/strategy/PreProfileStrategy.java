@@ -6,7 +6,6 @@ import de.metaserve.engine.QueryEngine;
 import de.metaserve.model.dpal.*;
 import de.metaserve.model.query.QueryMetadata;
 import de.metaserve.util.common.Quadruple;
-import de.metaserve.util.common.Triple;
 
 import java.util.*;
 
@@ -112,8 +111,8 @@ public class PreProfileStrategy implements Strategy{
 
         }
         for (Quadruple<ResultWrapper, Boolean, ResultWrapper, Boolean> counter: counterOffer){
-            boolean accept = main.reciveCounter(counter.getFirst(), counter.getSecond(), counter.getThird(), counter.getFourth());
-            right.endCounter(accept, counter.getFirst());
+            boolean accept = main.reciveCounter(counter.first(), counter.second(), counter.third(), counter.fourth());
+            right.endCounter(accept, counter.first());
             if(accept)
                 backTrace = true;
         }

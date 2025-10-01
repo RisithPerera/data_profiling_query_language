@@ -1,8 +1,5 @@
 package de.metaserve.model.dpal;
 
-import lombok.Data;
-
-@Data
 public class GraphMetadata {
     private int FD_Decomposition = 0;
     private int Bushy_Decomposition = 0;
@@ -79,4 +76,99 @@ public class GraphMetadata {
         IND_with_FD_Rule++;
     }
 
+    public int getFD_Decomposition() {
+        return FD_Decomposition;
+    }
+
+    public void setFD_Decomposition(int FD_Decomposition) {
+        this.FD_Decomposition = FD_Decomposition;
+    }
+
+    public int getBushy_Decomposition() {
+        return Bushy_Decomposition;
+    }
+
+    public void setBushy_Decomposition(int bushy_Decomposition) {
+        Bushy_Decomposition = bushy_Decomposition;
+    }
+
+    public int getIND_Decomposition() {
+        return IND_Decomposition;
+    }
+
+    public void setIND_Decomposition(int IND_Decomposition) {
+        this.IND_Decomposition = IND_Decomposition;
+    }
+
+    public int getUCC_sub_extending_UCC_Rule() {
+        return UCC_sub_extending_UCC_Rule;
+    }
+
+    public void setUCC_sub_extending_UCC_Rule(int UCC_sub_extending_UCC_Rule) {
+        this.UCC_sub_extending_UCC_Rule = UCC_sub_extending_UCC_Rule;
+    }
+
+    public int getFD_extending_UCC_Rule() {
+        return FD_extending_UCC_Rule;
+    }
+
+    public void setFD_extending_UCC_Rule(int FD_extending_UCC_Rule) {
+        this.FD_extending_UCC_Rule = FD_extending_UCC_Rule;
+    }
+
+    public int getFD_sub_extending_UCC_Rule() {
+        return FD_sub_extending_UCC_Rule;
+    }
+
+    public void setFD_sub_extending_UCC_Rule(int FD_sub_extending_UCC_Rule) {
+        this.FD_sub_extending_UCC_Rule = FD_sub_extending_UCC_Rule;
+    }
+
+    public int getFD_fork_with_FD_Rule() {
+        return FD_fork_with_FD_Rule;
+    }
+
+    public void setFD_fork_with_FD_Rule(int FD_fork_with_FD_Rule) {
+        this.FD_fork_with_FD_Rule = FD_fork_with_FD_Rule;
+    }
+
+    public int getFD_chained_to_FD_Rule() {
+        return FD_chained_to_FD_Rule;
+    }
+
+    public void setFD_chained_to_FD_Rule(int FD_chained_to_FD_Rule) {
+        this.FD_chained_to_FD_Rule = FD_chained_to_FD_Rule;
+    }
+
+    public int getFD_chained_to_UCC_Rule() {
+        return FD_chained_to_UCC_Rule;
+    }
+
+    public void setFD_chained_to_UCC_Rule(int FD_chained_to_UCC_Rule) {
+        this.FD_chained_to_UCC_Rule = FD_chained_to_UCC_Rule;
+    }
+
+    public int getIND_with_UCC_Rule() {
+        return IND_with_UCC_Rule;
+    }
+
+    public void setIND_with_UCC_Rule(int IND_with_UCC_Rule) {
+        this.IND_with_UCC_Rule = IND_with_UCC_Rule;
+    }
+
+    public int getIND_with_FD_Rule() {
+        return IND_with_FD_Rule;
+    }
+
+    public void setIND_with_FD_Rule(int IND_with_FD_Rule) {
+        this.IND_with_FD_Rule = IND_with_FD_Rule;
+    }
+
+    public int getUCC_extending_UCC_Rule() {
+        return UCC_extending_UCC_Rule;
+    }
+
+    public void setUCC_extending_UCC_Rule(int UCC_extending_UCC_Rule) {
+        this.UCC_extending_UCC_Rule = UCC_extending_UCC_Rule;
+    }
 }

@@ -1,16 +1,27 @@
 package de.metaserve.model.constraints;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-@AllArgsConstructor
 public class Split implements PostCondition{
-    @Getter
+
     String x;
-    @Getter
+
     String y;
+
+    public Split(String x, String y){
+        this.x = x;
+        this.y = y;
+    }
+
     @Override
     public String getName() {
         return "Split";
+    }
+
+    public String getX() {
+        return x;
+    }
+
+    public String getY() {
+        return y;
     }
 }

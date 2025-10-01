@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * n implementation of the QueryEngine interface that parses, optimizes and executes DPQL queries.
+ * An implementation of the QueryEngine interface that parses, optimizes and executes DPQL queries.
  */
 public class Metaserve implements QueryEngine, AutoCloseable, Listenable<QueryExecutionListener> {
     /**

@@ -2,17 +2,19 @@ package de.metaserve.model.constraints;
 
 import de.metanome.algorithm_integration.ColumnIdentifier;
 import de.metaserve.model.result.ResultSet;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 import java.util.Optional;
 
-@AllArgsConstructor
 public class Coalesce extends AbstractMerger implements PostCondition {
-    @Getter
+
     String x;
-    @Getter
+
     String y;
+
+    public Coalesce(String x, String y){
+        this.x = x;
+        this.y = y;
+    }
     @Override
     public String getName() {
         return "COALESCE";
@@ -78,5 +80,13 @@ public class Coalesce extends AbstractMerger implements PostCondition {
     @Override
     public String toString() {
         return getName() + "("+ getLeft() + "," + getRight() + ")";
+    }
+
+    public String getX() {
+        return x;
+    }
+
+    public String getY() {
+        return y;
     }
 }

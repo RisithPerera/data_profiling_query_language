@@ -10,8 +10,6 @@ import de.metaserve.util.extensions.fk.ForeignKeyChecker;
 import de.metaserve.util.extensions.graph.Graph;
 import de.metaserve.util.extensions.mapping.MapperChecker;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
-import lombok.Data;
-import lombok.Getter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +21,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class MainTest {
-    @Getter
+
     public enum Dataset {
         ADVENTURE_WORKS("AdventureWorks"),
         MUSIC("musicBrainzMock"),
@@ -50,9 +48,12 @@ public class MainTest {
             }
             return enumValue;
         }
+
+        public String getName() {
+            return name;
+        }
     }
 
-    @Getter
     public enum QuerySt{
         FOREIGN_KEY_1("SELECT X, Y FROM CC(*) AS X, CC(*) AS Y WHERE IND(X,Y)"),
         FOREIGN_KEY_2("SELECT X, Y FROM CC(*) AS X, CC(*) AS Y WHERE IND(X,Y) AND UCC(Y)"),
@@ -88,10 +89,13 @@ public class MainTest {
         QuerySt(String query){
             this.query = query;
         }
+
+        public String getQuery() {
+            return query;
+        }
     }
 
 
-    @Getter
     public enum BTWQueries{
         //33,2538
         FOREIGN_KEY("SELECT X, Y FROM CC(*) AS X, CC(*) AS Y WHERE IND(X,Y) AND UCC(Y)"),// AND NOT UCC(X) AND SPLIT(X,Y)
@@ -144,6 +148,10 @@ public class MainTest {
                 }
             }
             return null;
+        }
+
+        public String getQuery() {
+            return query;
         }
     }
     Metaserve metaserve;

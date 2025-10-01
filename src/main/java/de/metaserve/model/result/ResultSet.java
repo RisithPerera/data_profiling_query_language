@@ -8,7 +8,6 @@ import de.metanome.algorithm_integration.results.FunctionalDependency;
 import de.metanome.algorithm_integration.results.InclusionDependency;
 import de.metanome.algorithm_integration.results.Result;
 import de.metanome.algorithm_integration.results.UniqueColumnCombination;
-import de.metanome.backend.result_postprocessing.results.InclusionDependencyResult;
 import de.metaserve.model.dpal.FDEdge;
 import de.metaserve.model.dpal.INDEdge;
 import de.metaserve.model.dpal.UCCEdge;
@@ -18,12 +17,8 @@ import de.metaserve.util.configuration.InputConfiguration;
 import de.vandermeer.asciitable.AsciiTable;
 import de.vandermeer.asciithemes.u8.U8_Grids;
 import de.vandermeer.skb.interfaces.transformers.textformat.TextAlignment;
-import it.unimi.dsi.fastutil.Hash;
-import lombok.Getter;
 
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class ResultSet implements Collection<List<String>> {
 
@@ -362,9 +357,9 @@ public class ResultSet implements Collection<List<String>> {
                 Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> fd = fdFromDep(dep);
                 for (int i = 0; i < columnNames.size(); i++){
                     if (sourceIndex == i)
-                        newRow.add(fd.getFirst());
+                        newRow.add(fd.first());
                     else if(targetIndex == i)
-                        newRow.add(fd.getSecond());
+                        newRow.add(fd.second());
                     else
                         newRow.add(null);
                 }
@@ -418,11 +413,11 @@ public class ResultSet implements Collection<List<String>> {
     }
 
     private void buildMapForDep(boolean reverse, HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map, Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> ind) {
-        Set<ColumnIdentifier> key = ind.getFirst();
-        Set<ColumnIdentifier> value = ind.getSecond();
+        Set<ColumnIdentifier> key = ind.first();
+        Set<ColumnIdentifier> value = ind.second();
         if (reverse){
-            key = ind.getSecond();
-            value = ind.getFirst();
+            key = ind.second();
+            value = ind.first();
         }
         if (!map.containsKey(key)){
             map.put(key, new ArrayList<>());
@@ -466,9 +461,9 @@ public class ResultSet implements Collection<List<String>> {
                 copies.add(ind);
                 for (int i = 0; i < columnNames.size(); i++){
                     if (sourceIndex == i)
-                        newRow.add(ind.getFirst());
+                        newRow.add(ind.first());
                     else if(targetIndex == i)
-                        newRow.add(ind.getSecond());
+                        newRow.add(ind.second());
                     else
                         newRow.add(null);
                 }

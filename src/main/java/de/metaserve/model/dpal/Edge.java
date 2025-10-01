@@ -2,8 +2,6 @@ package de.metaserve.model.dpal;
 
 import de.metanome.algorithm_integration.results.Result;
 import de.metaserve.util.common.Triple;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,13 +14,10 @@ public abstract class Edge {
 
     List<Triple<Boolean, Edge, Boolean>> neighbors = new ArrayList<>();
 
-    @Getter
     String[] searchSpace;
 
-    @Getter @Setter
     List<Result> results;
 
-    @Getter @Setter
     ResultsContainer resultsContainer;
 
     public Edge(String leftName, String rightName){
@@ -80,5 +75,29 @@ public abstract class Edge {
         if (name.equals(leftName))
             return rightName;
         return leftName;
+    }
+
+    public String[] getSearchSpace() {
+        return searchSpace;
+    }
+
+    public void setSearchSpace(String[] searchSpace) {
+        this.searchSpace = searchSpace;
+    }
+
+    public List<Result> getResults() {
+        return results;
+    }
+
+    public void setResults(List<Result> results) {
+        this.results = results;
+    }
+
+    public ResultsContainer getResultsContainer() {
+        return resultsContainer;
+    }
+
+    public void setResultsContainer(ResultsContainer resultsContainer) {
+        this.resultsContainer = resultsContainer;
     }
 }

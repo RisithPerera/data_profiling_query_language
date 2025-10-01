@@ -14,7 +14,6 @@ import de.metanome.util.ExtendedDefaultFileInputGenerator;
 import de.metaserve.util.CardMap;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
-import lombok.Data;
 
 import java.io.File;
 import java.io.FileReader;
@@ -23,7 +22,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-@Data
 public class InputConfiguration implements Configuration {
 	private String IO_FOLDER = "io";
 	private String DATA_FOLDER = "data";
@@ -245,5 +243,241 @@ public class InputConfiguration implements Configuration {
 			Long nofv = (Long) bs.getStatisticMap().get("Number of Distinct Values").getValue();
 			cardMap.put(bs.getColumnCombination().getColumnIdentifiers().iterator().next().toString(), nofv);
 		}
+	}
+
+	public String getIO_FOLDER() {
+		return IO_FOLDER;
+	}
+
+	public void setIO_FOLDER(String IO_FOLDER) {
+		this.IO_FOLDER = IO_FOLDER;
+	}
+
+	public String getDATA_FOLDER() {
+		return DATA_FOLDER;
+	}
+
+	public void setDATA_FOLDER(String DATA_FOLDER) {
+		this.DATA_FOLDER = DATA_FOLDER;
+	}
+
+	public String getDATA_SET() {
+		return DATA_SET;
+	}
+
+	public String getRESULT_FOLDER() {
+		return RESULT_FOLDER;
+	}
+
+	public void setRESULT_FOLDER(String RESULT_FOLDER) {
+		this.RESULT_FOLDER = RESULT_FOLDER;
+	}
+
+	public String getFILE_ENDING() {
+		return FILE_ENDING;
+	}
+
+	public void setFILE_ENDING(String FILE_ENDING) {
+		this.FILE_ENDING = FILE_ENDING;
+	}
+
+	public String getFILE_VALUE_SEPARATOR() {
+		return FILE_VALUE_SEPARATOR;
+	}
+
+	public void setFILE_VALUE_SEPARATOR(String FILE_VALUE_SEPARATOR) {
+		this.FILE_VALUE_SEPARATOR = FILE_VALUE_SEPARATOR;
+	}
+
+	public String getFILE_QUOTE_CHAR() {
+		return FILE_QUOTE_CHAR;
+	}
+
+	public void setFILE_QUOTE_CHAR(String FILE_QUOTE_CHAR) {
+		this.FILE_QUOTE_CHAR = FILE_QUOTE_CHAR;
+	}
+
+	public String getFILE_ESCAPE() {
+		return FILE_ESCAPE;
+	}
+
+	public void setFILE_ESCAPE(String FILE_ESCAPE) {
+		this.FILE_ESCAPE = FILE_ESCAPE;
+	}
+
+	public Integer getFILE_SKIP_LINES() {
+		return FILE_SKIP_LINES;
+	}
+
+	public void setFILE_SKIP_LINES(Integer FILE_SKIP_LINES) {
+		this.FILE_SKIP_LINES = FILE_SKIP_LINES;
+	}
+
+	public Boolean getFILE_STRICT_QUOTES() {
+		return FILE_STRICT_QUOTES;
+	}
+
+	public void setFILE_STRICT_QUOTES(Boolean FILE_STRICT_QUOTES) {
+		this.FILE_STRICT_QUOTES = FILE_STRICT_QUOTES;
+	}
+
+	public Boolean getFILE_IGNORE_LEADING_WHITESPACE() {
+		return FILE_IGNORE_LEADING_WHITESPACE;
+	}
+
+	public void setFILE_IGNORE_LEADING_WHITESPACE(Boolean FILE_IGNORE_LEADING_WHITESPACE) {
+		this.FILE_IGNORE_LEADING_WHITESPACE = FILE_IGNORE_LEADING_WHITESPACE;
+	}
+
+	public Boolean getFILE_HAS_HEADER() {
+		return FILE_HAS_HEADER;
+	}
+
+	public void setFILE_HAS_HEADER(Boolean FILE_HAS_HEADER) {
+		this.FILE_HAS_HEADER = FILE_HAS_HEADER;
+	}
+
+	public Boolean getFILE_SKIP_DIFFERING_LINES() {
+		return FILE_SKIP_DIFFERING_LINES;
+	}
+
+	public void setFILE_SKIP_DIFFERING_LINES(Boolean FILE_SKIP_DIFFERING_LINES) {
+		this.FILE_SKIP_DIFFERING_LINES = FILE_SKIP_DIFFERING_LINES;
+	}
+
+	public String getFILE_NULL_STRING() {
+		return FILE_NULL_STRING;
+	}
+
+	public void setFILE_NULL_STRING(String FILE_NULL_STRING) {
+		this.FILE_NULL_STRING = FILE_NULL_STRING;
+	}
+
+	public Boolean getFILE_NULL_EQUALS_NULL() {
+		return FILE_NULL_EQUALS_NULL;
+	}
+
+	public void setFILE_NULL_EQUALS_NULL(Boolean FILE_NULL_EQUALS_NULL) {
+		this.FILE_NULL_EQUALS_NULL = FILE_NULL_EQUALS_NULL;
+	}
+
+	public Integer getFILE_MAX_ROWS() {
+		return FILE_MAX_ROWS;
+	}
+
+	public void setFILE_MAX_ROWS(Integer FILE_MAX_ROWS) {
+		this.FILE_MAX_ROWS = FILE_MAX_ROWS;
+	}
+
+	public Charset getFILE_CHAR_SET() {
+		return FILE_CHAR_SET;
+	}
+
+	public void setFILE_CHAR_SET(Charset FILE_CHAR_SET) {
+		this.FILE_CHAR_SET = FILE_CHAR_SET;
+	}
+
+	public String getFILE_STATISTIC_NAME() {
+		return FILE_STATISTIC_NAME;
+	}
+
+	public void setFILE_STATISTIC_NAME(String FILE_STATISTIC_NAME) {
+		this.FILE_STATISTIC_NAME = FILE_STATISTIC_NAME;
+	}
+
+	public String getFILE_RESULT_NAME() {
+		return FILE_RESULT_NAME;
+	}
+
+	public void setFILE_RESULT_NAME(String FILE_RESULT_NAME) {
+		this.FILE_RESULT_NAME = FILE_RESULT_NAME;
+	}
+
+	public Boolean getWRITE_RESULTS() {
+		return WRITE_RESULTS;
+	}
+
+	public void setWRITE_RESULTS(Boolean WRITE_RESULTS) {
+		this.WRITE_RESULTS = WRITE_RESULTS;
+	}
+
+	public Boolean getVALIDATE_PARALLEL() {
+		return VALIDATE_PARALLEL;
+	}
+
+	public void setVALIDATE_PARALLEL(Boolean VALIDATE_PARALLEL) {
+		this.VALIDATE_PARALLEL = VALIDATE_PARALLEL;
+	}
+
+	public Boolean getENABLE_MEMORY_GUARDIAN() {
+		return ENABLE_MEMORY_GUARDIAN;
+	}
+
+	public void setENABLE_MEMORY_GUARDIAN(Boolean ENABLE_MEMORY_GUARDIAN) {
+		this.ENABLE_MEMORY_GUARDIAN = ENABLE_MEMORY_GUARDIAN;
+	}
+
+	public Integer getMAX_SEARCH_SPACE_LEVEL() {
+		return MAX_SEARCH_SPACE_LEVEL;
+	}
+
+	public void setMAX_SEARCH_SPACE_LEVEL(Integer MAX_SEARCH_SPACE_LEVEL) {
+		this.MAX_SEARCH_SPACE_LEVEL = MAX_SEARCH_SPACE_LEVEL;
+	}
+
+	public Integer getMIN_SEARCH_SPACE_LEVEL() {
+		return MIN_SEARCH_SPACE_LEVEL;
+	}
+
+	public void setMIN_SEARCH_SPACE_LEVEL(Integer MIN_SEARCH_SPACE_LEVEL) {
+		this.MIN_SEARCH_SPACE_LEVEL = MIN_SEARCH_SPACE_LEVEL;
+	}
+
+	public Boolean getNARY() {
+		return NARY;
+	}
+
+	public void setNARY(Boolean NARY) {
+		this.NARY = NARY;
+	}
+
+	public HashMap<String, DataSet> getDataSetHashMap() {
+		return dataSetHashMap;
+	}
+
+	public void setDataSetHashMap(HashMap<String, DataSet> dataSetHashMap) {
+		this.dataSetHashMap = dataSetHashMap;
+	}
+
+	public static HashMap<String, Long> getCardMap() {
+		return cardMap;
+	}
+
+	public static void setCardMap(HashMap<String, Long> cardMap) {
+		InputConfiguration.cardMap = cardMap;
+	}
+
+	public static int getMaxCard() {
+		return maxCard;
+	}
+
+	public static void setMaxCard(int maxCard) {
+		InputConfiguration.maxCard = maxCard;
+	}
+
+	public static int getMinCard() {
+		return minCard;
+	}
+
+	public static void setMinCard(int minCard) {
+		InputConfiguration.minCard = minCard;
+	}
+
+	public static String getPath() {
+		return path;
+	}
+
+	public static void setPath(String path) {
+		InputConfiguration.path = path;
 	}
 }

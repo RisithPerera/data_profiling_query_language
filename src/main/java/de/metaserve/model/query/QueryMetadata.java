@@ -1,7 +1,6 @@
 package de.metaserve.model.query;
 
 import de.metaserve.engine.QueryEngine;
-import jnr.ffi.annotations.In;
 
 import java.util.HashMap;
 import java.util.Map;

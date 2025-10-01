@@ -1,12 +1,9 @@
 package de.metaserve.model.dpal;
 
-import lombok.Data;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-@Data
 public class ResultMetadata {
     int f = 0;
     int fPlus = 0;
@@ -133,5 +130,61 @@ public class ResultMetadata {
                     break;
             }
         }
+    }
+
+    public int getF() {
+        return f;
+    }
+
+    public int getfPlus() {
+        return fPlus;
+    }
+
+    public int getfValid() {
+        return fValid;
+    }
+
+    public int getU() {
+        return u;
+    }
+
+    public int getuPlus() {
+        return uPlus;
+    }
+
+    public int getI() {
+        return i;
+    }
+
+    public int getiPlus() {
+        return iPlus;
+    }
+
+    public int getiMinus() {
+        return iMinus;
+    }
+
+    public int getExists() {
+        return exists;
+    }
+
+    public int getHard1() {
+        return hard1;
+    }
+
+    public int getHard2() {
+        return hard2;
+    }
+
+    public int getHard3() {
+        return hard3;
+    }
+
+    public int getHard4() {
+        return hard4;
+    }
+
+    public int getHard5() {
+        return hard5;
     }
 }

@@ -8,9 +8,7 @@ import de.metaserve.model.dpal.*;
 import de.metaserve.util.common.GraphGenerator;
 import de.metaserve.util.common.GraphUtil;
 import de.metaserve.util.common.Pair;
-import it.unimi.dsi.fastutil.Hash;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -20,8 +18,8 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SetMembershipTest {
     private static final String RESOURCES_PATH = "/resources/dpqlTest.csv";
@@ -29,8 +27,8 @@ public class SetMembershipTest {
 
     @Test
     void hashCodeTest(){
-        Assertions.assertNotEquals(new INDEdge("X", "Y").hashCode(), new INDEdge("Y", "X").hashCode());
-        Assertions.assertNotEquals(new FDEdge("X", "Y").hashCode(), new FDEdge("Y", "X").hashCode());
+        assertNotEquals(new INDEdge("X", "Y").hashCode(), new INDEdge("Y", "X").hashCode());
+        assertNotEquals(new FDEdge("X", "Y").hashCode(), new FDEdge("Y", "X").hashCode());
     }
 
     @Test
@@ -159,9 +157,9 @@ public class SetMembershipTest {
         for (Pair<List<Condition>, Set<String>> pair : getTestFile()){
             i++;
             if (i < skipUntil) continue;
-            List<Condition> conditions = pair.getFirst();
+            List<Condition> conditions = pair.first();
             System.out.println(i + ": " + conditions);
-            Set<String> expectedResults = pair.getSecond();
+            Set<String> expectedResults = pair.second();
             Graph graph = Graph.fromConditions(conditions);
             graph.computeSetMembership();
             Set<String> actualResults = setMemberShipToString(graph.getSetMembershipMap(), graph.getExistsNodes());

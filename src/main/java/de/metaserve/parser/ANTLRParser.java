@@ -77,7 +77,25 @@ public class ANTLRParser implements Parser, Listenable<ParserListener> {
         return listener.build();
     }
 
-    private ParseTree getParseTree(String queryString) throws ParseException{
+    private ParseTree getParseTree(String queryString) throws ParseException {
+        DPQLLexer lexer = new DPQLLexer(CharStreams.fromString(queryString));
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        parser = new DPQLParser(tokens);
+
+        // pretty listener
+        parser.removeErrorListeners();
+        parser.addErrorListener(new PrettyErrorListener(queryString));
+
+        ParseTree tree = parser.dpqlStatement();
+
+        if (EngineConfigurationSingleton.get().isLog()) {
+            TreeViewer viewer = new TreeViewer(Arrays.asList(parser.getRuleNames()), tree);
+            viewer.open();
+        }
+        return tree;
+    }
+
+    private ParseTree getParseTreeOld(String queryString) throws ParseException{
         DPQLLexer lexer = new DPQLLexer(CharStreams.fromString(queryString));
         parser = new DPQLParser(new CommonTokenStream(lexer));
         parser.addErrorListener(new BaseErrorListener() {

@@ -10,13 +10,9 @@ import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metanome.algorithm_integration.results.*;
 import de.metanome.algorithm_integration.results.basic_statistic_values.BasicStatisticValueLong;
 import de.metanome.algorithms.binder.BINDERFile;
-import de.metanome.algorithms.cfdfinder.CFDFinder;
 import de.metanome.algorithms.dva.DVA;
 import de.metanome.algorithms.hyfd.HyFD;
 import de.metanome.algorithms.hyucc.HyUCC;
-import de.metanome.algorithms.pbinder.PBINDERFile;
-import de.metanome.algorithms.pspider.PSPIDERFile;
-import de.metanome.algorithms.spind.SpindFile;
 import de.metanome.backend.result_receiver.ResultCache;
 import de.metanome.backend.result_receiver.ResultReceiver;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
@@ -49,17 +45,6 @@ public class MetanomeHelper {
         return hyUCC;
     }
 
-    public static CFDFinder createCFDFinder(RelationalInputGenerator input, ResultCache resultReceiver) throws AlgorithmConfigurationException {
-        CFDFinder hyFD = new CFDFinder();
-        hyFD.setRelationalInputConfigurationValue(CFDFinder.Identifier.INPUT_GENERATOR.name(), input);
-        hyFD.setBooleanConfigurationValue(CFDFinder.Identifier.NULL_EQUALS_NULL.name(), InputConfigurationSingleton.get().getFILE_NULL_EQUALS_NULL());
-        hyFD.setBooleanConfigurationValue(CFDFinder.Identifier.VALIDATE_PARALLEL.name(), InputConfigurationSingleton.get().getVALIDATE_PARALLEL());
-        hyFD.setBooleanConfigurationValue(CFDFinder.Identifier.ENABLE_MEMORY_GUARDIAN.name(), InputConfigurationSingleton.get().getENABLE_MEMORY_GUARDIAN());
-        hyFD.setIntegerConfigurationValue(CFDFinder.Identifier.MAX_DETERMINANT_SIZE.name(), InputConfigurationSingleton.get().getMAX_SEARCH_SPACE_LEVEL());
-        //hyFD.setStringConfigurationValue(CFDFinder.Identifier.PRUNING_STRATEGY.name(), "G1");
-        hyFD.setResultReceiver(resultReceiver);
-        return hyFD;
-    }
 
     public static HyFD createHyFD(RelationalInputGenerator input, ResultCache resultReceiver) throws AlgorithmConfigurationException {
         HyFD hyFD = new HyFD();
@@ -82,23 +67,6 @@ public class MetanomeHelper {
         return binder;
     }
 
-    public static PBINDERFile createPartialBIDNER(RelationalInputGenerator[] inputs, ResultCache resultReceiver) throws AlgorithmConfigurationException {
-        PBINDERFile binder = new PBINDERFile();
-        binder.setRelationalInputConfigurationValue(PBINDERFile.Identifier.INPUT_FILES.name(), inputs);
-        binder.setBooleanConfigurationValue(PBINDERFile.Identifier.DETECT_NARY.name(), InputConfigurationSingleton.get().getNARY());
-        binder.setStringConfigurationValue(PBINDERFile.Identifier.THRESHOLD.name(), "1.0");//@TODO add interface for partial algorithms in Metanome
-        binder.setResultReceiver(resultReceiver);
-        return binder;
-    }
-
-    public static PSPIDERFile createPartialSPIDER(RelationalInputGenerator[] inputs, ResultCache resultReceiver) throws AlgorithmConfigurationException {
-        //@TODO the partial SPINDER,BINDER and SPIND have different NULL AND DUPLICATE HANDLING TAKE THIS INTO ACCOUNT
-        PSPIDERFile spider = new PSPIDERFile();
-        spider.setRelationalInputConfigurationValue(PSPIDERFile.Identifier.INPUT_FILES.name(), inputs);
-        spider.setStringConfigurationValue(PSPIDERFile.Identifier.THRESHOLD.name(), "1.0");//@TODO add interface for partial algorithms in Metanome
-        spider.setResultReceiver(resultReceiver);
-        return spider;
-    }
 /*
     public static BinderFile createparitalBINDER(RelationalInputGenerator input, ResultCache resultReceiver) throws AlgorithmConfigurationException {
     //@TODO the partial SPINDER,BINDER and SPIND have different NULL AND DUPLICATE HANDLING TAKE THIS INTO ACCOUNT
@@ -108,16 +76,6 @@ public class MetanomeHelper {
 
  */
 
-
-    public static SpindFile createSPIND(RelationalInputGenerator[] inputs, ResultCache resultReceiver) throws AlgorithmConfigurationException {
-        //@TODO the partial SPINDER,BINDER and SPIND have different NULL AND DUPLICATE HANDLING TAKE THIS INTO ACCOUNT
-        SpindFile spind = new SpindFile();
-        spind.setRelationalInputConfigurationValue(PSPIDERFile.Identifier.INPUT_FILES.name(), inputs);
-        spind.setBooleanConfigurationValue(BINDERFile.Identifier.DETECT_NARY.name(), InputConfigurationSingleton.get().getNARY());
-        spind.setStringConfigurationValue(PSPIDERFile.Identifier.THRESHOLD.name(), "1.0");//@TODO add interface for partial algorithms in Metanome
-        spind.setResultReceiver(resultReceiver);
-        return spind;
-    }
 
     public static void writeResultsToFile(DependencyType type, String algo, String fileName, long time, List<Result> results) throws IOException {
         FileUtils.writeToFile(

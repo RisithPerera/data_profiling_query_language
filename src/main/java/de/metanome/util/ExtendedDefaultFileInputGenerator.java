@@ -7,7 +7,6 @@ import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.backend.input.file.DefaultFileInputGenerator;
 import de.metanome.backend.input.file.FileIterator;
-import jnr.ffi.annotations.In;
 
 import java.io.File;
 import java.io.FileNotFoundException;

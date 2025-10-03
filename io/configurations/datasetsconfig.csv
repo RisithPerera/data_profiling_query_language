@@ -1,0 +1,8 @@
+DATA_SET,FILE_ENDING,FILE_VALUE_SEPARATOR,FILE_QUOTE_CHAR,FILE_ESCAPE,FILE_SKIP_LINES,FILE_STRICT_QUOTES,FILE_IGNORE_LEADING_WHITESPACE,FILE_HAS_HEADER,FILE_SKIP_DIFFERING_LINES,FILE_NULL_STRING,FILE_CHAR_SET
+"TPCHNEW","csv",",","\"","\\","0","false","true","true","true","","UTF-8"
+"AdventureWorks","csv",";","","\\","0","false","true","true","true","","UTF-8"
+"PK","csv",";","\"","\\","0","false","true","true","true","","UTF-8"
+"PMData","csv",",","","\\","0","false","true","true","true","","UTF-8"
+"Test","csv",";","\"","\\","0","false","true","true","true","","UTF-8"
+"TPCDI","csv",",","","\\","0","false","true","true","true","","UTF-8"
+"TPCE","txt","|","","\\","0","false","true","true","true","","UTF-8"

@@ -7,6 +7,11 @@ public class Node {
     String name;
     List<Edge> edgesOutgoing = new ArrayList<>();
     List<Edge> edgesIncoming = new ArrayList<>();
+    Interval size;
+    Interval cardinality;
+    Integer isize;
+    String isizeSource;
+    Set<String> containsTargets = new HashSet<>();
 
     public Node(String name) {
         this.name = name;
@@ -103,6 +108,12 @@ public class Node {
         Node newNode = new Node(s);
         newNode.edgesIncoming = new ArrayList<>(edgesIncoming);
         newNode.edgesOutgoing = new ArrayList<>(edgesOutgoing);
+        newNode.size = size;
+        newNode.cardinality = cardinality;
+        newNode.isize = isize;
+        newNode.isizeSource = isizeSource;
+        newNode.containsTargets = containsTargets;
+
         return newNode;
     }
 
@@ -137,5 +148,47 @@ public class Node {
 
     public String getName() {
         return name;
+    }
+
+    public Interval getSize() {
+        return size;
+    }
+
+    public void setSize(Interval size) {
+        this.size = size;
+    }
+
+    public Interval getCardinality() {
+        return cardinality;
+    }
+
+    public void setCardinality(Interval cardinality) {
+        this.cardinality = cardinality;
+    }
+
+    public Integer getIsize() {
+        return isize;
+    }
+
+    public void setIsize(Integer isize, String source) {
+        this.isize = isize;
+        this.isizeSource = source;
+    }
+
+    public void clearIsize() {
+        this.isize = null;
+        this.isizeSource = null;
+    }
+
+    public String getIsizeSource() {
+        return isizeSource;
+    }
+
+    public Set<String> getContainsTargets() {
+        return containsTargets;
+    }
+
+    public void addContainsTarget(String target) {
+        containsTargets.add(target);
     }
 }

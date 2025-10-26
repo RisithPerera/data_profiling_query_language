@@ -1,5 +1,8 @@
 package de.metaserve.model.constraints;
 
+import de.metaserve.model.dpal.CardinalityConstraint;
+import de.metaserve.model.dpal.Interval;
+import de.metaserve.model.dpal.SizeConstraint;
 import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 
@@ -50,31 +53,69 @@ public interface Condition {
                 String right_coa = ids_coa[1].trim();
                 return new Coalesce(left_coa, right_coa);
             case "SIZ": //SIZE @TODO
+//                String id_size = getID(condition).trim();
+//                int maxSize = getNumberFromCondition(condition);
+//                InputConfigurationSingleton.get().setMAX_SEARCH_SPACE_LEVEL(maxSize);
+//                if(getComparision(condition) > 0)
+//                    throw new RuntimeException("Size is currently only supported to minimize a result set!");
+//                break;
                 String id_size = getID(condition).trim();
-                int maxSize = getNumberFromCondition(condition);
-                InputConfigurationSingleton.get().setMAX_SEARCH_SPACE_LEVEL(maxSize);
-                if(getComparision(condition) > 0)
-                    throw new RuntimeException("Size is currently only supported to minimize a result set!");
-                break;
+                int sizeValue = getNumberFromCondition(condition);
+                int sizeComparison = getComparision(condition);
+                Interval sizeInterval = buildInterval(sizeComparison, sizeValue);
+                return new SizeConstraint(id_size, sizeInterval);
             case "CAR": //CARD
                 String id_card = getID(condition).trim();
-                int size = getNumberFromCondition(condition);
-                int cp = getComparision(condition);
-                if(cp > 0)
-                    InputConfiguration.minCard = size;
-                else if(cp < 0)
-                    InputConfiguration.maxCard = size;
-                else {
-                    InputConfiguration.minCard = size-1;
-                    InputConfiguration.maxCard = size+1;
-                }
-                InputConfigurationSingleton.get().buildCardMap(ccFunctions.get(id_card));
-                break;
+//                int size = getNumberFromCondition(condition);
+//                int cp = getComparision(condition);
+//                if(cp > 0)
+//                    InputConfiguration.minCard = size;
+//                else if(cp < 0)
+//                    InputConfiguration.maxCard = size;
+//                else {
+//                    InputConfiguration.minCard = size-1;
+//                    InputConfiguration.maxCard = size+1;
+//                }
+//                InputConfigurationSingleton.get().buildCardMap(ccFunctions.get(id_card));
+                int cardValue = getNumberFromCondition(condition);
+                int cardComparison = getComparision(condition);
+                Interval cardInterval = buildInterval(cardComparison, cardValue);
+                return new CardinalityConstraint(id_card, cardInterval);
             default:
                 break;
         }
         return null;
     }
+
+    static Interval buildInterval(int comparision, int value){
+        int min = 1;
+        int max = Integer.MAX_VALUE;
+        switch (comparision){
+            case 2: // >
+                min = value + 1;
+                break;
+            case 1: // >=
+                min = value;
+                break;
+            case -2: // <
+                max = value - 1;
+                break;
+            case -1: // <=
+                max = value;
+            case 0: //=
+            case -3: //missing
+                min = value;
+                max = value;
+            default:
+                break;
+        }
+        if (min < 1)
+            min = 1;
+        if (max < min)
+            throw new IllegalArgumentException("Invalid interval bounds computed for condition value " + value);
+        return Interval.of(min, max);
+    }
+
 
     static int getComparision(String condition) {
         if(condition.contains("<") && condition.contains("="))

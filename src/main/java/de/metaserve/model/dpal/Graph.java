@@ -18,6 +18,7 @@ public class Graph {
     GraphMetadata metadata = new GraphMetadata();
 
     public static HashMap<GraphAtom, List<GraphAtom>> decomposedGraphMap = new HashMap<>();
+
     public void computeSetMembership() {
         List<Graph> graphs = applyGraphDecomposition();
         for (Graph graph : graphs) {
@@ -1084,13 +1085,301 @@ public class Graph {
             }
         }
     }
+
+    private List<SizeConstraint> applyContainsRule(List<Contains> containsConditions, List<SizeConstraint> sizeConstraints) {
+        if (containsConditions.isEmpty())
+            return new ArrayList<>(sizeConstraints);
+        List<SizeConstraint> combined = new ArrayList<>(sizeConstraints);
+        for (Contains contains : containsConditions) {
+            String x = contains.getX();
+            String y = contains.getY();
+            addNode(x);
+            addNode(y);
+            Node xNode = nodes.get(x);
+            if (x.equals(y))
+                continue;
+            xNode.addContainsTarget(y);
+        }
+        return combined;
+    }
+
+    private void applySizeConstraints(List<SizeConstraint> sizeConstraints) {
+        if (!sizeConstraints.isEmpty())
+            annotateSizeConstraints(sizeConstraints);
+        propageSizeConstratins();
+    }
+
+    private void annotateSizeConstraints(List<SizeConstraint> sizeConstraints) {
+        for (SizeConstraint sizeConstraint : sizeConstraints) {
+            Interval interval = sizeConstraint.getInterval();
+            if (interval == null) continue;
+            addNode(sizeConstraint.getTarget());
+            Node node = nodes.get(sizeConstraint.getTarget());
+            Interval combined = Interval.combine(node.getSize(), interval);
+            if (combined == null) throw new IllegalArgumentException("Incompatible size constraints for " + node.getName());
+            if (!combined.equals(node.getSize())) node.setSize(combined);
+        }
+    }
+
+    private void propageSizeConstratins() {
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (Edge edge : edges) { //@TODO not really nice
+                if (!(edge instanceof INDEdge)) continue;
+                Node left = nodes.get(edge.leftName);
+                Node right = nodes.get(edge.rightName);
+                if (propagateSize(left, Interval.merge(left.getSize(), right.getSize()), right)){
+                    changed = true;
+                }
+                if (propagateSize(right, Interval.merge(right.getSize(), left.getSize()), left)){
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    private boolean propagateSize(Node target, Interval interval, Node neighbor) {
+        if (interval == null){
+            if (target.getSize() != null && neighbor.getSize() != null) throw new IllegalStateException("Propagation conflict between " + target.getName() + " and " + neighbor.getName());
+            return false;
+        }
+        Interval base = target.getSize();
+        if (base == null) {
+            target.setSize(interval);
+            return true;
+        }
+        Interval intersection = Interval.intersect(base, interval);
+        if (intersection == null) throw new IllegalStateException("Propagation conflict between " + target.getName() + " and " + neighbor.getName());
+        if (!intersection.equals(base)) {
+            target.setSize(intersection);
+            return true;
+        }
+        return false;
+    }
+
+    private void applyCardinalityConstraints(List<CardinalityConstraint> cardinalityConstraints) {
+        if (!cardinalityConstraints.isEmpty()){
+            for (CardinalityConstraint cardinalityConstraint : cardinalityConstraints) {
+                Interval interval = cardinalityConstraint.getInterval();
+                if (interval == null) continue;
+                addNode(cardinalityConstraint.getTarget());
+                Node node = nodes.get(cardinalityConstraint.getTarget());
+                Interval combined = Interval.combine(node.getSize(), interval);
+                if (combined == null) throw new IllegalArgumentException("Incompatible cardinality interval for " + node.getName());
+                if (!combined.equals(node.getCardinality())) {
+                    node.setCardinality(combined);
+                    handleIsizeInitialization(node);
+                }
+            }
+        }
+        propageCardinalityAndIsize();
+    }
+
+    private void propageCardinalityAndIsize() {
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (Edge edge : edges) { //@TODO not really nice
+                if (!(edge instanceof INDEdge)) continue;
+                Node left = nodes.get(edge.leftName);
+                Node right = nodes.get(edge.rightName);
+                if (propagateCardinality(left, right)) changed = true;
+                if (propagateCardinality(right, left)) changed = true;
+                if (propagateIsize(left, right)) changed = true;
+                if (propagateIsize(right, left)) changed = true;
+
+            }
+        }
+        for (Node node : nodes.values()) {
+            if (node.getIsize() != null && node.getIsize() == 1){
+                Interval size = node.getSize();
+                if (size != null && size.getMin() > 1) {
+                    node.clearIsize();
+                }
+            }
+            Interval cardinality = node.getCardinality();
+            if (cardinality != null && cardinality.getMin() > cardinality.getMax()) {
+                throw new IllegalStateException("Contradictory cardinality constraints in node " + node.getName());
+            }
+        }
+    }
+
+    private boolean propagateCardinality(Node target, Node neighbor) {
+        Interval neighborCard = neighbor.getCardinality();
+        if (neighborCard == null) return false;
+        Interval base = target.getCardinality();
+        if (base == null){
+            target.setCardinality(neighborCard);
+            handleIsizeInitialization(target);
+            return true;
+        }
+        Interval intersection = Interval.intersect(base, neighborCard);
+        if (intersection == null) throw new IllegalStateException("Contradictory cardinality constraints in node " + target.getName());
+        if (!intersection.equals(base)) {
+            target.setCardinality(intersection);
+            handleIsizeInitialization(target);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean propagateIsize(Node origin, Node target) {
+        if (!Integer.valueOf(1).equals(origin.getIsize())) {
+            return false;
+        }
+        if (!checkPropagationCondition(origin, target)) {
+            rollbackIsize(origin.getIsizeSource() != null ? origin.getIsizeSource() : origin.getName());
+            return false;
+        }
+        if (!Integer.valueOf(1).equals(target.getIsize())) {
+            target.setIsize(1, origin.getIsizeSource() != null ? origin.getIsizeSource() : origin.getName());
+            return true;
+        }
+        return false;
+    }
+
+    private void handleIsizeInitialization(Node node) {
+        Interval cardinality = node.getCardinality();
+        if (cardinality == null || !cardinality.isSingletonOne()) {
+            return;
+        }
+        if (isLhsNode(node.getName()) && checkInitConditions(node)) {
+            node.setIsize(1, node.getName());
+        }
+        if (isRhsNode(node.getName())) {
+            for (String lhs : getLhsNodes(node.getName())) {
+                Node lhsNode = nodes.get(lhs);
+                if (lhsNode != null && checkInitConditions(lhsNode)) {
+                    lhsNode.setIsize(1, lhsNode.getName());
+                }
+            }
+        }
+    }
+
+    private boolean checkInitConditions(Node node) {
+        String name = node.getName();
+        if (isUccNode(name) || reachableToUcc(name)) {
+            return false;
+        }
+        return countLhsFds(name) <= 1;
+    }
+
+    private boolean isUccNode(String nodeName) {
+        for (Edge edge : edges) {
+            if (edge instanceof UCCEdge && edge.leftName.equals(nodeName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean reachableToUcc(String nodeName) {
+        Set<String> visited = new HashSet<>();
+        Queue<String> queue = new LinkedList<>();
+        queue.add(nodeName);
+        visited.add(nodeName);
+        while (!queue.isEmpty()) {
+            String current = queue.poll();
+            if (isUccNode(current) && !current.equals(nodeName)) {
+                return true;
+            }
+            Node node = nodes.get(current);
+            if (node == null) {
+                continue;
+            }
+            for (String neighbor : node.neighbors()) {
+                if (visited.add(neighbor)) {
+                    queue.add(neighbor);
+                }
+            }
+        }
+        return false;
+    }
+
+    private int countLhsFds(String nodeName) {
+        int count = 0;
+        for (Edge edge : edges) {
+            if (edge instanceof FDEdge && edge.leftName.equals(nodeName)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean isLhsNode(String nodeName) {
+        for (Edge edge : edges) {
+            if (edge instanceof FDEdge && edge.leftName.equals(nodeName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isRhsNode(String nodeName) {
+        for (Edge edge : edges) {
+            if (edge instanceof FDEdge && edge.rightName.equals(nodeName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> getLhsNodes(String rhsName) {
+        List<String> result = new ArrayList<>();
+        for (Edge edge : edges) {
+            if (edge instanceof FDEdge && edge.rightName.equals(rhsName)) {
+                result.add(edge.leftName);
+            }
+        }
+        return result;
+    }
+
+    private boolean allRhsHaveCardOne(String lhsName) {
+        for (Edge edge : edges) {
+            if (edge instanceof FDEdge && edge.leftName.equals(lhsName)) {
+                Node rhs = nodes.get(edge.rightName);
+                if (rhs == null || rhs.getCardinality() == null || !rhs.getCardinality().isSingletonOne()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean checkPropagationCondition(Node origin, Node target) {
+        if (!origin.isEndNode()) return false;
+        if (!isRhsNode(origin.getName())) return false;
+        if (isLhsNode(origin.getName()) && !allRhsHaveCardOne(origin.getName())) return false;
+        return true;
+    }
+
+    private void rollbackIsize(String originName){
+        for (Node node : nodes.values()) {
+            if (originName.equals(node.getIsizeSource())) node.clearIsize();
+        }
+    }
+
+    private void initiateIsize(){
+        for (Node node : nodes.values()) {
+            if (node.getIsize() != null && node.getIsize() == 1){
+                Interval updated = Interval.combine(node.getSize(), Interval.singletion(1));
+                if (updated == null) throw new IllegalStateException("Incompatible size interval for " + node.getName());
+                if (!updated.equals(node.getSize())) {
+                    node.setSize(updated);
+                }
+            }
+        }
+    }
+
     public static Graph fromConditions(List<Condition> conditions){
         Graph graph = new Graph();
+        List<SizeConstraint> sizeConstraints = new ArrayList<>();
+        List<Contains> containsConditions = new ArrayList<>();
+        List<CardinalityConstraint> cardinalityConstraints = new ArrayList<>();
         for (Condition condition : conditions){
             if (condition == null) continue;
                 //throw new RuntimeException("At least one condition was not correctly parsed!");
-            if (!(condition instanceof Dependency))
-                continue;
             switch (condition.getName()) {
                 case IND.NAME:
                     IND indCondition = ((IND) condition);
@@ -1114,10 +1403,24 @@ public class Graph {
                     String[] arrayUCC = uccCondition.ccFunction.toArray(new String[uccCondition.ccFunction.size()]);
                     graph.addEdge(new UCCEdge(uccCondition.id,arrayUCC));
                     break;
+                case SizeConstraint.NAME:
+                    SizeConstraint sizeConstraint = ((SizeConstraint) condition);
+                    sizeConstraints.add(sizeConstraint);
+                    graph.addNode(sizeConstraint.getTarget());
+                    break;
+                case CardinalityConstraint.NAME:
+                    CardinalityConstraint cardinalityConstraint = ((CardinalityConstraint) condition);
+                    cardinalityConstraints.add(cardinalityConstraint);
+                    graph.addNode(cardinalityConstraint.getTarget());
                 default:
                     break;
             }
         }
+        List<SizeConstraint> allSizeConstraints = graph.applyContainsRule(containsConditions, sizeConstraints);
+        graph.applySizeConstraints(allSizeConstraints);
+        graph.applyCardinalityConstraints(cardinalityConstraints);
+        graph.initiateIsize();
+        graph.applySizeConstraints(Collections.emptyList());
         return graph;
     }
 

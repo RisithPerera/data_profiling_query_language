@@ -1,5 +1,7 @@
 package de.metaserve.executor.min.constraints;
 
+import java.util.Objects;
+
 public class Interval {
 
     private int min;
@@ -56,6 +58,19 @@ public class Interval {
 
     public int getMin() {
         return min;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Interval interval = (Interval) o;
+        return min == interval.min && max == interval.max;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(min, max);
     }
 
     @Override

@@ -60,6 +60,7 @@ public class MetanomeHelper {
     public static BINDERFile createBINDER(RelationalInputGenerator[] inputs, ResultCache resultReceiver) throws AlgorithmConfigurationException {
         BINDERFile binder = new BINDERFile();
         binder.setRelationalInputConfigurationValue(BINDERFile.Identifier.INPUT_FILES.name(), inputs);
+        binder.setStringConfigurationValue(BINDERFile.Identifier.TEMP_FOLDER_PATH.name(), System.getProperty("java.io.tmpdir"));
         binder.setBooleanConfigurationValue(BINDERFile.Identifier.DETECT_NARY.name(), InputConfigurationSingleton.get().getNARY());
         binder.setIntegerConfigurationValue(BINDERFile.Identifier.MAX_NARY_LEVEL.name(), InputConfigurationSingleton.get().getMAX_SEARCH_SPACE_LEVEL());
         binder.setIntegerConfigurationValue(BINDERFile.Identifier.INPUT_ROW_LIMIT.name(), InputConfigurationSingleton.get().getFILE_MAX_ROWS());

@@ -3,6 +3,7 @@ package de.metaserve.parser;
 import de.metaserve.DPQLParser;
 import de.metaserve.model.query.Query;
 import de.metaserve.util.configuration.InputConfiguration;
+import de.metaserve.util.exceptions.TablesDiscoveryException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -67,24 +68,47 @@ public class CustomDPQLParseListener implements ParseTreeListener {
     //Maybe also verify here or move it to functions in ParserConfig
     private List<String> getTables(ParserRuleContext ctx) {
         List<String> tables = new ArrayList<>();
-        for (ParseTree child: ctx.children) {
-            if(child instanceof DPQLParser.TableNameContext){
-                tables.add(getTextFromNode((ParserRuleContext) child));
-            }
-        }
-        if(tables.contains("*")){
-            tables.clear();
-            File folder = new File(InputConfigurationSingleton.get().getInputPath());
-            if(!folder.exists())
-                throw new RuntimeException("Folder " + InputConfigurationSingleton.get().getInputPath() + " not found!");
-            for (File fileEntry : Objects.requireNonNull(folder.listFiles())) {
-                if(fileEntry.isFile() && fileEntry.getName().endsWith("."+InputConfigurationSingleton.get().getFILE_ENDING())){
-                    tables.add(fileEntry.getName().replace("."+InputConfigurationSingleton.get().getFILE_ENDING(), ""));
+        if (ctx.children != null) {
+            for (ParseTree child : ctx.children) {
+                if (child instanceof DPQLParser.TableNameContext) {
+                    tables.add(getTextFromNode((ParserRuleContext) child));
                 }
             }
         }
-        if (tables.isEmpty())
-            throw new RuntimeException("No files found which match in folder: " + new File(InputConfigurationSingleton.get().getInputPath()).getName());
+
+        if (tables.contains("*")) {
+            tables.clear();
+            String inputPath = InputConfigurationSingleton.get().getInputPath();
+            File folder = new File(inputPath);
+
+            if (!folder.exists()) {
+                throw new TablesDiscoveryException(
+                        TablesDiscoveryException.Reason.INPUT_FOLDER_MISSING,
+                        "Input folder not found: " + inputPath,
+                        inputPath
+                );
+            }
+
+            for (File fileEntry : Objects.requireNonNull(folder.listFiles())) {
+                if (fileEntry.isFile() &&
+                        fileEntry.getName().endsWith("." + InputConfigurationSingleton.get().getFILE_ENDING())) {
+                    tables.add(
+                            fileEntry.getName().replace("." + InputConfigurationSingleton.get().getFILE_ENDING(), "")
+                    );
+                }
+            }
+        }
+
+        if (tables.isEmpty()) {
+            String inputPath = InputConfigurationSingleton.get().getInputPath();
+            throw new TablesDiscoveryException(
+                    TablesDiscoveryException.Reason.NO_TABLES_FOUND,
+                    "No input files with extension '." + InputConfigurationSingleton.get().getFILE_ENDING() +
+                            "' found in folder: " + new File(inputPath).getName(),
+                    inputPath
+            );
+        }
+
         return tables;
     }
 

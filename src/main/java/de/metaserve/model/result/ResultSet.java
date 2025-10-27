@@ -19,6 +19,7 @@ import de.vandermeer.asciithemes.u8.U8_Grids;
 import de.vandermeer.skb.interfaces.transformers.textformat.TextAlignment;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ResultSet implements Collection<List<String>> {
 
@@ -621,8 +622,14 @@ public class ResultSet implements Collection<List<String>> {
         asciiTable.addRule();
 
         // Add rows
-        for (List<String> row : rows) {
-            asciiTable.addRow(row);
+        for (List<Set<ColumnIdentifier>> row : getRows2()) {
+            List<String> displayRow = new ArrayList<>(columnNames.size());
+            for (int i = 0; i < columnNames.size(); i++) {
+                Set<ColumnIdentifier> cell =
+                        (row != null && i < row.size()) ? row.get(i) : null;
+                displayRow.add(formatCell(cell));
+            }
+            asciiTable.addRow(displayRow);
             asciiTable.addRule();
         }
 
@@ -631,6 +638,20 @@ public class ResultSet implements Collection<List<String>> {
         asciiTable.setTextAlignment(TextAlignment.CENTER);
 
         return asciiTable.render();
+    }
+
+    private String formatCell(Set<ColumnIdentifier> cell) {
+        if (cell == null || cell.isEmpty()) return "";
+        return cell.stream()
+                .map(ci -> {
+                    // Prefer "table.column" if available; fall back to ci.toString()
+                    String table = Objects.toString(ci.getTableIdentifier(), "");
+                    String col   = Objects.toString(ci.getColumnIdentifier(), "");
+                    if (!table.isEmpty() && !col.isEmpty()) return table + "." + col;
+                    return ci.toString();
+                })
+                .sorted()
+                .collect(Collectors.joining(" ∧ "));
     }
 
     public void contains(String x, String y) {

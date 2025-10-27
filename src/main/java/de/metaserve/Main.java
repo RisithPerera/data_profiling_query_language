@@ -1,16 +1,13 @@
 package de.metaserve;
 
 import de.metaserve.engine.Metaserve;
-import de.metaserve.engine.QueryEngine;
-import de.metaserve.model.listener.QueryExecutionListener;
-import de.metaserve.model.query.Query;
+import de.metaserve.model.listener.ComplitionListener;
 import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.configuration.EngineConfiguration;
 import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.exceptions.DPQLException;
+import de.metaserve.util.exceptions.Exceptions;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
-import de.metaserve.util.cli.DPQLConsoleHighlighter; // NEW
-import de.metaserve.util.exceptions.ParseException; // NEW (so you can catch parser errors cleanly)
-
 
 import java.time.Duration;
 import java.time.Instant;
@@ -18,8 +15,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Scanner;
+
+
 
 public class Main {
 
@@ -28,51 +26,32 @@ public class Main {
 			DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
 
 	public static void main(String[] args) {
-		// base configuration
-		InputConfiguration inputConfig = EngineConfigurationSingleton.get()
-				.setCache(true)
-				.getInputConfig();
+		EngineConfiguration cfg = EngineConfigurationSingleton.get();
+		InputConfiguration inputConfig = cfg.setCache(true).getInputConfig();
 		inputConfig.setDATA_SET("TPCHNEW");
+
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> log("Shutting down...")));
 
 		printBanner();
 		printHelp();
 
 		try (Scanner scanner = new Scanner(System.in)) {
 
-			// Create one engine instance and reuse it
 			Metaserve metaserve = new Metaserve();
-			metaserve.addListener(new QueryExecutionListener() {
-				@Override
-				public void onEvent(QueryEngine.QueryState event, Query query) {
-					// You could log engine state transitions here if needed.
-				}
-
-				@Override
-				public void onQueryCompleted(Query query, List<ResultSet> resultSet, long totalTime, int resultSize) {
-					log("Query completed in " + totalTime + " ms, rows: " + resultSize);
-					if (query != null && query.getMetaData() != null) {
-						System.out.println("-- Metadata --");
-						System.out.println(query.getMetaData());
-						System.out.println();
-					}
-				}
-
-				@Override
-				public void onEngineClosed() {
-					log("Engine closed.");
-				}
-
-				@Override
-				public void onEvent(String event) {
-					// Optional: log string events
-				}
-			});
+			metaserve.addListener((ComplitionListener) (query, resultSet, totalTime, resultSize) -> {
+                log("Query completed in " + totalTime + " ms, rows: " + resultSize);
+                if (query != null && query.getMetaData() != null) {
+                    System.out.println("-- Metadata --");
+                    System.out.println(query.getMetaData());
+                    System.out.println();
+                }
+            });
 
 			// REPL loop
 			while (true) {
 				System.out.print(PROMPT);
 				if (!scanner.hasNextLine()) {
-					System.out.println(); // nice newline on EOF
+					System.out.println();
 					break;
 				}
 
@@ -81,17 +60,11 @@ public class Main {
 
 				// Commands start with ':'
 				if (line.startsWith(":")) {
-					if (handleCommand(line)) {
-						continue; // handled
-					} else {
-						System.out.println("Unknown command. Type :help for a list of commands.");
-						continue;
-					}
+					if (handleCommand(line, cfg) == Action.QUIT) break;
+					continue;
 				}
 
-				// Treat as a query
 				try {
-					//System.out.println(DPQLConsoleHighlighter.highlight(line));
 					Instant start = Instant.now();
 					List<ResultSet> resultSetList = metaserve.executeQuery(line);
 					Instant end = Instant.now();
@@ -102,66 +75,51 @@ public class Main {
 						continue;
 					}
 
-					// Print the first ResultSet (and count)
 					ResultSet first = resultSetList.get(0);
 					System.out.println("-- Result (showing first set of " + resultSetList.size() + ") --");
-					System.out.println(Objects.toString(first));
+					System.out.println(first);
 					System.out.println();
 					log("Done in " + elapsedMs + " ms.");
-				} catch (DPQLException dpex) { // NEW: unwrap ParseException
-					ParseException pe = findCause(dpex, ParseException.class);
-					if (pe != null) {
-						System.err.println("\n" + pe.getMessage()); // already includes caret underline
+				} catch (DPQLException dpex) {
+					if (Exceptions.handleDpqlException(dpex)) {
 						continue;
 					}
-					// Not a parse error; show the DPQLException message
 					System.err.println("[ERROR] DPQLException: " + dpex.getMessage());
-					// Optional: dpex.printStackTrace();
-				} catch (ParseException pe) { // In case some paths throw it directly
-					System.err.println("\n" + pe.getMessage());
-					continue;
-				} catch (Exception ex) {
-					System.err.println("[ERROR] " + ex.getClass().getSimpleName() + ": " + ex.getMessage());
-					// Optional: ex.printStackTrace();
 				}
 			}
-
-			// If Metaserve supports explicit close(), you can add:
-			// try { metaserve.close(); } catch (Exception ignore) {}
 		}
 	}
 
-	private static boolean handleCommand(String line) {
-		String cmd = line.toLowerCase(Locale.ROOT);
+	enum Action { CONTINUE, QUIT }
 
-		if (":help".equals(cmd)) {
-			printHelp();
-			return true;
-		}
-		if (":quit".equals(cmd) || ":exit".equals(cmd)) {
-			log("Goodbye.");
-			System.exit(0); // intentional exit from REPL
-		}
-		if (":cache".equals(cmd)) {
-			boolean newValue = !EngineConfigurationSingleton.get().isCache();
-			EngineConfigurationSingleton.get().setCache(newValue);
-			System.out.println("CACHE is " + (newValue ? "ON" : "OFF"));
-			return true;
-		}
-		if (cmd.startsWith(":dataset")) {
-			String[] parts = line.split("\\s+", 2);
-			if (parts.length < 2 || parts[1].isBlank()) {
-				System.out.println("Usage: :dataset <NAME>");
-				return true;
+	private static Action handleCommand(String line, EngineConfiguration cfg) {
+		String cmd = line.trim();
+		switch (cmd.split("\\s+")[0].toLowerCase(Locale.ROOT)) {
+			case ":help" -> { printHelp(); return Action.CONTINUE; }
+			case ":quit", ":exit" -> { log("Goodbye."); return Action.QUIT; }
+			case ":cache" -> {
+				boolean newValue = !cfg.isCache();
+				cfg.setCache(newValue);
+				System.out.println("CACHE is " + (newValue ? "ON" : "OFF"));
+				return Action.CONTINUE;
 			}
-			String name = parts[1].trim();
-			EngineConfigurationSingleton.get().getInputConfig().setDATA_SET(name);
-			System.out.println("DATA_SET is now '" + name + "'");
-			return true;
+			case ":dataset" -> {
+				String[] parts = line.split("\\s+", 2);
+				if (parts.length < 2 || parts[1].isBlank()) {
+					System.out.println("Usage: :dataset <NAME>");
+				} else {
+					cfg.getInputConfig().setDATA_SET(parts[1].trim());
+					System.out.println("DATA_SET is now '" + parts[1].trim() + "'");
+				}
+				return Action.CONTINUE;
+			}
+			default -> {
+				System.out.println("Unknown command. Type :help for a list of commands.");
+				return Action.CONTINUE;
+			}
 		}
-
-		return false; // unknown command
 	}
+
 
 	private static void printBanner() {
 		System.out.println("Metaserve CLI");
@@ -182,14 +140,5 @@ public class Main {
 
 	private static void log(String msg) {
 		System.out.println("[" + LocalDateTime.now().format(TS_FMT) + "] " + msg);
-	}
-
-	private static <T extends Throwable> T findCause(Throwable ex, Class<T> type) {
-		Throwable cur = ex;
-		while (cur != null) {
-			if (type.isInstance(cur)) return type.cast(cur);
-			cur = cur.getCause();
-		}
-		return null;
 	}
 }

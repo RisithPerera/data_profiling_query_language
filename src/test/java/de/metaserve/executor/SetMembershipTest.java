@@ -1,6 +1,12 @@
 package de.metaserve.executor;
 
-import de.metaserve.executor.min.*;
+import de.metaserve.executor.min.graph.*;
+import de.metaserve.executor.min.graph.edge.Edge;
+import de.metaserve.executor.min.graph.edge.FDEdge;
+import de.metaserve.executor.min.graph.edge.INDEdge;
+import de.metaserve.executor.min.graph.edge.UCCEdge;
+import de.metaserve.executor.min.results.GraphMetadata;
+import de.metaserve.executor.min.results.ResultMetadata;
 import de.metaserve.parser.graph.Condition;
 import de.metaserve.parser.graph.FD;
 import de.metaserve.parser.graph.IND;

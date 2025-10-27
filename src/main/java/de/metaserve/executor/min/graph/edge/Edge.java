@@ -1,6 +1,8 @@
-package de.metaserve.executor.min;
+package de.metaserve.executor.min.graph.edge;
 
 import de.metanome.algorithm_integration.results.Result;
+import de.metaserve.executor.min.graph.Node;
+import de.metaserve.executor.min.results.ResultsContainer;
 import de.metaserve.util.common.Triple;
 
 import java.util.ArrayList;
@@ -10,13 +12,13 @@ import java.util.List;
 public abstract class Edge {
     public String leftName;
     public String rightName;
-    Edge originalEdge;
+    public Edge originalEdge;
 
     List<Triple<Boolean, Edge, Boolean>> neighbors = new ArrayList<>();
 
     String[] searchSpace;
 
-    List<Result> results;
+    public List<Result> results;
 
     ResultsContainer resultsContainer;
 

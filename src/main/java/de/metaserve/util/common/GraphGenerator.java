@@ -1,6 +1,9 @@
 package de.metaserve.util.common;
 
-import de.metaserve.executor.min.*;
+import de.metaserve.executor.min.graph.*;
+import de.metaserve.executor.min.graph.edge.FDEdge;
+import de.metaserve.executor.min.graph.edge.INDEdge;
+import de.metaserve.executor.min.graph.edge.UCCEdge;
 
 import java.util.*;
 

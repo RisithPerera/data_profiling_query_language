@@ -1,7 +1,7 @@
 package de.metaserve.executor.strategy;
 
 import de.metanome.Metanome;
-import de.metaserve.executor.min.Graph;
+import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.parser.query.QueryMetadata;
 
 public interface Strategy {

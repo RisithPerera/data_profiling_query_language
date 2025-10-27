@@ -1,8 +1,8 @@
 package de.metaserve.parser.graph;
 
-import de.metaserve.executor.min.CardinalityConstraint;
-import de.metaserve.executor.min.Interval;
-import de.metaserve.executor.min.SizeConstraint;
+import de.metaserve.executor.min.constraints.CardinalityConstraint;
+import de.metaserve.executor.min.constraints.Interval;
+import de.metaserve.executor.min.constraints.SizeConstraint;
 
 import java.util.List;
 import java.util.Map;

@@ -1,21 +1,21 @@
-package de.metaserve.executor.min;
+package de.metaserve.executor.min.constraints;
 
 import de.metaserve.parser.graph.Condition;
 
-public class CardinalityConstraint implements Condition {
+public class SizeConstraint implements Condition {
 
-    public static final String NAME = "CARD";
+    public static final String NAME = "SIZE";
     String target;
     Interval interval;
 
-    public CardinalityConstraint(String target, Interval interval) {
+    public SizeConstraint(String target, Interval interval) {
         this.target = target;
         this.interval = interval;
     }
 
     @Override
     public String getName() {
-        return "CARD";
+        return "SIZE";
     }
 
     public String getTarget() {

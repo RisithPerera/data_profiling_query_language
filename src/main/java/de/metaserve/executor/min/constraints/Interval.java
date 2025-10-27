@@ -1,4 +1,4 @@
-package de.metaserve.executor.min;
+package de.metaserve.executor.min.constraints;
 
 public class Interval {
 

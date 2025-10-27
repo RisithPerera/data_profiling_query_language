@@ -1,5 +1,14 @@
-package de.metaserve.executor.min;
+package de.metaserve.executor.min.graph;
 
+import de.metaserve.executor.min.graph.edge.Edge;
+import de.metaserve.executor.min.graph.edge.FDEdge;
+import de.metaserve.executor.min.graph.edge.INDEdge;
+import de.metaserve.executor.min.graph.edge.UCCEdge;
+import de.metaserve.executor.min.results.GraphMetadata;
+import de.metaserve.executor.min.results.ResultNode;
+import de.metaserve.executor.min.constraints.CardinalityConstraint;
+import de.metaserve.executor.min.constraints.Interval;
+import de.metaserve.executor.min.constraints.SizeConstraint;
 import de.metaserve.parser.graph.*;
 import de.metaserve.util.common.Pair;
 import de.metaserve.util.common.Triple;
@@ -7,7 +16,7 @@ import de.metaserve.util.common.Triple;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static de.metaserve.executor.min.Graph.INDRelation.*;
+import static de.metaserve.executor.min.graph.Graph.INDRelation.*;
 
 public class Graph {
 

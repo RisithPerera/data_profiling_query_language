@@ -1,4 +1,4 @@
-package de.metaserve.executor.min;
+package de.metaserve.executor.min.results;
 
 import de.metanome.algorithm_integration.ColumnCombination;
 import de.metanome.algorithm_integration.ColumnIdentifier;
@@ -7,6 +7,7 @@ import de.metanome.algorithm_integration.results.FunctionalDependency;
 import de.metanome.algorithm_integration.results.InclusionDependency;
 import de.metanome.algorithm_integration.results.Result;
 import de.metanome.algorithm_integration.results.UniqueColumnCombination;
+import de.metaserve.executor.min.graph.edge.Edge;
 
 import javax.ws.rs.NotSupportedException;
 import java.util.*;

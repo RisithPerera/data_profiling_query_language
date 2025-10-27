@@ -2,6 +2,7 @@ package de;
 
 import de.metaserve.engine.Metaserve;
 import de.metaserve.engine.QueryEngine;
+import de.metaserve.util.listener.ComplitionListener;
 import de.metaserve.util.listener.QueryExecutionListener;
 import de.metaserve.parser.query.Query;
 import de.metaserve.util.result.ResultSet;
@@ -171,34 +172,18 @@ public class MainTest {
         inputConfig.setDATA_SET(dataset);
         //inputConfig.setNARY(true);
         metaserve = new Metaserve();
-        metaserve.addListener(new QueryExecutionListener() {
-            @Override
-            public void onEvent(QueryEngine.QueryState event, Query query) {
-                System.out.println("State change:" + event);
-            }
-
-            @Override
-            public void onQueryCompleted(Query query, List<ResultSet> resultSet, long totalTime, int resultSize) {
-                System.out.println("#Dependencies: " + query.getMetaData().getNumberOfReduction());
-                System.out.println("#Dependency Map" + query.getMetaData().getMap());
-                System.out.println("#Candidates: " + query.getMetaData().getNumberOfCandidates());
-                System.out.println("#Rows: " + resultSize);
-            }
-
-            @Override
-            public void onEngineClosed() {
-            }
-
-            @Override
-            public void onEvent(String event) {
-            }
+        metaserve.addListener((ComplitionListener) (query, resultSet, totalTime, resultSize) -> {
+            System.out.println("#Dependencies: " + query.getMetaData().getNumberOfReduction());
+            System.out.println("#Dependency Map" + query.getMetaData().getMap());
+            System.out.println("#Candidates: " + query.getMetaData().getNumberOfCandidates());
+            System.out.println("#Rows: " + resultSize);
         });
     }
 
     @Test
     public void main() {
         //String query = BTWQueries.FOREIGN_KEY.getQuery();
-        String query = QuerySt.FD.getQuery();
+        String query = "SELECT X, Y FROM CC(*) AS X, CC(*) AS Y WHERE FD(X,Y) AND UCC(X)";
         List<ResultSet> resultSetList = metaserve.executeQuery(query);
         //System.out.println(resultSetList.get(0).getColumnNames());
         System.out.println(resultSetList.get(0).getRows2());

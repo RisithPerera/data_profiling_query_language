@@ -3,7 +3,14 @@ package de.metaserve.executor.strategy;
 import de.metanome.Metanome;
 import de.metanome.algorithm_integration.results.Result;
 import de.metaserve.engine.QueryEngine;
-import de.metaserve.executor.min.*;
+import de.metaserve.executor.min.graph.*;
+import de.metaserve.executor.min.graph.edge.Edge;
+import de.metaserve.executor.min.graph.edge.FDEdge;
+import de.metaserve.executor.min.graph.edge.INDEdge;
+import de.metaserve.executor.min.graph.edge.UCCEdge;
+import de.metaserve.executor.min.results.ResultNode;
+import de.metaserve.executor.min.results.ResultWrapper;
+import de.metaserve.executor.min.results.ResultsContainer;
 import de.metaserve.parser.query.QueryMetadata;
 import de.metaserve.util.common.Quadruple;
 

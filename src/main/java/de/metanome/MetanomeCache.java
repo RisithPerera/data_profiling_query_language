@@ -18,94 +18,6 @@ public class MetanomeCache implements Metanome {
             instance = new MetanomeCache();
         return instance;
     }
- /*
-    @Override
-    public List<Result> executeUCC(String... names) {
-        List<Result> inds = new ArrayList<>();
-        for (int i = 0; i < names.length; i++) {
-            Config conf = new Config();
-            conf.inputDatasetName = names[i];
-            List<String> result = readFile(conf, "UCC");
-            for (String dep : result) {
-                if(dep.length() < 9)
-                    continue;
-                ColumnCombination results = new ColumnCombination();
-                results.setColumnIdentifiers(parseCombination(dep));
-                inds.add(new UniqueColumnCombination(results));
-            }
-        }
-        return inds;
-    }
-
-    @Override
-    public List<Result> executeFD(String... names) {
-        List<Result> inds = new ArrayList<>();
-        for (int i = 0; i < names.length; i++) {
-            Config conf = new Config();
-            conf.inputDatasetName = names[i];
-            List<String> result = readFile(conf, "FD");
-            for (String dep : result) {
-                if(dep.length() < 9)
-                    continue;
-                String[] split = dep.split(" --> ");
-                ColumnCombination left = new ColumnCombination();
-                left.setColumnIdentifiers(parseCombination(split[0]));
-                for(String right : split[1].split(",")){
-                    ColumnIdentifier rightID = parseIdentifier(right.trim());
-                    inds.add(new FunctionalDependency(left, rightID));
-                }
-            }
-        }
-        return inds;
-    }
-
-    @Override
-    public List<Result> executeIND(String... names) {
-        List<Result> inds = new ArrayList<>();
-        for (int i = 0; i < names.length; i++) {
-            Config conf = new Config();
-            conf.inputDatasetName = names[i];
-            List<String> result = readFile(conf, "IND");
-            for (String dep : result) {
-                if(dep.length() < 9)
-                    continue;
-                String[] split = dep.split(" --> ");
-                ColumnPermutation right = new ColumnPermutation();
-                right.setColumnIdentifiers(parsePermutation(split[0]));
-                List<List<ColumnIdentifier>> permutations = parsePermutations(split[1]);
-                for (List<ColumnIdentifier> p : permutations) {
-                    ColumnPermutation left = new ColumnPermutation();
-                    left.setColumnIdentifiers(p);
-                    ColumnPermutation rightClone = new ColumnPermutation();
-                    rightClone.setColumnIdentifiers(new ArrayList<>(right.getColumnIdentifiers()));
-                    inds.add(new InclusionDependency(left, rightClone));
-                }
-            }
-        }
-        return inds;
-    }
-
-    @Override
-    public List<Result> executeCARD(String... names) {
-        List<Result> inds = new ArrayList<>();
-        for (int i = 0; i < names.length; i++) {
-            Config conf = new Config();
-            conf.inputDatasetName = names[i];
-            List<String> result = readFile(conf, "CARD");
-            for (String dep : result) {
-                if(dep.length() < 9)
-                    continue;
-                String name = dep.substring(dep.indexOf("[[") + 2, dep.indexOf("]]"));
-                String values = dep.substring(dep.indexOf("=") + 1, dep.indexOf("}"));
-                BasicStatistic bs = new BasicStatistic(parseIdentifier(name));
-                bs.addStatistic("Number of Distinct Values", new BasicStatisticValueLong(Long.parseLong(values)));
-                inds.add(bs);
-            }
-        }
-        return inds;
-    }
-            */
-
 
     @Override
     public List<Result> executeUCC(String... fileNames) {
@@ -119,11 +31,6 @@ public class MetanomeCache implements Metanome {
 
     @Override
     public List<Result> executeIND(String... fileNames) {
-        return readDependenciesFromFiles(DependencyType.IND, fileNames);
-    }
-
-    @Override
-    public List<Result> executesIND(String... fileNames) {
         return readDependenciesFromFiles(DependencyType.IND, fileNames);
     }
 

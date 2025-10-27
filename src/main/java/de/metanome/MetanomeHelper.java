@@ -67,15 +67,6 @@ public class MetanomeHelper {
         return binder;
     }
 
-/*
-    public static BinderFile createparitalBINDER(RelationalInputGenerator input, ResultCache resultReceiver) throws AlgorithmConfigurationException {
-    //@TODO the partial SPINDER,BINDER and SPIND have different NULL AND DUPLICATE HANDLING TAKE THIS INTO ACCOUNT
-        BinderFile spind = new BinderFile(null);
-        return spind;
-    }
-
- */
-
 
     public static void writeResultsToFile(DependencyType type, String algo, String fileName, long time, List<Result> results) throws IOException {
         FileUtils.writeToFile(
@@ -107,8 +98,6 @@ public class MetanomeHelper {
                 return formatUCC(tempResults);
             case FD:
                 return formatFD(tempResults);
-            case CFD:
-                return formatCFD(tempResults);
             case IND:
                 return formatIND(tempResults);
             case CARD:
@@ -177,45 +166,6 @@ public class MetanomeHelper {
             builder.append("[").append(card.getColumnCombination().toString()).append("]").append(card.getStatisticMap()).append("\r\n");
         }
 
-        return builder.toString();
-    }
-
-    private static String formatCFD(List<Result> results) {
-        HashMap<String, List<String>> lhs2rhs = new HashMap<>();
-
-        for (Result result : results) {
-            ConditionalFunctionalDependency fd = (ConditionalFunctionalDependency) result;
-            StringBuilder lhsBuilder = new StringBuilder("[");
-            Iterator<ColumnIdentifier> iterator = fd.getDeterminant().getColumnIdentifiers().iterator();
-            while (iterator.hasNext()) {
-                lhsBuilder.append(iterator.next().toString());
-                if (iterator.hasNext())
-                    lhsBuilder.append(", ");
-            }
-            lhsBuilder.append("]");
-            String lhs = lhsBuilder.toString();
-
-            String rhs = fd.getDependant().toString() + "#" +fd.getPatternTableau();
-
-            if (!lhs2rhs.containsKey(lhs))
-                lhs2rhs.put(lhs, new ArrayList<>());
-            lhs2rhs.get(lhs).add(rhs);
-        }
-
-        StringBuilder builder = new StringBuilder();
-        ArrayList<String> lhss = new ArrayList<>(lhs2rhs.keySet());
-        Collections.sort(lhss);
-        for (String lhs : lhss) {
-            List<String> rhss = lhs2rhs.get(lhs);
-            Collections.sort(rhss);
-
-            if (rhss.isEmpty())
-                continue;
-
-            builder.append(lhs).append(" --> ");
-            builder.append(CollectionUtils.concat(rhss, ", "));
-            builder.append("\r\n");
-        }
         return builder.toString();
     }
 

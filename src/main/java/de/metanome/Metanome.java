@@ -19,7 +19,5 @@ public interface Metanome {
 
     List<Result> executeIND(String... fileNames);
 
-    List<Result> executesIND(String... fileNames);
-
     List<Result> executeCARD(String... fileNames);
 }

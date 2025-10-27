@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class MetanomeImpl implements Metanome{
 
@@ -27,6 +28,17 @@ public class MetanomeImpl implements Metanome{
 		return instance;
 	}
 
+	@FunctionalInterface
+	interface AlgoRunnable {
+		void run() throws AlgorithmExecutionException;
+	}
+
+	private static long timeExecution(AlgoRunnable r) throws AlgorithmExecutionException {
+		final long start = System.nanoTime();
+		r.run();
+		return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+	}
+
 	@Override
 	public List<Result> executeUCC(String... names) {
 		return executeHyUCC(names);
@@ -34,14 +46,7 @@ public class MetanomeImpl implements Metanome{
 
 	@Override
 	public List<Result> executeIND(String... names) {
-		//return executeSPIND(names);
-		//return executePBINDER(names);
 		return executeBinder(names);
-	}
-
-	@Override
-	public List<Result> executesIND(String... fileNames){
-		return executeSawfish(fileNames);
 	}
 
 	@Override
@@ -51,7 +56,6 @@ public class MetanomeImpl implements Metanome{
 
 	@Override
 	public List<Result> executeFD(String... names) {
-		//return executeCFDFinder(names);
 		return executeHyFD(names);
 	}
 
@@ -64,7 +68,10 @@ public class MetanomeImpl implements Metanome{
 				ResultCache resultReceiver = new ResultCache("MetanomeMock", MetanomeHelper.getAcceptedColumns(input));
 
 				DVA dva = MetanomeHelper.createDva(input, resultReceiver);
-				long time = executeDva(dva);
+				long time = 0;
+				try (SystemSilencer ignored = SystemSilencer.silenceOut()) {
+					time = timeExecution(dva::execute);
+				}
 
 				List<Result> tempResults = resultReceiver.fetchNewResults();
 
@@ -80,22 +87,6 @@ public class MetanomeImpl implements Metanome{
 		return allResults;
 	}
 
-	private static long executeDva(DVA dva) throws AlgorithmExecutionException {
-		//@TODO Remove all Sysos out of DVA or hide behind logger
-		PrintStream originalStream = System.out;
-		PrintStream dummyStream = new PrintStream(new OutputStream() {
-			public void write(int b) {}
-		});
-
-		System.setOut(dummyStream);
-		long time = System.currentTimeMillis();
-		dva.execute();
-		time = System.currentTimeMillis() - time;
-		System.setOut(originalStream);
-
-		return time;
-	}
-
 	public static List<Result> executeHyUCC(String... names) {
 		List<Result> allResults = new ArrayList<>();
 		try {
@@ -105,9 +96,10 @@ public class MetanomeImpl implements Metanome{
 
 				HyUCC hyUCC = MetanomeHelper.createHyUCC(input, resultReceiver);
 
-				long time = System.currentTimeMillis();
-				hyUCC.execute();
-				time = System.currentTimeMillis() - time;
+				long time = 0;
+				try (SystemSilencer ignored = SystemSilencer.silenceOut()) {
+					time = timeExecution(hyUCC::execute);
+				}
 
 				List<Result> tempResults = resultReceiver.fetchNewResults();
 
@@ -123,64 +115,6 @@ public class MetanomeImpl implements Metanome{
 		return allResults;
 	}
 
-	public static List<Result> executeSawfish(String... names) {
-		return null;
-		/*
-		try {
-
-			RelationalInputGenerator[] inputs = new RelationalInputGenerator[names.length];
-			List<ColumnIdentifier> columnIdentifiers = new ArrayList<>();
-			for (int i = 0; i < names.length; i++) {
-				inputs[i] =  MetanomeHelper.getInput(names[i]);
-				columnIdentifiers.addAll(MetanomeHelper.getAcceptedColumns(inputs[i]));
-			}
-
-			ResultCache resultReceiver = new ResultCache("MetanomeMock", columnIdentifiers);
-			//ResultReceiver resultReceiver = new ResultCounter("MetanomeMock", getAcceptedColumns(relationalInputGenerator));
-
-
-			SawfishInterface sawfish = new SawfishInterface();
-			int editDistanceThreshold = 1;
-			sawfish.setRelationalInputConfigurationValue(SawfishInterface.Identifier.INPUT_FILES.name(), inputs);
-			// Sawfish configuration - see readme for detailed explanation of each value
-			sawfish.setIntegerConfigurationValue(SawfishInterface.Identifier.editDistanceThreshold.name(), editDistanceThreshold);
-				//sawfish.setStringConfigurationValue(SawfishInterface.Identifier.similarityThreshold.name(), "0.4");
-			sawfish.setBooleanConfigurationValue(SawfishInterface.Identifier.tokenMode.name(), false);
-			sawfish.setBooleanConfigurationValue(SawfishInterface.Identifier.ignoreShortStrings.name(), false);
-			sawfish.setBooleanConfigurationValue(SawfishInterface.Identifier.measureTime.name(), false);
-			sawfish.setBooleanConfigurationValue(SawfishInterface.Identifier.ignoreNumericColumns.name(), false);
-				//sawfish.setBooleanConfigurationValue(SawfishInterface.Identifier.hybridMode.name(), true);
-			sawfish.setResultReceiver(resultReceiver);
-			sawfish.setTempFileGenerator(new TempFileGenerator());
-
-			PrintStream originalStream = System.out;
-			PrintStream dummyStream = new PrintStream(new OutputStream() {
-				public void write(int b) {}
-			});
-
-			System.setOut(dummyStream);
-			long time = System.currentTimeMillis();
-			sawfish.execute();
-			time = System.currentTimeMillis() - time;
-			System.setOut(originalStream);
-
-			for (int i = 0; i < names.length; i++) {
-				List<Result> results = resultReceiver.fetchNewResults();
-				if (InputConfigurationSingleton.get().getWRITE_RESULTS()) {
-					MetanomeHelper.writeResultsToFile(DependencyType.IND, sawfish.toString(), names[i], time, results);
-				}
-				return results;
-			}
-		}
-		catch (AlgorithmExecutionException | IOException e) {
-			e.printStackTrace();
-		}
-		return null;
-
-		 */
-	}
-
-
 	public static List<Result> executeBinder(String... names) {
 		try {
 			BINDERFile binder;
@@ -193,13 +127,13 @@ public class MetanomeImpl implements Metanome{
 			}
 
 			ResultCache resultReceiver = new ResultCache("MetanomeMock", columnIdentifiers);
-			//ResultReceiver resultReceiver = new ResultCounter("MetanomeMock", getAcceptedColumns(relationalInputGenerator));
 
 			binder = MetanomeHelper.createBINDER(inputs, resultReceiver);
 
-			long time = System.currentTimeMillis();
-			binder.execute();
-			time = System.currentTimeMillis() - time;
+			long time = 0;
+			try (SystemSilencer ignored = SystemSilencer.silenceOut()) {
+				time = timeExecution(binder::execute);
+			}
 
 			for (int i = 0; i < names.length; i++) {
 				List<Result> results = resultReceiver.fetchNewResults();
@@ -226,9 +160,10 @@ public class MetanomeImpl implements Metanome{
 
 				HyFD hyFD = MetanomeHelper.createHyFD(input, resultReceiver);
 
-				long time = System.currentTimeMillis();
-				hyFD.execute();
-				time = System.currentTimeMillis() - time;
+				long time = 0;
+				try (SystemSilencer ignored = SystemSilencer.silenceOut()) {
+					time = timeExecution(hyFD::execute);
+				}
 
 				List<Result> results = resultReceiver.fetchNewResults();
 				if (InputConfigurationSingleton.get().getWRITE_RESULTS()) {
@@ -240,5 +175,45 @@ public class MetanomeImpl implements Metanome{
 			e.printStackTrace();
 		}
 		return allResults;
+	}
+
+
+	static final class SystemSilencer implements AutoCloseable {
+		private final PrintStream originalOut;
+		private final PrintStream originalErr;
+		private final boolean silenceOut;
+		private final boolean silenceErr;
+
+		private SystemSilencer(boolean silenceOut, boolean silenceErr) {
+			this.silenceOut = silenceOut;
+			this.silenceErr = silenceErr;
+			this.originalOut = System.out;
+			this.originalErr = System.err;
+
+			if (silenceOut) {
+				System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+			}
+			if (silenceErr) {
+				System.setErr(new PrintStream(OutputStream.nullOutputStream()));
+			}
+		}
+
+		public static SystemSilencer silenceOut() {
+			return new SystemSilencer(true, false);
+		}
+
+		public static SystemSilencer silenceOutAndErr() {
+			return new SystemSilencer(true, true);
+		}
+
+		@Override
+		public void close() {
+			if (silenceOut) {
+				System.setOut(originalOut);
+			}
+			if (silenceErr) {
+				System.setErr(originalErr);
+			}
+		}
 	}
 }

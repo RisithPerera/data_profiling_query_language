@@ -1,11 +1,11 @@
 package de.metaserve.parser.query;
 
 import de.metaserve.parser.graph.Condition;
+import de.metaserve.util.exceptions.TablesDiscoveryException;
+import de.metaserve.util.singletons.InputConfigurationSingleton;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.util.*;
 
 public class DPQLQuery implements Query {
     List<String> selections = new ArrayList<>();
@@ -13,7 +13,18 @@ public class DPQLQuery implements Query {
     Map<String, List<String>> ccFunctions = new HashMap<>();
     QueryMetadata metadata = new QueryMetadata();
 
-    public DPQLQuery(){}
+    int maxTables = 0;
+
+    public DPQLQuery(){
+        String inputPath = InputConfigurationSingleton.get().getInputPath();
+        File folder = new File(inputPath);
+        for (File fileEntry : Objects.requireNonNull(folder.listFiles())) {
+            if (fileEntry.isFile() &&
+                    fileEntry.getName().endsWith("." + InputConfigurationSingleton.get().getFILE_ENDING())) {
+                maxTables++;
+            }
+        }
+    }
 
     @Override
     public void addSelection(String refName) {
@@ -48,6 +59,11 @@ public class DPQLQuery implements Query {
     @Override
     public QueryMetadata getMetaData() {
         return metadata;
+    }
+
+    @Override
+    public int getNumberOfTables() {
+        return maxTables;
     }
 
 }

@@ -34,7 +34,8 @@ public class DPALExecutor implements Executor {
 
         applyFilters(graph, query.getConditions());
         List<ResultSet> results = graphToTuples(query.getConditions(), graph);
-        applySelection(results);
+        applySelection(results, query.getSelections());
+        applyRowFilter(results, query.getCCs(), query.getNumberOfTables());
         applyAggregation(results);
 
         if(!configuration.getOutputType().equals(ExecutorConfiguration.Output.DEFAULT)){
@@ -129,8 +130,23 @@ public class DPALExecutor implements Executor {
     private void applyAggregation(List<ResultSet> results) {
     }
 
-    private void applySelection(List<ResultSet> results) {
+    private void applyRowFilter(List<ResultSet> results, Map<String, List<String>> columnNameToTableName, int numberOfTables) {
+        if (results == null || results.isEmpty() || columnNameToTableName == null || columnNameToTableName.isEmpty()) {
+            return;
+        }
+        for (ResultSet result : results) {
+            if (result != null) {
+                result.selectRowsByTableConstraints(columnNameToTableName, numberOfTables);
+            }
+        }
+    }
 
+    private void applySelection(List<ResultSet> results, List<String> selections) {
+        if (selections.contains("*"))
+            return;
+        for (ResultSet result : results){
+            result.selectColumnNames(selections);
+        }
     }
 
     private void applyFilters(Graph graph, List<Condition> conditions) {

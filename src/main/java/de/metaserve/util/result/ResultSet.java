@@ -33,6 +33,138 @@ public class ResultSet implements Collection<List<String>> {
         this.rows2 = new ArrayList<>();
     }
 
+    public void selectColumnNames(List<String> allowedColumns) {
+        if (allowedColumns == null || allowedColumns.isEmpty() || columnNames.isEmpty()) {
+            // Nothing to do
+            return;
+        }
+
+        // Figure out which indices to keep (preserve current column order)
+        List<Integer> keepIndices = new ArrayList<>(columnNames.size());
+        for (int i = 0; i < columnNames.size(); i++) {
+            if (allowedColumns.contains(columnNames.get(i))) {
+                keepIndices.add(i);
+            }
+        }
+
+        if (keepIndices.isEmpty()) {
+            // No overlap: clear everything consistently
+            this.columnNames = new ArrayList<>();
+            this.rows.clear();
+            this.rows2.clear();
+            this.addedColumns.clear();
+            return;
+        }
+
+        // Build new column names
+        List<String> newColumnNames = new ArrayList<>(keepIndices.size());
+        for (int idx : keepIndices) newColumnNames.add(columnNames.get(idx));
+
+        // Trim rows (List<List<String>>) to kept indices
+        if (!rows.isEmpty()) {
+            List<List<String>> newRows = new ArrayList<>(rows.size());
+            for (List<String> row : rows) {
+                List<String> newRow = new ArrayList<>(keepIndices.size());
+                for (int idx : keepIndices) {
+                    newRow.add(idx < row.size() ? row.get(idx) : null);
+                }
+                newRows.add(newRow);
+            }
+            this.rows = newRows;
+        }
+
+        // Trim rows2 (List<List<Set<ColumnIdentifier>>>) to kept indices
+        if (!rows2.isEmpty()) {
+            List<List<Set<ColumnIdentifier>>> newRows2 = new ArrayList<>(rows2.size());
+            for (List<Set<ColumnIdentifier>> row : rows2) {
+                List<Set<ColumnIdentifier>> newRow = new ArrayList<>(keepIndices.size());
+                for (int idx : keepIndices) {
+                    newRow.add(idx < row.size() ? row.get(idx) : null);
+                }
+                newRows2.add(newRow);
+            }
+            this.rows2 = newRows2;
+        }
+
+        // Update column names and active columns
+        this.columnNames = newColumnNames;
+        this.addedColumns.retainAll(new HashSet<>(newColumnNames));
+    }
+
+
+    /**
+     * Keeps only rows where, for each constrained column name, every ColumnIdentifier in that cell
+     * has a table identifier that is in the allowed list for that column. Rows that violate this rule
+     * (including null/empty cells for constrained columns) are removed entirely.
+     *
+     * @param columnNameToTableName Map<columnName, List<allowedTableNames>>
+     * @param numberOfTables
+     */
+    public void selectRowsByTableConstraints(Map<String, List<String>> columnNameToTableName, int numberOfTables) {
+        if (rows2 == null || rows2.isEmpty() || columnNameToTableName == null || columnNameToTableName.isEmpty()) return;
+
+        // Build fast lookup: column -> allowed tables
+        final Map<String, Set<String>> allowedByColumn = new HashMap<>();
+        for (Map.Entry<String, List<String>> e : columnNameToTableName.entrySet()) {
+            if (e.getKey() == null || e.getValue() == null) continue;
+            Set<String> allowed = e.getValue().stream()
+                    .filter(Objects::nonNull)
+                    .map(s -> s.toLowerCase(Locale.ROOT))
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (!allowed.isEmpty()) {
+                allowedByColumn.put(e.getKey(), allowed);
+            }
+        }
+        if (allowedByColumn.isEmpty()) return;
+
+        // Pre-resolve column indices for constraints that exist in this ResultSet
+        final Map<Integer, Set<String>> constrainedIdxToAllowed = new HashMap<>();
+        for (Map.Entry<String, Set<String>> e : allowedByColumn.entrySet()) {
+            int idx = columnNames.indexOf(e.getKey());
+            if (idx >= 0) {
+                constrainedIdxToAllowed.put(idx, e.getValue());
+            }
+        }
+        if (constrainedIdxToAllowed.isEmpty()) return;
+
+        List<List<Set<ColumnIdentifier>>> kept = new ArrayList<>();
+
+        rowLoop:
+        for (List<Set<ColumnIdentifier>> row : rows2) {
+            if (row == null) continue; // drop null rows
+
+            // Check each constrained column in this row
+            for (Map.Entry<Integer, Set<String>> c : constrainedIdxToAllowed.entrySet()) {
+                int colIdx = c.getKey();
+                Set<String> allowedTables = c.getValue();
+                if (allowedTables.size() >= numberOfTables) continue;
+
+                // Cell must exist and be non-empty for constrained columns
+                if (colIdx >= row.size()) continue rowLoop; // drop row
+                Set<ColumnIdentifier> cell = row.get(colIdx);
+                if (cell == null || cell.isEmpty()) continue rowLoop; // drop row
+
+                // Every ColumnIdentifier's table must be allowed
+                for (ColumnIdentifier ci : cell) {
+                    if (ci == null) { continue rowLoop; } // treat null as violation
+                    String table = Objects.toString(ci.getTableIdentifier().split("\\.")[0], "");
+                    if (!allowedTables.contains(table.toLowerCase())) {
+                        continue rowLoop; // drop row
+                    }
+                }
+            }
+
+            // All constrained columns satisfied
+            kept.add(row);
+        }
+
+        rows2 = kept;
+    }
+
+
+
+
+
     public void orderBy(List<String> columnNames) {
         List<Integer> columnIndices = getColumnIndices(columnNames);
 
@@ -745,4 +877,5 @@ public class ResultSet implements Collection<List<String>> {
         }
         rows2 = newRows;
     }
+
 }

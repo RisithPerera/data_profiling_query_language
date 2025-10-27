@@ -25,4 +25,6 @@ public interface Query {
 
     QueryMetadata getMetaData();
 
+    int getNumberOfTables();
+
 }

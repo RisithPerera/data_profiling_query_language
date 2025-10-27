@@ -1,10 +1,10 @@
 package de.metaserve.engine;
 
 import de.metaserve.executor.Executor;
-import de.metaserve.model.listener.Listenable;
-import de.metaserve.model.listener.QueryExecutionListener;
+import de.metaserve.util.listener.Listenable;
+import de.metaserve.util.listener.QueryExecutionListener;
 import de.metaserve.parser.query.Query;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.optimizer.Optimizer;
 import de.metaserve.parser.Parser;
 import de.metaserve.util.configuration.EngineConfiguration;

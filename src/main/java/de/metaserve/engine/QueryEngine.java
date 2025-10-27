@@ -1,6 +1,6 @@
 package de.metaserve.engine;
 
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.configuration.EngineConfiguration;
 import de.metaserve.util.exceptions.DPQLException;
 

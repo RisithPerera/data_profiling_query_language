@@ -1,7 +1,7 @@
 package de.metaserve.util.extensions.graph;
 
 
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 
 import java.util.*;
 

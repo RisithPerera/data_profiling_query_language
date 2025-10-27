@@ -2,8 +2,8 @@ package de.metaserve.parser;
 
 import de.metaserve.DPQLLexer;
 import de.metaserve.DPQLParser;
-import de.metaserve.model.listener.Listenable;
-import de.metaserve.model.listener.ParserListener;
+import de.metaserve.util.listener.Listenable;
+import de.metaserve.util.listener.ParserListener;
 import de.metaserve.parser.query.Query;
 import de.metaserve.util.configuration.ParserConfiguration;
 import de.metaserve.util.exceptions.ParseException;

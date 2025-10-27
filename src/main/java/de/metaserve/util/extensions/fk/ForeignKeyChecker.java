@@ -2,7 +2,7 @@ package de.metaserve.util.extensions.fk;
 
 import de.metanome.algorithm_integration.ColumnCombination;
 import de.metanome.algorithm_integration.ColumnIdentifier;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 
 import java.io.BufferedReader;

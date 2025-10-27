@@ -1,7 +1,7 @@
 package de.metaserve.executor;
 
 import de.metaserve.parser.query.Query;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.configuration.ExecutorConfiguration;
 
 import java.util.List;

@@ -1,10 +1,10 @@
 package de.metaserve.executor;
 
-import de.metaserve.model.constraints.Condition;
-import de.metaserve.model.constraints.FD;
-import de.metaserve.model.constraints.IND;
-import de.metaserve.model.constraints.UCC;
-import de.metaserve.model.dpal.*;
+import de.metaserve.executor.min.*;
+import de.metaserve.parser.graph.Condition;
+import de.metaserve.parser.graph.FD;
+import de.metaserve.parser.graph.IND;
+import de.metaserve.parser.graph.UCC;
 import de.metaserve.util.common.GraphGenerator;
 import de.metaserve.util.common.GraphUtil;
 import de.metaserve.util.common.Pair;

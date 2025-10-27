@@ -1,7 +1,7 @@
 package de.metaserve.e2e;
 
 import de.metaserve.engine.Metaserve;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

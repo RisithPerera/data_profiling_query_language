@@ -1,7 +1,7 @@
 package de.metaserve.util.extensions.mapping;
 
 import de.metanome.algorithm_integration.ColumnIdentifier;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;

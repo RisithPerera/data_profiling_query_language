@@ -1,8 +1,7 @@
 package de.metaserve.util.common;
 
-import de.metaserve.model.dpal.*;
+import de.metaserve.executor.min.*;
 
-import java.io.File;
 import java.util.*;
 
 public class GraphGenerator {

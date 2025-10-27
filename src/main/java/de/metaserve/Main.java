@@ -1,8 +1,8 @@
 package de.metaserve;
 
 import de.metaserve.engine.Metaserve;
-import de.metaserve.model.listener.ComplitionListener;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.listener.ComplitionListener;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.configuration.EngineConfiguration;
 import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.exceptions.DPQLException;

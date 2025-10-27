@@ -1,6 +1,6 @@
 package de.metaserve.parser.query;
 
-import de.metaserve.model.constraints.Condition;
+import de.metaserve.parser.graph.Condition;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -3,11 +3,11 @@ package de.metaserve.executor;
 import de.metanome.algorithm_integration.results.InclusionDependency;
 import de.metanome.algorithm_integration.results.Result;
 import de.metaserve.engine.QueryEngine;
+import de.metaserve.executor.min.*;
 import de.metaserve.executor.strategy.Strategy;
-import de.metaserve.model.constraints.*;
-import de.metaserve.model.dpal.*;
+import de.metaserve.parser.graph.*;
 import de.metaserve.parser.query.Query;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.configuration.ExecutorConfiguration;
 
 
@@ -129,7 +129,7 @@ public class DPALExecutor implements Executor {
 
     }
 
-    private void applyFilters(de.metaserve.model.dpal.Graph graph, List<Condition> conditions) {
+    private void applyFilters(Graph graph, List<Condition> conditions) {
         for (Condition condition : conditions){
             if (condition instanceof Dependency) continue;
             if (condition instanceof Split){

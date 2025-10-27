@@ -2,20 +2,16 @@ package de;
 
 import de.metaserve.engine.Metaserve;
 import de.metaserve.engine.QueryEngine;
-import de.metaserve.model.listener.QueryExecutionListener;
-import de.metaserve.model.query.Query;
-import de.metaserve.model.result.ResultSet;
+import de.metaserve.util.listener.QueryExecutionListener;
+import de.metaserve.parser.query.Query;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.extensions.fk.ForeignKeyChecker;
 import de.metaserve.util.extensions.graph.Graph;
-import de.metaserve.util.extensions.mapping.MapperChecker;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -156,16 +152,15 @@ public class MainTest {
     }
     Metaserve metaserve;
     boolean cache = false;
-    String dataset = "Test";
+    String dataset = "TPCHNEW";
     @BeforeEach
     public void setup(){
-        InputConfiguration.path = new File(System.getProperty("user.dir")).getParent();
         InputConfiguration inputConfig = EngineConfigurationSingleton.get().setCache(cache).getInputConfig();
         //fdb1-mb2, mb1-dis2, mb1-fdb2, s1a-s2b, s1a-s3b, s3a-s4b
         //inputConfig.setDATA_SET(Dataset.MUSIC.getName());
         //inputConfig.setFILE_MAX_ROWS(1000);
-        inputConfig.setFILE_VALUE_SEPARATOR(";");
-        inputConfig.setFILE_QUOTE_CHAR("\"");
+        inputConfig.setFILE_VALUE_SEPARATOR(",");
+        inputConfig.setFILE_QUOTE_CHAR("\'");
         inputConfig.setFILE_ENDING("csv");
         inputConfig.setFILE_HAS_HEADER(true);
         //inputConfig.setNARY(false);

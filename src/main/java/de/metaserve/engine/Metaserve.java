@@ -71,7 +71,7 @@ public class Metaserve implements QueryEngine, AutoCloseable, Listenable<QueryEx
 
     @Override
     public List<ResultSet> executeQuery(String queryString) throws DPQLException {
-        if (!(state.equals(QueryState.AWAITING_QUERY) || state.equals(QueryState.QUERY_COMPLETED))) {
+        if (!(state.equals(QueryState.AWAITING_QUERY) || state.equals(QueryState.QUERY_COMPLETED) || state.equals(QueryState.ERROR))) {
             throw new DPQLException("Engine is currently occupied!");
         }
 

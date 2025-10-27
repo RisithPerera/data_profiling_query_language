@@ -6,7 +6,7 @@ import de.metaserve.engine.QueryEngine;
 import de.metaserve.executor.strategy.Strategy;
 import de.metaserve.model.constraints.*;
 import de.metaserve.model.dpal.*;
-import de.metaserve.model.query.Query;
+import de.metaserve.parser.query.Query;
 import de.metaserve.model.result.ResultSet;
 import de.metaserve.util.configuration.ExecutorConfiguration;
 
@@ -138,23 +138,4 @@ public class DPALExecutor implements Executor {
         }
     }
 
-    @Override
-    public void cancel() {
-
-    }
-
-    @Override
-    public void pause() {
-
-    }
-
-    @Override
-    public void resume() {
-
-    }
-
-    @Override
-    public void close() {
-
-    }
 }

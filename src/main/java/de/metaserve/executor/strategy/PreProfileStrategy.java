@@ -4,7 +4,7 @@ import de.metanome.Metanome;
 import de.metanome.algorithm_integration.results.Result;
 import de.metaserve.engine.QueryEngine;
 import de.metaserve.model.dpal.*;
-import de.metaserve.model.query.QueryMetadata;
+import de.metaserve.parser.query.QueryMetadata;
 import de.metaserve.util.common.Quadruple;
 
 import java.util.*;

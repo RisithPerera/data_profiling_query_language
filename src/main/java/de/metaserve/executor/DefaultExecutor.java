@@ -15,12 +15,11 @@ import de.metaserve.model.constraints.IND;
 import de.metaserve.model.constraints.UCC;
 import de.metaserve.model.graph.Graph;
 import de.metaserve.model.out.Console;
-import de.metaserve.model.query.Query;
+import de.metaserve.parser.query.Query;
 import de.metaserve.model.result.ResultSet;
 import de.metaserve.util.configuration.ExecutorConfiguration;
 import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
-import it.unimi.dsi.fastutil.Hash;
 
 import java.util.*;
 import java.util.function.Function;
@@ -313,18 +312,5 @@ public class DefaultExecutor implements Executor {
     private ColumnCombination convertIDtoComb(ColumnIdentifier leftID) {
         return new ColumnCombination(leftID);
     }
-
-
-    @Override
-    public void cancel() {}
-
-    @Override
-    public void pause() {}
-
-    @Override
-    public void resume() {}
-
-    @Override
-    public void close() {}
 
 }

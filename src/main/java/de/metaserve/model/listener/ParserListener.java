@@ -1,6 +1,6 @@
 package de.metaserve.model.listener;
 
-import de.metaserve.model.query.Query;
+import de.metaserve.parser.query.Query;
 
 /**
  * A listener interface for events related to query parsing.

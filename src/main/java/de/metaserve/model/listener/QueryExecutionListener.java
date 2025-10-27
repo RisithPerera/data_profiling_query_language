@@ -1,7 +1,7 @@
 package de.metaserve.model.listener;
 
 import de.metaserve.engine.QueryEngine;
-import de.metaserve.model.query.Query;
+import de.metaserve.parser.query.Query;
 import de.metaserve.model.result.ResultSet;
 
 import java.util.List;

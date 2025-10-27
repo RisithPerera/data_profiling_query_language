@@ -1,4 +1,4 @@
-package de.metaserve.model.query;
+package de.metaserve.parser.query;
 
 import de.metaserve.model.constraints.Condition;
 

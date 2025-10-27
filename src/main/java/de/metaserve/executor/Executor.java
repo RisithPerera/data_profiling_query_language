@@ -1,7 +1,6 @@
 package de.metaserve.executor;
 
-import de.metaserve.model.query.Query;
-import de.metaserve.model.query.QueryMetadata;
+import de.metaserve.parser.query.Query;
 import de.metaserve.model.result.ResultSet;
 import de.metaserve.util.configuration.ExecutorConfiguration;
 
@@ -15,12 +14,5 @@ public interface Executor {
 
     List<ResultSet> executeQuery(Query query);
 
-    void cancel();
-
-    void pause();
-
-    void resume();
-
-    void close();
 
 }

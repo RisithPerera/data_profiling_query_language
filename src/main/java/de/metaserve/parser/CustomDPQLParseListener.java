@@ -1,8 +1,7 @@
 package de.metaserve.parser;
 
 import de.metaserve.DPQLParser;
-import de.metaserve.model.query.Query;
-import de.metaserve.util.configuration.InputConfiguration;
+import de.metaserve.parser.query.Query;
 import de.metaserve.util.exceptions.TablesDiscoveryException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import org.antlr.v4.runtime.CharStream;

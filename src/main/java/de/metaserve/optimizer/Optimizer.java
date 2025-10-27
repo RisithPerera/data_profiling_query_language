@@ -1,6 +1,6 @@
 package de.metaserve.optimizer;
 
-import de.metaserve.model.query.Query;
+import de.metaserve.parser.query.Query;
 
 public interface Optimizer {
 

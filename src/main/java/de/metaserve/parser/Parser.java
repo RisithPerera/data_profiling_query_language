@@ -1,6 +1,6 @@
 package de.metaserve.parser;
 
-import de.metaserve.model.query.Query;
+import de.metaserve.parser.query.Query;
 import de.metaserve.util.configuration.ParserConfiguration;
 import de.metaserve.util.exceptions.ParseException;
 import org.antlr.v4.runtime.tree.ParseTree;

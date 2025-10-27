@@ -2,7 +2,7 @@ package de.metaserve.executor.strategy;
 
 import de.metanome.Metanome;
 import de.metaserve.model.dpal.Graph;
-import de.metaserve.model.query.QueryMetadata;
+import de.metaserve.parser.query.QueryMetadata;
 
 public interface Strategy {
 

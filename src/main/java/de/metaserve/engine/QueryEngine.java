@@ -39,21 +39,6 @@ public interface QueryEngine {
     EngineConfiguration getConfig();
 
     /**
-     * Cancels the currently executing query. If no query is executing, this method does nothing.
-     */
-    void cancelQuery();
-
-    /**
-     * Pauses the currently executing query. If no query is executing or the query is already paused, this method does nothing.
-     */
-    void pauseQuery();
-
-    /**
-     * Resumes the currently paused query. If no query is paused, this method does nothing.
-     */
-    void resumeQuery();
-
-    /**
      *  Enumeration of possible states of the query engine.
      */
     enum QueryState {

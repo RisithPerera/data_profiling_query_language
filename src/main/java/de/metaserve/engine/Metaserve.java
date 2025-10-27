@@ -3,7 +3,7 @@ package de.metaserve.engine;
 import de.metaserve.executor.Executor;
 import de.metaserve.model.listener.Listenable;
 import de.metaserve.model.listener.QueryExecutionListener;
-import de.metaserve.model.query.Query;
+import de.metaserve.parser.query.Query;
 import de.metaserve.model.result.ResultSet;
 import de.metaserve.optimizer.Optimizer;
 import de.metaserve.parser.Parser;
@@ -106,36 +106,6 @@ public class Metaserve implements QueryEngine, AutoCloseable, Listenable<QueryEx
     }
 
     @Override
-    public void cancelQuery() throws DPQLException {
-        if (state != QueryState.QUERY_EXECUTING) {
-            throw new DPQLException("No query is currently executing!");
-        }
-
-        state = QueryState.QUERY_CANCELLED;
-        executor.cancel();
-    }
-
-    @Override
-    public void pauseQuery() throws DPQLException {
-        if (state != QueryState.QUERY_EXECUTING) {
-            throw new DPQLException("No query is currently executing!");
-        }
-
-        state = QueryState.QUERY_PAUSED;
-        executor.pause();
-    }
-
-    @Override
-    public void resumeQuery() throws DPQLException {
-        if (state != QueryState.QUERY_PAUSED) {
-            throw new DPQLException("No query is currently paused!");
-        }
-
-        state = QueryState.QUERY_EXECUTING;
-        executor.resume();
-    }
-
-    @Override
     public void close() throws DPQLException {
         if (state == QueryState.CLOSED) {
             throw new DPQLException("Engine is already closed!");
@@ -143,7 +113,6 @@ public class Metaserve implements QueryEngine, AutoCloseable, Listenable<QueryEx
 
         try {
             parser.close();
-            executor.close();
             config.close();
             // Notify all listeners of the engine closure
             for (QueryExecutionListener listener : executionListeners) {

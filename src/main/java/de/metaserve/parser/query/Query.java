@@ -1,6 +1,5 @@
-package de.metaserve.model.query;
+package de.metaserve.parser.query;
 
-import de.metaserve.engine.QueryEngine;
 import de.metaserve.model.constraints.Condition;
 
 import java.util.List;

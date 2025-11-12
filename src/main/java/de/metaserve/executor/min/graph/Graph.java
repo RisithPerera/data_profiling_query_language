@@ -37,12 +37,40 @@ public class Graph {
             decomposedGraphMap.get(atom).add(atom);
         }
         this.setMembershipMap = combineMembershipMaps(graphs);
+
+        Set<String> resltsStrings = setMemberShipToString(setMembershipMap, existsNodes);
+        for (String resltsString : resltsStrings) {
+            System.out.println(resltsString);
+        }
         //Graph clean up
         edges.clear();
         nodes.clear();
         for (Edge edge: setMembershipMap.keySet()){
             addEdge(edge);
         }
+    }
+
+    private Set<String> setMemberShipToString(HashMap<Edge, Graph.SetMembership> setMembershipMap, Set<String> existsNodes) {
+        Set<String> result = new HashSet<>();
+        for (Edge edge : setMembershipMap.keySet()) {
+            Graph.SetMembership membership = setMembershipMap.get(edge);
+            String stringMembership = Graph.SetMembership.toString(membership, edge);
+            if (stringMembership.contains("and"))
+                result.addAll(List.of(stringMembership.split("\\\\land")));
+            else
+                result.add(stringMembership);
+        }
+        if (!existsNodes.isEmpty()){
+            for (Edge edge : setMembershipMap.keySet()){
+                String nodeStringExists = Graph.SetMembership.toString(edge, existsNodes);
+                result.add(nodeStringExists);
+            }
+            for (String nodeName : existsNodes){
+                String subsetNotAllowed = nodeName + "'" + " \\subset " + nodeName;
+                result.add(subsetNotAllowed);
+            }
+        }
+        return result;
     }
 
     private HashMap<Edge, SetMembership> combineMembershipMaps(List<Graph> graphs) {
@@ -128,7 +156,65 @@ public class Graph {
             SetMembership set = applyRulesForEdge(edge);
             setMembershipMap.put(edge, set);
         }
+        // SIZE Constraint Minimalization Ruling
+        for (Edge edge : edges) {
+            SetMembership membership = applySizeRulesForEdge(setMembershipMap.get(edge), edge);
+            setMembershipMap.put(edge, membership);
+        }
         return setMembershipMap;
+    }
+
+    private SetMembership applySizeRulesForEdge(SetMembership setMembership, Edge edge) {
+        if (edge instanceof UCCEdge){
+            Node x = nodes.get(edge.leftName);
+            if (x.size == null)
+                return setMembership;
+            int minSize = x.size.getMin();
+            if (minSize == 1)
+                return SetMembership.U;
+            if (minSize > 1)
+                return SetMembership.U_PLUS;
+        } else if (edge instanceof FDEdge){
+            Node x = nodes.get(edge.leftName);
+            Node y = nodes.get(edge.rightName);
+            int minSizeLhs = x.size == null ? -1 : x.size.getMin();
+            int minSizeRhs = y.size == null ? -1 : y.size.getMin();
+            boolean rhsMulti = setMembership.getValue() > SetMembership.F_PLUS.getValue();
+            boolean lhsMulti = setMembership == SetMembership.F_PLUS || setMembership == SetMembership.F_PLUS_VALID;
+            if (minSizeLhs == 1){
+                if (!rhsMulti)
+                    setMembership = SetMembership.F;
+                else
+                    setMembership = SetMembership.F_VALID;
+            } else if (minSizeLhs > 1){
+                if (!rhsMulti)
+                    setMembership = SetMembership.F_PLUS;
+                else
+                    setMembership = SetMembership.F_PLUS_VALID;
+            }
+
+            if (minSizeRhs == 1){
+                if (!lhsMulti)
+                    setMembership = SetMembership.F;
+                else
+                    setMembership = SetMembership.F_PLUS;
+            } else if (minSizeRhs > 1){
+                if (!lhsMulti && minSizeLhs == 1)
+                    setMembership = SetMembership.F_VALID;
+                else
+                    setMembership = SetMembership.F_PLUS_VALID;
+            }
+        } else if (edge instanceof INDEdge){
+            Node x = nodes.get(edge.leftName);
+            if (x.size == null)
+                return setMembership;
+            int minSize = x.size.getMin();
+            if (minSize == 1)
+                return SetMembership.I_MINUS;
+            if (minSize > 1)
+                return SetMembership.I_PLUS;
+        }
+        return setMembership;
     }
 
     private SetMembership applyRulesForEdge(Edge edge) {
@@ -363,7 +449,7 @@ public class Graph {
                         Node y = indCC.get(j);
                         if (x.equals(y)) continue;
                         List<INDEdge> indPath = graph.findINDPath(x.name, y.name);
-                        gPrime.add(Graph.fromINDEdges(indPath, x, y));
+                        gPrime.add(Graph.fromINDEdges(graph, indPath, x, y));
                         metadata.increaseINDDecomposition();
                     }
                 }
@@ -951,7 +1037,7 @@ public class Graph {
         return graphs;
     }
 
-    private static Graph fromINDEdges(List<INDEdge> indPath, Node x, Node y) {
+    private static Graph fromINDEdges(Graph oldGraph, List<INDEdge> indPath, Node x, Node y) {
         Graph graph = new Graph();
         for (INDEdge edge : indPath) graph.addEdge(edge);
         for (Edge edge : x.edges()) {
@@ -961,6 +1047,10 @@ public class Graph {
         for (Edge edge : y.edges()) {
             if (edge instanceof INDEdge) continue;
             graph.addEdge(edge);
+        }
+
+        for (String nodeName : graph.getNodes().keySet()) {
+            graph.getNode(nodeName).setSize(oldGraph.getNode(nodeName).getSize());
         }
         return graph;
     }
@@ -1014,12 +1104,13 @@ public class Graph {
     public enum SetMembership {
         F(0),
         F_PLUS(1),
+        F_VALID(2),
         F_PLUS_VALID(2),
-        U(3),
-        U_PLUS(4),
-        I(5),
-        I_MINUS(6),
-        I_PLUS(7);
+        U(4),
+        U_PLUS(5),
+        I(6),
+        I_MINUS(7),
+        I_PLUS(8);
 
         private final int value;
 
@@ -1077,8 +1168,10 @@ public class Graph {
                     return "("+ arrow + ") \\in F";
                 case F_PLUS:
                     return "("+ arrow + ") \\in F^+";
+                case F_VALID:
+                    return "("+ arrow + ") \\in F_v";
                 case F_PLUS_VALID:
-                    return "valid(("+ arrow + "))";
+                    return "("+ arrow + ") \\in F^+_v";
                 case U:
                     return "(" + left + ") \\in U";
                 case U_PLUS:
@@ -1126,7 +1219,8 @@ public class Graph {
             Node node = nodes.get(sizeConstraint.getTarget());
             Interval combined = Interval.combine(node.getSize(), interval);
             if (combined == null) throw new IllegalArgumentException("Incompatible size constraints for " + node.getName());
-            if (!combined.equals(node.getSize())) node.setSize(combined);
+            if (!combined.equals(node.getSize()))
+                node.setSize(combined);
         }
     }
 

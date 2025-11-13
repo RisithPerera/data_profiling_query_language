@@ -38,10 +38,6 @@ public class Graph {
         }
         this.setMembershipMap = combineMembershipMaps(graphs);
 
-        Set<String> resltsStrings = setMemberShipToString(setMembershipMap, existsNodes);
-        for (String resltsString : resltsStrings) {
-            System.out.println(resltsString);
-        }
         //Graph clean up
         edges.clear();
         nodes.clear();
@@ -165,56 +161,91 @@ public class Graph {
     }
 
     private SetMembership applySizeRulesForEdge(SetMembership setMembership, Edge edge) {
-        if (edge instanceof UCCEdge){
-            Node x = nodes.get(edge.leftName);
-            if (x.size == null)
-                return setMembership;
-            int minSize = x.size.getMin();
-            if (minSize == 1)
-                return SetMembership.U;
-            if (minSize > 1)
-                return SetMembership.U_PLUS;
-        } else if (edge instanceof FDEdge){
-            Node x = nodes.get(edge.leftName);
-            Node y = nodes.get(edge.rightName);
-            int minSizeLhs = x.size == null ? -1 : x.size.getMin();
-            int minSizeRhs = y.size == null ? -1 : y.size.getMin();
-            boolean rhsMulti = setMembership.getValue() > SetMembership.F_PLUS.getValue();
-            boolean lhsMulti = setMembership == SetMembership.F_PLUS || setMembership == SetMembership.F_PLUS_VALID;
-            if (minSizeLhs == 1){
-                if (!rhsMulti)
-                    setMembership = SetMembership.F;
-                else
-                    setMembership = SetMembership.F_VALID;
-            } else if (minSizeLhs > 1){
-                if (!rhsMulti)
-                    setMembership = SetMembership.F_PLUS;
-                else
-                    setMembership = SetMembership.F_PLUS_VALID;
-            }
-
-            if (minSizeRhs == 1){
-                if (!lhsMulti)
-                    setMembership = SetMembership.F;
-                else
-                    setMembership = SetMembership.F_PLUS;
-            } else if (minSizeRhs > 1){
-                if (!lhsMulti && minSizeLhs == 1)
-                    setMembership = SetMembership.F_VALID;
-                else
-                    setMembership = SetMembership.F_PLUS_VALID;
-            }
-        } else if (edge instanceof INDEdge){
-            Node x = nodes.get(edge.leftName);
-            if (x.size == null)
-                return setMembership;
-            int minSize = x.size.getMin();
-            if (minSize == 1)
-                return SetMembership.I_MINUS;
-            if (minSize > 1)
-                return SetMembership.I_PLUS;
+        if (edge instanceof UCCEdge) {
+            return applyUccSizeRules(setMembership, edge.leftName);
         }
+
+        if (edge instanceof FDEdge) {
+            return applyFdSizeRules(setMembership, (FDEdge) edge);
+        }
+
+        if (edge instanceof INDEdge) {
+            return applyIndSizeRules(setMembership, edge.leftName);
+        }
+
         return setMembership;
+    }
+
+    private SetMembership applyUccSizeRules(SetMembership current, String leftName) {
+        Integer minSize = getMinSize(leftName);
+        if (minSize == null) {
+            return current;
+        }
+        if (minSize == 1) {
+            return SetMembership.U;
+        }
+        if (minSize > 1) {
+            return SetMembership.U_PLUS;
+        }
+        return current;
+    }
+
+    private SetMembership applyIndSizeRules(SetMembership current, String leftName) {
+        Integer minSize = getMinSize(leftName);
+        if (minSize == null) {
+            return current;
+        }
+        if (minSize == 1) {
+            return SetMembership.I_MINUS;
+        }
+        if (minSize > 1) {
+            return SetMembership.I_PLUS;
+        }
+        return current;
+    }
+
+    private SetMembership applyFdSizeRules(SetMembership setMembership, FDEdge edge) {
+        Integer minSizeLhs = getMinSize(edge.leftName);
+        Integer minSizeRhs = getMinSize(edge.rightName);
+
+        int lhs = minSizeLhs != null ? minSizeLhs : -1;
+        int rhs = minSizeRhs != null ? minSizeRhs : -1;
+
+        boolean rhsMulti = setMembership.getValue() > SetMembership.F_PLUS.getValue();
+        boolean lhsMulti = setMembership == SetMembership.F_PLUS
+                || setMembership == SetMembership.F_PLUS_VALID;
+
+        // LHS-based refinement
+        if (lhs == 1) {
+            setMembership = rhsMulti ? SetMembership.F_VALID : SetMembership.F;
+        } else if (lhs > 1) {
+            setMembership = rhsMulti ? SetMembership.F_PLUS_VALID : SetMembership.F_PLUS;
+        }
+
+        // RHS-based refinement
+        if (rhs == 1) {
+            if (!lhsMulti) {
+                setMembership = SetMembership.F;
+            } else {
+                setMembership = SetMembership.F_PLUS;
+            }
+        } else if (rhs > 1) {
+            if (!lhsMulti && lhs == 1) {
+                setMembership = SetMembership.F_VALID;
+            } else {
+                setMembership = SetMembership.F_PLUS_VALID;
+            }
+        }
+
+        return setMembership;
+    }
+
+    private Integer getMinSize(String nodeName) {
+        Node node = nodes.get(nodeName);
+        if (node == null || node.size == null) {
+            return null;
+        }
+        return node.size.getMin();
     }
 
     private SetMembership applyRulesForEdge(Edge edge) {

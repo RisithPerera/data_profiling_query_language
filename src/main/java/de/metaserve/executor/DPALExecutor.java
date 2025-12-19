@@ -8,6 +8,7 @@ import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
+import de.metaserve.executor.strategy.PreProfileStrategy;
 import de.metaserve.executor.strategy.Strategy;
 import de.metaserve.parser.graph.*;
 import de.metaserve.parser.query.Query;
@@ -30,7 +31,8 @@ public class DPALExecutor implements Executor {
         Graph graph = Graph.fromConditions(query.getConditions());
         graph.computeSetMembership();
 
-        Strategy.apply(graph, query.getMetaData());
+        Strategy strategy = new PreProfileStrategy(graph, query.getMetaData());
+        strategy.apply();
 
         applyFilters(graph, query.getConditions());
         List<ResultSet> results = graphToTuples(query.getConditions(), graph);

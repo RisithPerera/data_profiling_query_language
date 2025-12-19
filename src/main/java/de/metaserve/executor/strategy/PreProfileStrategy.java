@@ -18,15 +18,17 @@ import java.util.*;
 
 public class PreProfileStrategy implements Strategy{
 
-    Graph graph;
-    QueryMetadata metadata;
+    private final Graph graph;
+    private final QueryMetadata metadata;
+
     public PreProfileStrategy(Graph graph, QueryMetadata metadata){
         this.graph = graph;
         this.metadata = metadata;
     }
 
     @Override
-    public void apply(Metanome metanome) {
+    public void apply() {
+        Metanome metanome = Metanome.getInstance();
 
         for (Edge edge : graph.getEdges()) {
             executeEdgeQuery(metanome, edge);

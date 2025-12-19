@@ -9,7 +9,10 @@ import java.util.List;
 public interface Executor {
 
     static Executor get(ExecutorConfiguration inputConfig) {
-        return new DPALExecutor(inputConfig);
+        return switch (inputConfig.getExecutorType()) {
+            case DPAL -> new DPALExecutor(inputConfig);
+            case HOLISTIC -> new HolisticExecutor(inputConfig);
+        };
     }
 
     List<ResultSet> executeQuery(Query query);

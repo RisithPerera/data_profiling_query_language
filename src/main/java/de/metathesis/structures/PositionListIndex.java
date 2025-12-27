@@ -5,37 +5,38 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.util.*;
 
 public class PositionListIndex {
+    private final AttributeList attributes;
+    private final List<IntArrayList> clusters; //Including single clusters
 
-    private final TreeMap<String, IntArrayList> clusters; //Including single clusters
-
-    PositionListIndex(TreeMap<String, IntArrayList>  clusters) {
+    PositionListIndex(AttributeList attributes, List<IntArrayList> clusters) {
+        this.attributes = attributes;
         this.clusters = clusters;
     }
 
-    public TreeMap<String, IntArrayList> getClusters() {
+    public AttributeList getAttributes() {
+        return attributes;
+    }
+
+    public List<IntArrayList> getClusters() {
         return clusters;
     }
 
     public PositionListIndex intersect(PositionListIndex other) {
-        TreeMap<String, IntArrayList> intersectClusters = new TreeMap<>();
+        List<IntArrayList> intersectClusters = new ArrayList<>();
 
-        for (Map.Entry<String, IntArrayList> entry1 : this.clusters.entrySet()) {
-            IntArrayList list1 = entry1.getValue();
-            for (Map.Entry<String, IntArrayList> entry2 : other.clusters.entrySet()) {
-                IntArrayList list2 = entry2.getValue();
+        for (IntArrayList list1 : this.clusters) {
+            for (IntArrayList list2 : other.clusters) {
 
                 // Compute intersection of list1 and list2
                 IntArrayList common = intersectCluster(list1, list2);
 
                 if (!common.isEmpty()) {
-                    // Combine keys to form a new key
-                    String newKey = entry1.getKey() + "_" + entry2.getKey();
-                    intersectClusters.put(newKey, common);
+                    intersectClusters.add(common);
                 }
             }
         }
 
-        return new PositionListIndex(intersectClusters);
+        return new PositionListIndex(this.attributes.union(other.attributes), intersectClusters);
     }
 
     private IntArrayList intersectCluster(IntArrayList list1, IntArrayList list2) {

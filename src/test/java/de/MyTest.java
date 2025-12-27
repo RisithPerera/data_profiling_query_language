@@ -28,4 +28,11 @@ public class MyTest {
         List<ResultSet> resultSetList = metaserve.executeQuery(query);
         System.out.println(resultSetList.getFirst().getRows2());
     }
+
+    @Test
+    public void testExtra() {
+        String query = "SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE UCC(Z) AND IND(X,Z) AND IND(X,Y) AND UCC(Y)";
+        List<ResultSet> resultSetList = metaserve.executeQuery(query);
+        System.out.println(resultSetList.getFirst().getRows2());
+    }
 }

@@ -1,100 +1,80 @@
 package de.metathesis;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import de.metaserve.parser.graph.FD;
+import de.metathesis.profilers.AbstractProfiler;
+import de.metathesis.profilers.FDProfiler;
+import de.metathesis.profilers.INDProfiler;
+import de.metathesis.profilers.UCCProfiler;
+import de.metathesis.structures.AttributeList;
 
-public class Instructor implements ResultListener, AutoCloseable {
-    private final Preprocessor preprocessor;
-    private final ExecutorService profilerExecutor;
-    private final ConcurrentMap<String, int[][]> results = new ConcurrentHashMap<>();
-    private final AtomicInteger counter = new AtomicInteger(0);
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
-    public Instructor(int parallelism) {
-        this.preprocessor = new Preprocessor();
-        this.profilerExecutor = (parallelism <= 1)
-                ? Executors.newSingleThreadExecutor()
-                : Executors.newFixedThreadPool(parallelism);
+public final class Instructor {
+
+    private static volatile Instructor INSTANCE;
+    private final ExecutorService pool;
+    private final UCCProfiler uccProfiler;
+    private final INDProfiler indProfiler;
+    private final FDProfiler fdProfiler;
+
+    private Instructor(ExecutorService pool) {
+        this.pool = pool;
+
+        this.uccProfiler = new UCCProfiler(pool);
+        this.indProfiler = new INDProfiler(pool);
+        this.fdProfiler  = new FDProfiler(pool);
     }
 
-    // Submit a profiler instance for execution (parallel or serial depends on instructor's executor)
-    public Future<?> submitProfiler(Profiler profiler, String profilerId, int[][] input) {
-        // If profiler is an AbstractProfiler (we expect this), cast and create runnable
-        if (profiler instanceof AbstractProfiler) {
-            AbstractProfiler ap = (AbstractProfiler) profiler;
-            // ap already contains provider/listener/input in constructor form; if not, adapt here.
-            return profilerExecutor.submit(ap);
-        } else {
-            // Wrap in runnable for generic Profiler implementations
-            return profilerExecutor.submit(() -> {
-                int[][] result = profiler.profile(input);
-                onResult(profilerId, result);
-            });
-        }
-    }
-
-    // Convenience factory to create standard profilers wired to this instructor/preprocessor
-    public FDProfiler createFDProfiler(String id, int[][] input) {
-        return new FDProfiler(id, preprocessor, this, input);
-    }
-
-    public INDProfiler createINDProfiler(String id, int[][] input) {
-        return new INDProfiler(id, preprocessor, this, input);
-    }
-
-    public UCCProfiler createUCCProfiler(String id, int[][] input) {
-        return new UCCProfiler(id, preprocessor, this, input);
-    }
-
-    // Blocking call: runs profilers in parallel and waits for all to finish
-    public Map<String,int[][]> runParallelAndWait(List<AbstractProfiler> profilers) {
-        int n = profilers.size();
-        CountDownLatch latch = new CountDownLatch(n);
-
-        for (AbstractProfiler p : profilers) {
-            profilerExecutor.submit(() -> {
-                try {
-                    p.run();
-                } finally {
-                    latch.countDown();
-                }
-            });
+    public static Instructor getInstance(ExecutorService pool) {
+        if (INSTANCE == null) {
+            INSTANCE = new Instructor(pool);
         }
 
+        return INSTANCE;
+    }
+
+    public void runPipeline(int maxLevel) {
+
+        // Start UCC(1)
+        CompletableFuture<AttributeList[]> uccFuture = uccProfiler.runAsync(1);
+
+        for (int level = 0; level < maxLevel; level++) {
+
+            final int currentLevel = level;
+
+            // When UCC(L) completes → run IND(L)
+            CompletableFuture<AttributeList[]> indFuture = uccFuture.thenCompose(
+                    uccResult -> indProfiler.runAsync(currentLevel)
+            );
+
+            CompletableFuture<Void> fdFuture = indFuture.thenAccept(
+                    ignored -> fdProfiler.runAsync(currentLevel)
+            );
+
+            // Prepare UCC(L+1) immediately after UCC(L)
+            if (level < maxLevel) {
+                uccFuture = uccFuture.thenCompose(
+                                ignored -> uccProfiler.runAsync(currentLevel + 1)
+                        );
+            }
+        }
+
+        System.out.println("Pipeline scheduled");
+        uccFuture.join();
+        System.out.println("Pipeline completed");
+    }
+
+    public void shutdownAndAwaitTermination() {
+        pool.shutdown();
         try {
-            latch.await();
+            if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
+                pool.shutdownNow();
+            }
         } catch (InterruptedException e) {
+            pool.shutdownNow();
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Execution interrupted", e);
         }
-
-        return new HashMap<>(results);
-    }
-
-    // Serial run: run profilers one-by-one on the instructor's single-thread executor
-    public Map<String,int[][]> runSerialAndWait(List<AbstractProfiler> profilers) {
-        for (AbstractProfiler p : profilers) {
-            p.run();
-        }
-        return new HashMap<>(results);
-    }
-
-    // Profiler callbacks publish results here
-    @Override
-    public void onResult(String profilerId, int[][] result) {
-        results.put(profilerId, result);
-        counter.incrementAndGet();
-    }
-
-    public Map<String,int[][]> getCollectedResults() {
-        return new HashMap<>(results);
-    }
-
-    @Override
-    public void close() {
-        profilerExecutor.shutdownNow();
-        preprocessor.close();
     }
 }

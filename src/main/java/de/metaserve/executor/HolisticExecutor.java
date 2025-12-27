@@ -24,7 +24,7 @@ public class HolisticExecutor implements Executor {
         Graph graph = Graph.fromConditions(query.getConditions());
         graph.computeSetMembership();
 
-        Strategy strategy = new HolisticProfileStrategy(graph, query.getMetaData());
+        Strategy strategy = new HolisticProfileStrategy(graph, query.getMetaData(), query.getCCs());
         strategy.apply();
 
         if(!configuration.getOutputType().equals(ExecutorConfiguration.Output.DEFAULT)){
@@ -32,6 +32,10 @@ public class HolisticExecutor implements Executor {
         }
 
         query.getMetaData().update(QueryEngine.QueryState.QUERY_RESULT);
-        return new ArrayList<>();
+
+        ResultSet resultSet = new ResultSet(new ArrayList<>(graph.getNodes().keySet()));
+        List<ResultSet> resultSets = new ArrayList<>();
+        resultSets.add(resultSet);
+        return resultSets;
     }
 }

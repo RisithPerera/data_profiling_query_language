@@ -1,57 +1,54 @@
 package de.metathesis;
 
+
+import de.metanome.MetanomeHelper;
+import de.metanome.algorithm_integration.AlgorithmConfigurationException;
+import de.metanome.algorithm_integration.input.RelationalInput;
+import de.metanome.algorithm_integration.input.RelationalInputGenerator;
+import de.metanome.backend.input.file.FileIterator;
+import de.metaserve.util.singletons.InputConfigurationSingleton;
+
+import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.*;
 
-public class Preprocessor implements AutoCloseable {
-    // Single thread executor to guarantee one-at-a-time execution of preprocess requests.
-    private final ExecutorService singleThread = Executors.newSingleThreadExecutor();
+public final class Preprocessor {
 
-    // Optional cache to avoid repeated preprocessing for identical input (simple hash).
-    private final ConcurrentMap<Integer, List<List<String>>> cache = new ConcurrentHashMap<>();
+    private static final Preprocessor INSTANCE = new Preprocessor();
+    private final List<String> tables = new ArrayList<>();
 
-    public List<List<String>> get(int[][] raw) {
-        int key = Arrays.deepHashCode(raw);
-        List<List<String>> cached = cache.get(key);
-        if (cached != null) return cached;
+    private int readCount = 0;
 
-        // Submit preprocessing task to single-thread executor and wait for result.
-        Future<List<List<String>>> future = singleThread.submit(() -> doPreprocess(raw));
-        try {
-            List<List<String>> result = future.get(); // blocks here but executor enforces seriality
-            cache.putIfAbsent(key, result);
-            return result;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Preprocessing interrupted", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Preprocessing failed", e.getCause());
-        }
+    private Preprocessor() {}
+
+    public static Preprocessor getInstance() {
+        return INSTANCE;
     }
 
-    private List<List<String>> doPreprocess(int[][] raw) {
-        // Skeleton: convert int[][] columns into List<List<String>> (each column -> List<String>)
-        // No heavy logic; user will implement actual conversion.
-        if (raw == null || raw.length == 0) return Collections.emptyList();
-        int rows = raw.length;
-        int cols = raw[0].length;
-        List<List<String>> columns = new ArrayList<>(cols);
-        for (int c = 0; c < cols; c++) {
-            List<String> col = new ArrayList<>(rows);
-            for (int r = 0; r < rows; r++) {
-                col.add(String.valueOf(raw[r][c]));
+    // Simulates reading a CSV and returning a Relation
+    public void loadRelation(String fileName) {
+        if(!tables.contains(fileName)) {
+            System.out.println("Loading Relation " + fileName);
+
+            try {Thread.sleep(5000);} catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
-            columns.add(col);
+            tables.add(fileName);
+            System.out.println("Finished Loading Relation " + fileName);
+        }else{
+            try {Thread.sleep(1000);} catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
-        return columns;
+
+
+       /* String filePath = InputConfigurationSingleton.get().getFileInputPath(fileName);
+        File file = InputConfigurationSingleton.get().getin
+        RelationalInput relationalInput = new FileIterator(getInputFile().getName(), new FileReader(getInputFile(), charset), setting);
+        readCount++;*/
     }
 
-    @Override
-    public void close() {
-        singleThread.shutdownNow();
+    public int getReadCount() {
+        return readCount;
     }
 }
-

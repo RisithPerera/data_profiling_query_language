@@ -8,7 +8,7 @@ public class PositionListIndex {
     private final AttributeList attributes;
     private final List<IntArrayList> clusters; //Including single clusters
 
-    PositionListIndex(AttributeList attributes, List<IntArrayList> clusters) {
+    public PositionListIndex(AttributeList attributes, List<IntArrayList> clusters) {
         this.attributes = attributes;
         this.clusters = clusters;
     }

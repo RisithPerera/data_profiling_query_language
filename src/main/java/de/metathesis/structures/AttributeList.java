@@ -6,15 +6,19 @@ public final class AttributeList {
     private final BitSet bitSet;
     private final int hash;
 
-    AttributeList(BitSet src) {
+    public AttributeList(BitSet src) {
         this.bitSet = (BitSet) src.clone();
         this.hash = bitSet.hashCode();
     }
 
     AttributeList union(AttributeList other) {
-        BitSet out = (BitSet) this.bitSet.clone();
+        BitSet out = this.getBitSet();
         out.or(other.bitSet);
         return new AttributeList(out);
+    }
+
+    public BitSet getBitSet() {
+        return (BitSet) this.bitSet.clone();
     }
 
     @Override

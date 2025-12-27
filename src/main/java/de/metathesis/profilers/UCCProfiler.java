@@ -2,7 +2,9 @@ package de.metathesis.profilers;
 
 
 import de.metathesis.structures.AttributeList;
+import de.metathesis.structures.PositionListIndex;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -21,10 +23,12 @@ public class UCCProfiler extends AbstractProfiler<AttributeList[]> {
     }
 
     @Override
-    public AttributeList[] profile(int number) {
-        this.preprocessor.loadRelation("R1");
+    public AttributeList[] profile(int level) {
+        List<PositionListIndex> plis =  this.preprocessor.loadRelation("R1");
+
+
         for (int i = 1; i <= 5; i++) {
-            System.out.println("Profiling UCC:" + number + " = " + i);
+            System.out.println("Profiling UCC:" + level + " = " + i);
 
             try {
                 // Pause the execution for 1 second

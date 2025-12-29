@@ -2,23 +2,28 @@ package de.metathesis.structures;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PositionListIndex {
-    private final AttributeList attributes;
+    private final ImmutableBitSet attributeIndexList;
     private final List<IntArrayList> clusters; //Including single clusters
 
-    public PositionListIndex(AttributeList attributes, List<IntArrayList> clusters) {
-        this.attributes = attributes;
+    public PositionListIndex(ImmutableBitSet attributeIndexList, List<IntArrayList> clusters) {
+        this.attributeIndexList = attributeIndexList;
         this.clusters = clusters;
     }
 
-    public AttributeList getAttributes() {
-        return attributes;
+    public ImmutableBitSet getAttributeIndexList() {
+        return attributeIndexList;
     }
 
     public List<IntArrayList> getClusters() {
         return clusters;
+    }
+
+    public boolean isUnique() {
+        return this.clusters.isEmpty();
     }
 
     public PositionListIndex intersect(PositionListIndex other) {
@@ -36,7 +41,7 @@ public class PositionListIndex {
             }
         }
 
-        return new PositionListIndex(this.attributes.union(other.attributes), intersectClusters);
+        return new PositionListIndex(this.attributeIndexList.union(other.attributeIndexList), intersectClusters);
     }
 
     private IntArrayList intersectCluster(IntArrayList list1, IntArrayList list2) {

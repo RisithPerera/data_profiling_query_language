@@ -1,12 +1,15 @@
 package de.metathesis;
 
-import de.metaserve.parser.graph.FD;
-import de.metathesis.profilers.AbstractProfiler;
 import de.metathesis.profilers.FDProfiler;
 import de.metathesis.profilers.INDProfiler;
 import de.metathesis.profilers.UCCProfiler;
-import de.metathesis.structures.AttributeList;
+import de.metathesis.structures.ImmutableBitSet;
+import de.metathesis.structures.results.FDResult;
+import de.metathesis.structures.results.INDResult;
+import de.metathesis.structures.results.UCCResult;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -38,20 +41,25 @@ public final class Instructor {
     public void runPipeline(int maxLevel) {
 
         // Start UCC(1)
-        CompletableFuture<AttributeList[]> uccFuture = uccProfiler.runAsync(1);
+        CompletableFuture<List<UCCResult>> uccFuture = uccProfiler.runAsync(1);
+        List<CompletableFuture<List<FDResult>>> fdFutures = new ArrayList<>();
 
-        for (int level = 0; level < maxLevel; level++) {
+        for (int level = 1; level <= maxLevel; level++) {
 
             final int currentLevel = level;
 
             // When UCC(L) completes → run IND(L)
-            CompletableFuture<AttributeList[]> indFuture = uccFuture.thenCompose(
-                    uccResult -> indProfiler.runAsync(currentLevel)
+            CompletableFuture<List<INDResult>> indFuture = uccFuture.thenCompose(
+                    uccResult -> {
+                        System.out.println(uccResult);
+                        return indProfiler.runAsync(currentLevel);
+                    }
             );
 
-            CompletableFuture<Void> fdFuture = indFuture.thenAccept(
+            CompletableFuture<List<FDResult>> fdFuture = indFuture.thenCompose(
                     ignored -> fdProfiler.runAsync(currentLevel)
             );
+            fdFutures.add(fdFuture);
 
             // Prepare UCC(L+1) immediately after UCC(L)
             if (level < maxLevel) {
@@ -63,6 +71,7 @@ public final class Instructor {
 
         System.out.println("Pipeline scheduled");
         uccFuture.join();
+        CompletableFuture.allOf(fdFutures.toArray(new CompletableFuture[0])).join();
         System.out.println("Pipeline completed");
     }
 

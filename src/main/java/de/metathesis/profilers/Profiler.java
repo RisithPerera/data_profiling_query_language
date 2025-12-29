@@ -1,13 +1,12 @@
 package de.metathesis.profilers;
 
-import javax.management.AttributeList;
+import de.metanome.algorithm_integration.input.InputIterationException;
+
 import java.util.concurrent.CompletableFuture;
 
 interface Profiler<T> {
 
     CompletableFuture<T> runAsync(int level);
 
-    T profile(int number);
-
-    String name();
+    T profile(int number) throws InputIterationException;
 }

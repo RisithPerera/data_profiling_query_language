@@ -7,20 +7,26 @@ import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
-import de.metathesis.structures.AttributeList;
+import de.metathesis.structures.ImmutableBitSet;
 import de.metathesis.structures.PositionListIndex;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public final class Preprocessor {
 
     private static final Preprocessor INSTANCE = new Preprocessor();
-    private final HashMap<String, List<String>> tableMetadata = new HashMap<>();
-    private final HashMap<String, List<PositionListIndex>> tablePlis = new HashMap<>();
+
+    private final Object2IntMap<String> relationToIndex = new Object2IntOpenHashMap<>();
+
+    private final List<String> relationNames = new ArrayList<>();
+    private final List<String[]> attributeNames = new ArrayList<>();
+    private final List<RelationalInput> relationalInputs = new ArrayList<>();
+    private final Int2ObjectMap<PositionListIndex[]> relationPLIsMap = new Int2ObjectOpenHashMap<>();
 
     private final int inputRowLimit;
     private final boolean isNullEqualNull;
@@ -28,47 +34,97 @@ public final class Preprocessor {
     private Preprocessor() {
         this.inputRowLimit = InputConfigurationSingleton.get().getFILE_MAX_ROWS();
         this.isNullEqualNull = InputConfigurationSingleton.get().getFILE_NULL_EQUALS_NULL();
+        this.relationToIndex.defaultReturnValue(-1);
     }
 
     public static Preprocessor getInstance() {
         return INSTANCE;
     }
 
-    // Simulates reading a CSV and returning a Relation
-    public synchronized List<PositionListIndex> loadRelation(String fileName) {
-        if(tablePlis.containsKey(fileName)) {
-            System.out.println("Return relations from " + fileName);
-            return tablePlis.get(fileName);
+    public Map<String, int[]> initializeSearchSpace(Map<String, List<String>> relationMap) throws AlgorithmConfigurationException, InputGenerationException {
+        // 1. Build relation universe
+        for (List<String> relations : relationMap.values()) {
+            for (String relation : relations) {
+                if (relationToIndex.getInt(relation) == -1) {
+                    System.out.println("Initialize Relation: " + relation);
+                    int id = relationNames.size();
+                    relationToIndex.put(relation, id);
+                    relationNames.add(relation);
+
+                    RelationalInputGenerator inputGenerator = MetanomeHelper.getInput(relation);
+                    RelationalInput relationalInput = inputGenerator.generateNewCopy();
+                    assert relationalInput != null : "Input generation failed!";
+
+                    relationalInputs.add(relationalInput);
+
+                    String[] columns = relationalInput.columnNames().toArray(new String[0]);
+                    attributeNames.add(columns);
+                }
+            }
         }
 
-        try {
-            System.out.println("Loading relations from " + fileName);
-            RelationalInputGenerator input = MetanomeHelper.getInput(fileName);
+        // 2. Build index map for variables (X, Y, Z)
+        Map<String, int[]> relationIndexMap = new HashMap<>(relationMap.size());
 
-            RelationalInput relationalInput = input.generateNewCopy();
-            if (relationalInput == null) {
-                throw new InputGenerationException("Input generation failed!");
+        for (Map.Entry<String, List<String>> relationsEntry : relationMap.entrySet()) {
+            List<String> relations = relationsEntry.getValue();
+            int[] idx = new int[relations.size()];
+
+            for (int i = 0; i < relations.size(); i++) {
+                idx[i] = relationToIndex.getInt(relations.get(i));
             }
 
-            String tableName = relationalInput.relationName();
-            List<String> columns = relationalInput.columnNames();
-            int numAttributes = columns.size();
-            List<HashMap<String, IntArrayList>> clusters = calculateClusterMaps(relationalInput, numAttributes);
-            List<PositionListIndex> plis = fetchPositionListIndexes(clusters, numAttributes);
-
-            tableMetadata.put(fileName, columns);
-            tablePlis.put(fileName, plis);
-            return plis;
-        } catch (InputGenerationException | AlgorithmConfigurationException | InputIterationException e) {
-            throw new RuntimeException(e);
+            relationIndexMap.put(relationsEntry.getKey(), idx);
         }
+
+        return relationIndexMap;
     }
 
-    private List<HashMap<String, IntArrayList>> calculateClusterMaps(RelationalInput relationalInput, int numAttributes) throws InputIterationException {
-        List<HashMap<String, IntArrayList>> clusterMaps = new ArrayList<>();
+    public synchronized int getRelationIndexOf(String fileName) {
+        return relationToIndex.getInt(fileName);
+    }
+
+    public synchronized int getAttributeSizeOf(int relationIndex) {
+        return attributeNames.get(relationIndex).length;
+    }
+
+    public synchronized int[] getAttributeSizesOf(int[] relationIndexes) {
+        int[] sizes = new int[relationIndexes.length];
+
+        for (int i = 0; i < relationIndexes.length; i++) {
+            sizes[i] = attributeNames.get(relationIndexes[i]).length;
+        }
+
+        return sizes;
+    }
+
+    // Simulates reading a CSV and returning a Relation
+    public synchronized PositionListIndex[] getPositionListIndexesOf(int relationIndex) throws InputIterationException {
+
+        if(relationPLIsMap.containsKey(relationIndex)) {
+            System.out.println("Return Cached PLI: " + relationIndex);
+            return relationPLIsMap.get(relationIndex);
+        }
+
+        RelationalInput relationalInput = relationalInputs.get(relationIndex);
+        assert relationalInput != null : "Initialization is important!";
+
+        int numAttributes = attributeNames.get(relationIndex).length;
+
+        List<Map<String, IntArrayList>> clusters = calculateClusterMaps(relationalInput, numAttributes);
+        List<PositionListIndex> plis = fetchPositionListIndexes(clusters);
+
+        PositionListIndex[] plisArray = plis.toArray(new PositionListIndex[0]);
+
+        relationPLIsMap.put(relationIndex, plisArray);
+        return plisArray;
+    }
+
+    private List<Map<String, IntArrayList>> calculateClusterMaps(RelationalInput relationalInput, int numAttributes) throws InputIterationException {
+        List<Map<String, IntArrayList>> clusterMaps = new ArrayList<>();
 
         for (int i = 0; i < numAttributes; i++) {
-            clusterMaps.add(new HashMap<String, IntArrayList>());
+            clusterMaps.add(new HashMap<>());
         }
 
         int numRecords = 0;
@@ -77,7 +133,7 @@ public final class Preprocessor {
 
             int attributeId = 0;
             for (String value : record) {
-                HashMap<String, IntArrayList> clusterMap = clusterMaps.get(attributeId);
+                Map<String, IntArrayList> clusterMap = clusterMaps.get(attributeId);
 
                 if (clusterMap.containsKey(value)) {
                     clusterMap.get(value).add(numRecords);
@@ -92,18 +148,20 @@ public final class Preprocessor {
             }
 
             numRecords++;
-            if (numRecords == Integer.MAX_VALUE - 1)
-                throw new RuntimeException("PLI encoding into integer based PLIs is not possible, because the number of records in the dataset exceeds Integer.MAX_VALUE. Use long based plis instead! (NumRecords = " + numRecords + " and Integer.MAX_VALUE = " + Integer.MAX_VALUE);
+            if (numRecords > Integer.MAX_VALUE - 1) {
+                throw new IllegalStateException("Number of records " + numRecords
+                        + "exceeds max int for IntArrayList. Use long-based PLIs instead");
+            }
         }
 
         return clusterMaps;
     }
 
-    private List<PositionListIndex> fetchPositionListIndexes(List<HashMap<String, IntArrayList>> clusterMaps, int numAttributes) {
+    private List<PositionListIndex> fetchPositionListIndexes(List<Map<String, IntArrayList>> clusterMaps) {
         List<PositionListIndex> clustersPerAttribute = new ArrayList<>();
         for (int columnId = 0; columnId < clusterMaps.size(); columnId++) {
             List<IntArrayList> clusters = new ArrayList<>();
-            HashMap<String, IntArrayList> clusterMap = clusterMaps.get(columnId);
+            Map<String, IntArrayList> clusterMap = clusterMaps.get(columnId);
 
             if (!this.isNullEqualNull)
                 clusterMap.remove(null);
@@ -112,11 +170,10 @@ public final class Preprocessor {
                 if (cluster.size() > 1)
                     clusters.add(cluster);
 
-            BitSet bs = new BitSet(numAttributes);
-            bs.set(columnId);
-            AttributeList attributeList = new AttributeList(bs);
-            clustersPerAttribute.add(new PositionListIndex(attributeList, clusters));
+            ImmutableBitSet immutableBitSet = new ImmutableBitSet(columnId);
+            clustersPerAttribute.add(new PositionListIndex(immutableBitSet, clusters));
         }
+
         return clustersPerAttribute;
     }
 }

@@ -4,9 +4,9 @@ import de.metanome.algorithm_integration.input.InputIterationException;
 
 import java.util.concurrent.CompletableFuture;
 
-interface Profiler<T> {
+interface Profiler<In, Out> {
 
-    CompletableFuture<T> runAsync(int level);
+    CompletableFuture<Out> runAsync(In input);
 
-    T profile(int number) throws InputIterationException;
+    Out profile(In input) throws InputIterationException;
 }

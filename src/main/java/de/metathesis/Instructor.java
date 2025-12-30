@@ -3,7 +3,6 @@ package de.metathesis;
 import de.metathesis.profilers.FDProfiler;
 import de.metathesis.profilers.INDProfiler;
 import de.metathesis.profilers.UCCProfiler;
-import de.metathesis.structures.ImmutableBitSet;
 import de.metathesis.structures.results.FDResult;
 import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.UCCResult;

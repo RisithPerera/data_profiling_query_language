@@ -1,10 +1,12 @@
 package de.metathesis.structures;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class PositionListIndex {
     private final ImmutableBitSet attributeIndexList;
     private final List<IntArrayList> clusters; //Including single clusters
@@ -12,14 +14,6 @@ public class PositionListIndex {
     public PositionListIndex(ImmutableBitSet attributeIndexList, List<IntArrayList> clusters) {
         this.attributeIndexList = attributeIndexList;
         this.clusters = clusters;
-    }
-
-    public ImmutableBitSet getAttributeIndexList() {
-        return attributeIndexList;
-    }
-
-    public List<IntArrayList> getClusters() {
-        return clusters;
     }
 
     public boolean isUnique() {

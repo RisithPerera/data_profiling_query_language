@@ -1,15 +1,31 @@
 package de.metathesis.profilers;
 
-
+import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.Preprocessor;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-public abstract class AbstractProfiler<T> implements Profiler<T> {
-    protected final Preprocessor preprocessor = Preprocessor.getInstance();
+public abstract class AbstractProfiler<In, Out> implements Profiler<In, Out> {
+    protected final Preprocessor preprocessor;
     protected final Executor executor;
 
     public AbstractProfiler(Executor executor) {
         this.executor = executor;
+        this.preprocessor = Preprocessor.getInstance();
+    }
+
+    @Override
+    public CompletableFuture<Out> runAsync(In input) {
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    try {
+                        return profile(input);
+                    } catch (InputIterationException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                executor
+        );
     }
 }

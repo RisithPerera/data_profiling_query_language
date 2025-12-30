@@ -4,20 +4,20 @@ import de.metathesis.structures.ImmutableBitSet;
 import lombok.Getter;
 
 @Getter
-public class UCCRequest {
+public class INDRequest {
     private final boolean isLocked;
 
     private int[] relations;
     private int level;
     private ImmutableBitSet[] combinations;
 
-    public UCCRequest(int[] relations, int level) {
+    public INDRequest(int[] relations, int level) {
         this.relations = relations;
         this.level = level;
         this.isLocked = false;
     }
 
-    public UCCRequest(ImmutableBitSet[] combinations) {
+    public INDRequest(ImmutableBitSet[] combinations) {
         this.combinations = combinations;
         this.isLocked = true;
     }

@@ -3,34 +3,21 @@ package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.structures.PositionListIndex;
+import de.metathesis.structures.requests.UCCRequest;
 import de.metathesis.structures.results.UCCResult;
 
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executor;
 
-public class UCCProfiler extends AbstractProfiler<List<UCCResult>> {
+public class UCCProfiler extends AbstractProfiler<UCCRequest, List<UCCResult>> {
 
     public UCCProfiler(Executor executor) {
         super(executor);
     }
 
     @Override
-    public CompletableFuture<List<UCCResult>> runAsync(int level) {
-        return CompletableFuture.supplyAsync(
-                () -> {
-                    try {
-                        return profile(level);
-                    } catch (InputIterationException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                executor
-        );
-    }
-
-    @Override
-    public List<UCCResult> profile(int level) throws InputIterationException {
+    public List<UCCResult> profile(UCCRequest request) throws InputIterationException {
         PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(0);
 
         List<UCCResult> uniques = new ArrayList<>();

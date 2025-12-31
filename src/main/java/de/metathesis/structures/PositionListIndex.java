@@ -8,11 +8,11 @@ import java.util.List;
 
 @Getter
 public class PositionListIndex {
-    private final ImmutableBitSet attributeIndexList;
+    private final AttributeBitSet attributeSet;
     private final List<IntArrayList> clusters; //Including single clusters
 
-    public PositionListIndex(ImmutableBitSet attributeIndexList, List<IntArrayList> clusters) {
-        this.attributeIndexList = attributeIndexList;
+    public PositionListIndex(AttributeBitSet attributeSet, List<IntArrayList> clusters) {
+        this.attributeSet = attributeSet;
         this.clusters = clusters;
     }
 
@@ -35,7 +35,7 @@ public class PositionListIndex {
             }
         }
 
-        return new PositionListIndex(this.attributeIndexList.union(other.attributeIndexList), intersectClusters);
+        return new PositionListIndex(this.attributeSet.union(other.attributeSet), intersectClusters);
     }
 
     private IntArrayList intersectCluster(IntArrayList list1, IntArrayList list2) {

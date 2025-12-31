@@ -2,23 +2,26 @@ package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.structures.requests.FDRequest;
+import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.Executor;
 
-public class FDProfiler extends AbstractProfiler<FDRequest, List<FDResult>> {
+public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
     public FDProfiler(Executor executor) {
         super(executor);
     }
 
     @Override
-    public List<FDResult> profile(FDRequest input) throws InputIterationException {
+    public FDResult profile(FDRequest input) throws InputIterationException {
         this.preprocessor.getPositionListIndexesOf(0);
+
+        FDResult result = new FDResult();
         for (int i = 1; i <= 5; i++) {
-            System.out.println("Profiling  FD:" + input.getLevel() + " = " + i);
+            if(input.lhs() instanceof SearchSpace.CC cc){
+                System.out.println("Profiling  FD:" + cc.level() + " = " + i);
+            }
 
             try {
                 Thread.sleep(1000);
@@ -27,7 +30,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, List<FDResult>> {
                 break;
             }
         }
-        return Collections.emptyList();
+        return result;
     }
 }
 

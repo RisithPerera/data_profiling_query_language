@@ -10,31 +10,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-public class UCCProfiler extends AbstractProfiler<UCCRequest, List<UCCResult>> {
+public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
     public UCCProfiler(Executor executor) {
         super(executor);
     }
 
     @Override
-    public List<UCCResult> profile(UCCRequest request) throws InputIterationException {
+    public UCCResult profile(UCCRequest request) throws InputIterationException {
         PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(0);
-
-        List<UCCResult> uniques = new ArrayList<>();
         List<PositionListIndex> currentNonUniques = new ArrayList<>();
 
+        UCCResult results = new UCCResult();
         // Calculate all unary UCCs and unary non-UCCs
         for(PositionListIndex pli : plis) {
             if (pli.isUnique()) {
-                uniques.add(new UCCResult(0, pli.getAttributeIndexList()));
+                results.add(pli.getAttributeSet());
             } else {
                 currentNonUniques.add(pli);
             }
         }
 
-        //simpleWalk(relation, uniques, currentNonUniques);
-
-        return uniques;
+        return results;
     }
 
     /*private void simpleWalk(Relation relation, List<UCCResult> uniques, List<PositionListIndex> currentLevel){

@@ -3,24 +3,26 @@ package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.structures.requests.INDRequest;
+import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.INDResult;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.Executor;
 
-public class INDProfiler extends AbstractProfiler<INDRequest, List<INDResult>> {
+public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
     public INDProfiler(Executor executor) {
         super(executor);
     }
 
     @Override
-    public List<INDResult> profile(INDRequest input) throws InputIterationException {
+    public INDResult profile(INDRequest input) throws InputIterationException {
         this.preprocessor.getPositionListIndexesOf(0);
 
+        INDResult result = new INDResult();
         for (int i = 1; i <= 5; i++) {
-            System.out.println("Profiling IND:" + input.getLevel() + " = " + i);
+            if(input.rhs() instanceof SearchSpace.CC cc){
+                System.out.println("Profiling  IND:" + cc.level() + " = " + i);
+            }
 
             try {
                 // Pause the execution for 1 second
@@ -30,6 +32,6 @@ public class INDProfiler extends AbstractProfiler<INDRequest, List<INDResult>> {
                 break;
             }
         }
-        return Collections.emptyList();
+        return result;
     }
 }

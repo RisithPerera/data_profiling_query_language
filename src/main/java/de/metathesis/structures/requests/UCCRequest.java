@@ -1,24 +1,14 @@
 package de.metathesis.structures.requests;
 
-import de.metathesis.structures.ImmutableBitSet;
-import lombok.Getter;
+public final class UCCRequest {
+    private final SearchSpace side;
 
-@Getter
-public class UCCRequest {
-    private final boolean isLocked;
-
-    private int[] relations;
-    private int level;
-    private ImmutableBitSet[] combinations;
-
-    public UCCRequest(int[] relations, int level) {
-        this.relations = relations;
-        this.level = level;
-        this.isLocked = false;
+    public UCCRequest(SearchSpace side) {
+        this.side = side;
     }
 
-    public UCCRequest(ImmutableBitSet[] combinations) {
-        this.combinations = combinations;
-        this.isLocked = true;
+    public SearchSpace side() {
+        return side;
     }
 }
+

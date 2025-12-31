@@ -1,49 +1,83 @@
 package de.metathesis.structures.results;
 
-import de.metathesis.structures.ImmutableBitSet;
-import lombok.Getter;
+import de.metathesis.structures.AttributeBitSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-@Getter
-public class FDResult {
-    private final int relationIndex;
-    private final ImmutableBitSet lhsAttributeIndexList;
-    private final ImmutableBitSet rhsAttributeIndexList;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-    public FDResult(int relationIndex,
-                    ImmutableBitSet lhsAttributeIndexList,
-                    ImmutableBitSet rhsAttributeIndexList) {
-        this.relationIndex = relationIndex;
-        this.lhsAttributeIndexList = lhsAttributeIndexList;
-        this.rhsAttributeIndexList = rhsAttributeIndexList;
+public final class FDResult implements Iterable<FDResult.FD>{
+
+    private final ObjectArrayList<AttributeBitSet> lhs = new ObjectArrayList<>();
+    private final ObjectArrayList<AttributeBitSet> rhs = new ObjectArrayList<>();
+
+    public void add(AttributeBitSet lhsBitSet, AttributeBitSet rhsBitSet) {
+        assert (lhsBitSet.getRelationIndex() == rhsBitSet.getRelationIndex());
+
+        lhs.add(lhsBitSet);
+        rhs.add(rhsBitSet);
     }
 
-    private int computeHash() {
-        int h = 17;
-        h = 31 * h + relationIndex;
-        h = 31 * h + lhsAttributeIndexList.hashCode();
-        h = 31 * h + rhsAttributeIndexList.hashCode();
-        return h;
+    public int size() {
+        return lhs.size();
+    }
+
+    public boolean isEmpty() {
+        return lhs.isEmpty();
+    }
+
+    public FD get(int index) {
+        return new FD(lhs.get(index), rhs.get(index));
+    }
+
+    public ObjectArrayList<AttributeBitSet> asLhsList() {
+        return this.lhs;
+    }
+
+    public ObjectArrayList<AttributeBitSet> asRhsList() {
+        return this.rhs;
+    }
+
+    /* --- Separate Iteration --- */
+    public Iterable<AttributeBitSet> lhs() {
+        return lhs;
+    }
+
+    public Iterable<AttributeBitSet> rhs() {
+        return rhs;
     }
 
     @Override
-    public int hashCode() {
-        return computeHash();
+    public Iterator<FD> iterator() {
+        return new Iterator<>() {
+            private int idx = 0;
+
+            @Override
+            public boolean hasNext() {
+                return idx < lhs.size();
+            }
+
+            @Override
+            public FD next() {
+                if (!hasNext()) throw new NoSuchElementException();
+                return new FD(lhs.get(idx), rhs.get(idx++));
+            }
+        };
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof FDResult other)) return false;
+    /* --- Internal IND Object --- */
+    public static final class FD {
+        public final AttributeBitSet lhs;
+        public final AttributeBitSet rhs;
 
-        return this.relationIndex == other.relationIndex
-                && this.lhsAttributeIndexList.equals(other.lhsAttributeIndexList)
-                && this.rhsAttributeIndexList.equals(other.rhsAttributeIndexList);
-    }
+        private FD(AttributeBitSet lhs, AttributeBitSet rhs) {
+            this.lhs = lhs;
+            this.rhs = rhs;
+        }
 
-    @Override
-    public String toString() {
-        return "(" + this.relationIndex + ":" + this.lhsAttributeIndexList + ")" +
-                " -> " +
-                "(" + this.relationIndex + ":" + this.rhsAttributeIndexList + ")";
+        @Override
+        public String toString() {
+            return lhs.toString() + " -> " + rhs.toString();
+        }
     }
 }

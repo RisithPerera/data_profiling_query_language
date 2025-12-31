@@ -7,7 +7,7 @@ import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
-import de.metathesis.structures.ImmutableBitSet;
+import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -115,7 +115,7 @@ public final class Preprocessor {
         int numAttributes = attributeNames.get(relationIndex).length;
 
         List<Map<String, IntArrayList>> clusters = calculateClusterMaps(relationalInput, numAttributes);
-        List<PositionListIndex> plis = fetchPositionListIndexes(clusters);
+        List<PositionListIndex> plis = fetchPositionListIndexes(relationIndex, clusters);
 
         PositionListIndex[] plisArray = plis.toArray(new PositionListIndex[0]);
 
@@ -160,7 +160,7 @@ public final class Preprocessor {
         return clusterMaps;
     }
 
-    private List<PositionListIndex> fetchPositionListIndexes(List<Map<String, IntArrayList>> clusterMaps) {
+    private List<PositionListIndex> fetchPositionListIndexes(int relationIndex, List<Map<String, IntArrayList>> clusterMaps) {
         List<PositionListIndex> clustersPerAttribute = new ArrayList<>();
         for (int columnId = 0; columnId < clusterMaps.size(); columnId++) {
             List<IntArrayList> clusters = new ArrayList<>();
@@ -173,8 +173,8 @@ public final class Preprocessor {
                 if (cluster.size() > 1)
                     clusters.add(cluster);
 
-            ImmutableBitSet immutableBitSet = new ImmutableBitSet(columnId);
-            clustersPerAttribute.add(new PositionListIndex(immutableBitSet, clusters));
+            AttributeBitSet attributeBitSet = new AttributeBitSet(relationIndex, columnId);
+            clustersPerAttribute.add(new PositionListIndex(attributeBitSet, clusters));
         }
 
         return clustersPerAttribute;

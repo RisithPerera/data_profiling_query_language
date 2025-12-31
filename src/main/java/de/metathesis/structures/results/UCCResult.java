@@ -1,41 +1,36 @@
 package de.metathesis.structures.results;
 
-import de.metathesis.structures.ImmutableBitSet;
-import lombok.Getter;
+import de.metathesis.structures.AttributeBitSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-@Getter
-public class UCCResult {
-    private final int relationIndex;
-    private final ImmutableBitSet attributeIndexList;
+import java.util.Iterator;
 
-    public UCCResult(int relationIndex, ImmutableBitSet attributeIndexList) {
-        this.relationIndex = relationIndex;
-        this.attributeIndexList = attributeIndexList;
+public final class UCCResult implements Iterable<AttributeBitSet> {
+
+    private final ObjectArrayList<AttributeBitSet> lhs = new ObjectArrayList<>();
+
+    public void add(AttributeBitSet attributeBitSet) {
+        lhs.add(attributeBitSet);
     }
 
-    private int computeHash() {
-        int h = 17;
-        h = 31 * h + relationIndex;
-        h = 31 * h + attributeIndexList.hashCode();
-        return h;
+    public int size() {
+        return lhs.size();
     }
 
-    @Override
-    public int hashCode() {
-        return computeHash();
+    public boolean isEmpty() {
+        return lhs.isEmpty();
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof UCCResult other)) return false;
+    public AttributeBitSet get(int index) {
+        return lhs.get(index);
+    }
 
-        return relationIndex == other.relationIndex
-                && attributeIndexList.equals(other.attributeIndexList);
+    public ObjectArrayList<AttributeBitSet> asLhsList() {
+        return lhs;
     }
 
     @Override
-    public String toString() {
-        return "(" + relationIndex + ":" + attributeIndexList + ")";
+    public Iterator<AttributeBitSet> iterator() {
+        return lhs.iterator();
     }
 }

@@ -40,7 +40,7 @@ public class HolisticProfileStrategy implements Strategy{
         try {
             Map<String, int[]> relationIndexMap = preprocessor.initializeSearchSpace(relationMap);
 
-            instructor.runPipeline(3);
+            instructor.runPipeline(relationIndexMap, 3);
 
             metadata.update(QueryEngine.QueryState.COMPUTED_MIN);
         } catch (AlgorithmConfigurationException |InputGenerationException e) {

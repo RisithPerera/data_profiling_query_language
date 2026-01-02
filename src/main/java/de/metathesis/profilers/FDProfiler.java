@@ -15,19 +15,17 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
-        this.preprocessor.getPositionListIndexesOf(0);
-
         FDResult result = new FDResult();
-        for (int i = 1; i <= 5; i++) {
-            if(input.lhs() instanceof SearchSpace.CC cc){
-                System.out.println("Profiling  FD:" + cc.level() + " = " + i);
-            }
 
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
+        if(input.lhs() instanceof SearchSpace.Locked locked && input.rhs() instanceof SearchSpace.CC cc) {
+            for(int relationIndex : cc.relations()){
+                System.out.println("Profiling  FD  -> Relation: " + relationIndex + " Level: "+ cc.level());
+                if(cc.level() == 1){
+
+                }else{
+
+                }
+
             }
         }
         return result;

@@ -3,7 +3,6 @@ package de.metathesis;
 import de.metathesis.profilers.FDProfiler;
 import de.metathesis.profilers.INDProfiler;
 import de.metathesis.profilers.UCCProfiler;
-import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.INDRequest;
 import de.metathesis.structures.requests.SearchSpace;
@@ -23,13 +22,14 @@ public final class Instructor {
 
     private static volatile Instructor INSTANCE;
     private final ExecutorService pool;
+    private final Preprocessor preprocessor;
     private final UCCProfiler uccProfiler;
     private final INDProfiler indProfiler;
     private final FDProfiler fdProfiler;
 
     private Instructor(ExecutorService pool) {
         this.pool = pool;
-
+        this.preprocessor = Preprocessor.getInstance();
         this.uccProfiler = new UCCProfiler(pool);
         this.indProfiler = new INDProfiler(pool);
         this.fdProfiler  = new FDProfiler(pool);
@@ -43,12 +43,14 @@ public final class Instructor {
         return INSTANCE;
     }
 
-    public void runPipeline(Map<String, int[]> relationIndexMap, int maxLevel) {
+    public void runPipeline(Map<String, int[]> relationIndexMap) {
 
         // Start UCC(1)
         UCCRequest uccRequest = new UCCRequest(new SearchSpace.CC(relationIndexMap.get("Y"), 1));
         CompletableFuture<UCCResult> uccFuture = uccProfiler.runAsync(uccRequest);
         List<CompletableFuture<FDResult>> fdFutures = new ArrayList<>();
+
+        int maxLevel = Instructor.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("Y")));
 
         for (int level = 1; level <= maxLevel; level++) {
 
@@ -57,9 +59,7 @@ public final class Instructor {
             // When UCC(L) completes → run IND(L)
             CompletableFuture<INDResult> indFuture = uccFuture.thenCompose(
                     uccResult -> {
-                        for(AttributeBitSet ucc : uccResult) {
-                            System.out.println(ucc);
-                        }
+                        this.preprocessor.printUCC(uccResult);
 
                         INDRequest indRequest = new INDRequest(
                                 new SearchSpace.CC(relationIndexMap.get("X"), currentLevel),
@@ -71,6 +71,8 @@ public final class Instructor {
 
             CompletableFuture<FDResult> fdFuture = indFuture.thenCompose(
                     indResult -> {
+                        this.preprocessor.printIND(indResult);
+
                         FDRequest fdRequest = new FDRequest(
                                 new SearchSpace.Locked(indResult.asRhsList()),
                                 new SearchSpace.CC(relationIndexMap.get("Z"), currentLevel)
@@ -108,4 +110,13 @@ public final class Instructor {
             Thread.currentThread().interrupt();
         }
     }
+
+    private static int max(int[] a) {
+        int m = a[0];
+        for (int i = 1; i < a.length; i++) {
+            if (a[i] > m) m = a[i];
+        }
+        return m;
+    }
+
 }

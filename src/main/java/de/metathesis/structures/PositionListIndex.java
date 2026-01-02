@@ -29,7 +29,7 @@ public class PositionListIndex {
                 // Compute intersection of list1 and list2
                 IntArrayList common = intersectCluster(list1, list2);
 
-                if (!common.isEmpty()) {
+                if (common.size() > 1) {
                     intersectClusters.add(common);
                 }
             }
@@ -60,6 +60,14 @@ public class PositionListIndex {
         }
 
         return res;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof PositionListIndex other)) return false;
+
+        return this.attributeSet.equals(other.attributeSet);
     }
 }
 

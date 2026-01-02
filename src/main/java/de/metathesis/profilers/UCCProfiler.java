@@ -1,10 +1,14 @@
 package de.metathesis.profilers;
 
-
 import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
+import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.requests.UCCRequest;
 import de.metathesis.structures.results.UCCResult;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,26 +16,68 @@ import java.util.concurrent.Executor;
 
 public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
+    Long2ObjectMap<PositionListIndex[]> nonUniquePLIs = new Long2ObjectOpenHashMap<>();
+
     public UCCProfiler(Executor executor) {
         super(executor);
     }
 
     @Override
     public UCCResult profile(UCCRequest request) throws InputIterationException {
-        PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(0);
-        List<PositionListIndex> currentNonUniques = new ArrayList<>();
-
         UCCResult results = new UCCResult();
-        // Calculate all unary UCCs and unary non-UCCs
-        for(PositionListIndex pli : plis) {
-            if (pli.isUnique()) {
-                results.add(pli.getAttributeSet());
-            } else {
-                currentNonUniques.add(pli);
+
+        if(request.side() instanceof SearchSpace.CC cc){
+            for(int relationIndex : cc.relations()){
+                System.out.println("Profiling  UCC -> Relation: " + relationIndex + " Level: "+ cc.level());
+                if(cc.level() == 1){
+                    PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(relationIndex);
+                    List<PositionListIndex> currentNonUniques = new ArrayList<>();
+
+                    // Calculate all unary UCCs and unary non-UCCs
+                    for(PositionListIndex pli : plis) {
+                        if (pli.isUnique()) {
+                            results.add(pli.getAttributeSet());
+                        } else {
+                            currentNonUniques.add(pli);
+                        }
+                    }
+
+                    nonUniquePLIs.put(UCCProfiler.key(relationIndex, cc.level()), currentNonUniques.toArray(new PositionListIndex[0]));
+                }else{
+                    PositionListIndex[] nonUniques = nonUniquePLIs.get(UCCProfiler.key(relationIndex, cc.level() - 1));
+                    if(nonUniques == null){return results;}
+
+                    List<PositionListIndex> currentNonUniques = new ArrayList<>();
+                    ObjectOpenHashSet<AttributeBitSet> calculatedAttributeSet = new ObjectOpenHashSet<>();
+
+                    for (int i = 0; i < nonUniques.length; i++) {
+                        for (int j = i + 1; j < nonUniques.length; j++) {
+                            PositionListIndex pli1 = nonUniques[i];
+                            PositionListIndex pli2 = nonUniques[j];
+
+
+                            // Calculate all unary UCCs and unary non-UCCs
+                            PositionListIndex pli = pli1.intersect(pli2);
+                            if(!calculatedAttributeSet.contains(pli.getAttributeSet()) && pli.getAttributeSet().size() == cc.level()){
+                                calculatedAttributeSet.add(pli.getAttributeSet());
+                                if (pli.isUnique()) {
+                                    results.add(pli.getAttributeSet());
+                                } else {
+                                    currentNonUniques.add(pli);
+                                }
+                            }
+                        }
+                    }
+                    nonUniquePLIs.put(UCCProfiler.key(relationIndex, cc.level()), currentNonUniques.toArray(new PositionListIndex[0]));
+                }
             }
         }
 
         return results;
+    }
+
+    private static long key(int a, int b) {
+        return ((long) a << 32) | (b & 0xffffffffL);
     }
 
     /*private void simpleWalk(Relation relation, List<UCCResult> uniques, List<PositionListIndex> currentLevel){

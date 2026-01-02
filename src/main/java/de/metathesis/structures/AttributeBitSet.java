@@ -40,12 +40,22 @@ public final class AttributeBitSet{
     }
 
     AttributeBitSet union(AttributeBitSet other) {
-        if (this.relationIndex == other.relationIndex) {
-            throw new UnsupportedOperationException("Cannot union on different relations");
+        if (this.relationIndex != other.relationIndex) {
+            throw new UnsupportedOperationException("Cannot perform union on AttributeBitSets from different relations");
         }
 
         BitSet out = this.getAttributeIndexSet();
         out.or(other.attributeIndexSet);
+        return new AttributeBitSet(this.relationIndex, out);
+    }
+
+    AttributeBitSet intersect(AttributeBitSet other) {
+        if (this.relationIndex != other.relationIndex) {
+            throw new UnsupportedOperationException("Cannot perform intersect on AttributeBitSets from different relations");
+        }
+
+        BitSet out = this.getAttributeIndexSet();
+        out.and(other.attributeIndexSet);
         return new AttributeBitSet(this.relationIndex, out);
     }
 

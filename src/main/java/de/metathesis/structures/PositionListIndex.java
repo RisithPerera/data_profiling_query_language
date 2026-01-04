@@ -9,7 +9,7 @@ import java.util.List;
 @Getter
 public class PositionListIndex {
     private final AttributeBitSet attributeSet;
-    private final List<IntArrayList> clusters; //Including single clusters
+    private final List<IntArrayList> clusters;
 
     public PositionListIndex(AttributeBitSet attributeSet, List<IntArrayList> clusters) {
         this.attributeSet = attributeSet;
@@ -62,12 +62,18 @@ public class PositionListIndex {
         return res;
     }
 
+    public boolean isEqualClusters(PositionListIndex other) {
+        if (other == null) return false;
+        return this.clusters.equals(other.clusters);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof PositionListIndex other)) return false;
 
-        return this.attributeSet.equals(other.attributeSet);
+        return attributeSet.equals(other.attributeSet)
+                && clusters.equals(other.clusters);
     }
 }
 

@@ -2,16 +2,20 @@ package de.metathesis.profilers;
 
 
 import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metathesis.Instructor;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.requests.INDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.INDResult;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.concurrent.Executor;
 
 public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
+
+    private final Object2ObjectOpenHashMap<AttributeBitSet, String[]> cashedTuples = new Object2ObjectOpenHashMap<>();
 
     public INDProfiler(Executor executor) {
         super(executor);
@@ -21,23 +25,24 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
     public INDResult profile(INDRequest input) throws InputIterationException {
         INDResult result = new INDResult();
 
-        if(input.lhs() instanceof SearchSpace.CC cc && input.rhs() instanceof SearchSpace.Locked locked) {
-            for(int relationIndex : cc.relations()){
-                System.out.println("Profiling  IND -> Relation: " + relationIndex + " Level: "+ cc.level());
-                String[][] lhsRecords = preprocessor.getValueSetOf(relationIndex);
-                int numRows = lhsRecords[0].length;
-                AttributeBitSet[] lhsAttributeSets = this.preprocessor.generateApriori(relationIndex, cc.level());
+        if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs) {
+            for(int relationIndex : lhs.relations()){
+                Instructor.printLog(String.format("P: IND R:%d L:%d", relationIndex,  lhs.level()), this.executor);
+                String[][] lhsRecords = preprocessor.getColumnWiseDataOf(relationIndex);
+                AttributeBitSet[] lhsAttributeSets = this.preprocessor.generateApriori(relationIndex, lhs.level());
 
+                //Instructor.printLog("IND", this.executor);
                 for(AttributeBitSet lhsAttributeSet : lhsAttributeSets){
-                    String[] lhsTuples = buildTuples(lhsRecords, lhsAttributeSet.getAttributeIndexSet());
-                    for(AttributeBitSet rhsAttributeSet : locked.attributes()){
-                        if(!lhsAttributeSet.equals(rhsAttributeSet)){
-                            String[][] rhsRecords = preprocessor.getValueSetOf(rhsAttributeSet.getRelationIndex());
-                            String[] rhsTuples = buildTuples(rhsRecords, rhsAttributeSet.getAttributeIndexSet());
+                    String[] lhsTuples = getTuples(lhsRecords, lhsAttributeSet);
+                    for(AttributeBitSet rhsAttributeSet : rhs.attributes()){
+                        if(lhsAttributeSet.getRelationIndex() == rhsAttributeSet.getRelationIndex()
+                                && lhsAttributeSet.intersect(rhsAttributeSet).size() != 0) continue;
 
-                            if (isIncluded(lhsTuples, rhsTuples)) {
-                                result.add(lhsAttributeSet, rhsAttributeSet);
-                            }
+                        String[][] rhsRecords = preprocessor.getColumnWiseDataOf(rhsAttributeSet.getRelationIndex());
+                        String[] rhsTuples = getTuples(rhsRecords, rhsAttributeSet);
+
+                        if (isIncluded(lhsTuples, rhsTuples)) {
+                            result.add(lhsAttributeSet, rhsAttributeSet);
                         }
                     }
                 }
@@ -45,6 +50,14 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         }
 
         return result;
+    }
+
+    private String[] getTuples(String[][] lhsRecords, AttributeBitSet attributeBitSet){
+        if(cashedTuples.containsKey(attributeBitSet)){
+            return cashedTuples.get(attributeBitSet);
+        }
+
+        return buildTuples(lhsRecords, attributeBitSet.getAttributeIndexSet());
     }
 
     private static String[] buildTuples(String[][] columns, BitSet attrs) {

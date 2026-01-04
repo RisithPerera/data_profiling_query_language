@@ -1,6 +1,7 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metathesis.Instructor;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.SearchSpace;
@@ -16,7 +17,7 @@ import java.util.concurrent.Executor;
 
 public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
-    Long2ObjectMap<PositionListIndex[]> nonUniquePLIs = new Long2ObjectOpenHashMap<>();
+    private final Long2ObjectMap<PositionListIndex[]> nonUniquePLIs = new Long2ObjectOpenHashMap<>();
 
     public UCCProfiler(Executor executor) {
         super(executor);
@@ -24,11 +25,11 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
     @Override
     public UCCResult profile(UCCRequest request) throws InputIterationException {
-        UCCResult results = new UCCResult();
+        UCCResult result = new UCCResult();
 
         if(request.side() instanceof SearchSpace.CC cc){
             for(int relationIndex : cc.relations()){
-                System.out.println("Profiling  UCC -> Relation: " + relationIndex + " Level: "+ cc.level());
+                Instructor.printLog(String.format("P: UCC R:%d L:%d", relationIndex, cc.level()), this.executor);
                 if(cc.level() == 1){
                     PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(relationIndex);
                     List<PositionListIndex> currentNonUniques = new ArrayList<>();
@@ -36,16 +37,16 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
                     // Calculate all unary UCCs and unary non-UCCs
                     for(PositionListIndex pli : plis) {
                         if (pli.isUnique()) {
-                            results.add(pli.getAttributeSet());
+                            result.add(pli.getAttributeSet());
                         } else {
                             currentNonUniques.add(pli);
                         }
                     }
 
-                    nonUniquePLIs.put(UCCProfiler.key(relationIndex, cc.level()), currentNonUniques.toArray(new PositionListIndex[0]));
+                    nonUniquePLIs.put(key(relationIndex, cc.level()), currentNonUniques.toArray(new PositionListIndex[0]));
                 }else{
-                    PositionListIndex[] nonUniques = nonUniquePLIs.get(UCCProfiler.key(relationIndex, cc.level() - 1));
-                    if(nonUniques == null){return results;}
+                    PositionListIndex[] nonUniques = nonUniquePLIs.get(key(relationIndex, cc.level() - 1));
+                    if(nonUniques == null){return result;}
 
                     List<PositionListIndex> currentNonUniques = new ArrayList<>();
                     ObjectOpenHashSet<AttributeBitSet> calculatedAttributeSet = new ObjectOpenHashSet<>();
@@ -61,19 +62,19 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
                             if(!calculatedAttributeSet.contains(pli.getAttributeSet()) && pli.getAttributeSet().size() == cc.level()){
                                 calculatedAttributeSet.add(pli.getAttributeSet());
                                 if (pli.isUnique()) {
-                                    results.add(pli.getAttributeSet());
+                                    result.add(pli.getAttributeSet());
                                 } else {
                                     currentNonUniques.add(pli);
                                 }
                             }
                         }
                     }
-                    nonUniquePLIs.put(UCCProfiler.key(relationIndex, cc.level()), currentNonUniques.toArray(new PositionListIndex[0]));
+                    nonUniquePLIs.put(key(relationIndex, cc.level()), currentNonUniques.toArray(new PositionListIndex[0]));
                 }
             }
         }
 
-        return results;
+        return result;
     }
 
     private static long key(int a, int b) {

@@ -29,10 +29,10 @@ public final class Preprocessor {
 
     private final Object2IntMap<String> relationToIndex = new Object2IntOpenHashMap<>();
 
-    private final List<String> relationNames = new ArrayList<>();
-    private final List<String[]> attributeNames = new ArrayList<>();
-    private final List<String[][]> relationValues = new ArrayList<>();
-    private final List<RelationalInput> relationalInputs = new ArrayList<>();
+    private final Int2ObjectMap<String> relationNames = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<String[]> attributeNames = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<String[][]> relationValues = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<RelationalInput> relationalInputs = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectMap<PositionListIndex[]> relationPLIsMap = new Int2ObjectOpenHashMap<>();
 
     private final int inputRowLimit;
@@ -56,16 +56,16 @@ public final class Preprocessor {
                     System.out.println("Initialize Relation: " + relation);
                     int id = relationNames.size();
                     relationToIndex.put(relation, id);
-                    relationNames.add(relation);
+                    relationNames.put(id, relation);
 
                     RelationalInputGenerator inputGenerator = MetanomeHelper.getInput(relation);
                     RelationalInput relationalInput = inputGenerator.generateNewCopy();
                     assert relationalInput != null : "Input generation failed!";
 
-                    relationalInputs.add(relationalInput);
+                    relationalInputs.put(id, relationalInput);
 
                     String[] columns = relationalInput.columnNames().toArray(new String[0]);
-                    attributeNames.add(columns);
+                    attributeNames.put(id, columns);
                 }
             }
         }
@@ -105,10 +105,6 @@ public final class Preprocessor {
         return sizes;
     }
 
-    public synchronized String[][] getValueSetOf(int relationIndex){
-        return relationValues.get(relationIndex);
-    }
-
     public AttributeBitSet[] generateApriori(int relationIndex, int level) {
         int cols = getAttributeSizeOf(relationIndex);
 
@@ -140,34 +136,16 @@ public final class Preprocessor {
         return result;
     }
 
-    // Simulates reading a CSV and returning a Relation
-    public synchronized PositionListIndex[] getPositionListIndexesOf(int relationIndex) throws InputIterationException {
-
-        if(relationPLIsMap.containsKey(relationIndex)) {
-            System.out.println("Return Cached PLI: " + relationIndex);
-            return relationPLIsMap.get(relationIndex);
+    public synchronized String[][] getColumnWiseDataOf(int relationIndex) throws InputIterationException {
+        if(relationValues.containsKey(relationIndex)) {
+            //System.out.println("Return Cached Data: " + relationIndex);
+            return relationValues.get(relationIndex);
         }
-
-        RelationalInput relationalInput = relationalInputs.get(relationIndex);
-        assert relationalInput != null : "Initialization is important!";
 
         int numAttributes = attributeNames.get(relationIndex).length;
 
-        Map<String, IntArrayList>[] clusters = calculateClusterMaps(relationalInput, numAttributes);
-        List<PositionListIndex> plis = fetchPositionListIndexes(relationIndex, clusters);
-
-        PositionListIndex[] plisArray = plis.toArray(new PositionListIndex[0]);
-
-        relationPLIsMap.put(relationIndex, plisArray);
-        return plisArray;
-    }
-
-    private Map<String, IntArrayList>[] calculateClusterMaps(RelationalInput relationalInput, int numAttributes) throws InputIterationException {
-        Map<String, IntArrayList>[] clusterMaps = new HashMap[numAttributes];
-
-        for (int i = 0; i < numAttributes; i++) {
-            clusterMaps[i] = new HashMap<>();
-        }
+        RelationalInput relationalInput = relationalInputs.get(relationIndex);
+        assert relationalInput != null : "Preprocessor Initialization Failed";
 
         int numRecords = 0;
 
@@ -184,22 +162,6 @@ public final class Preprocessor {
                 cols[c].add(record.get(c));
             }
 
-            int attributeId = 0;
-            for (String value : record) {
-                Map<String, IntArrayList> clusterMap = clusterMaps[attributeId];
-
-                if (clusterMap.containsKey(value)) {
-                    clusterMap.get(value).add(numRecords);
-                }
-                else {
-                    IntArrayList newCluster = new IntArrayList();
-                    newCluster.add(numRecords);
-                    clusterMap.put(value, newCluster);
-                }
-
-                attributeId++;
-            }
-
             numRecords++;
             if (numRecords > Integer.MAX_VALUE - 1) {
                 throw new IllegalStateException("Number of records " + numRecords
@@ -213,29 +175,58 @@ public final class Preprocessor {
             relationData[c] = cols[c].toArray(new String[0]);
         }
 
-        relationValues.add(relationData);
-        return clusterMaps;
+        relationValues.put(relationIndex, relationData);
+        return relationData;
     }
 
-    private List<PositionListIndex> fetchPositionListIndexes(int relationIndex, Map<String, IntArrayList>[] clusterMaps) {
-        List<PositionListIndex> clustersPerAttribute = new ArrayList<>();
-        for (int columnId = 0; columnId < clusterMaps.length; columnId++) {
-            List<IntArrayList> clusters = new ArrayList<>();
-            Map<String, IntArrayList> clusterMap = clusterMaps[columnId];
-
-            if (!this.isNullEqualNull)
-                clusterMap.remove(null);
-
-            for (IntArrayList cluster : clusterMap.values())
-                if (cluster.size() > 1)
-                    clusters.add(cluster);
-
-            AttributeBitSet attributeBitSet = new AttributeBitSet(relationIndex, columnId);
-            clustersPerAttribute.add(new PositionListIndex(attributeBitSet, clusters));
+    // Simulates reading a CSV and returning a Relation
+    public synchronized PositionListIndex[] getPositionListIndexesOf(int relationIndex) throws InputIterationException {
+        if(relationPLIsMap.containsKey(relationIndex)) {
+            //System.out.println("Return Cached PLI: " + relationIndex);
+            return relationPLIsMap.get(relationIndex);
         }
 
-        return clustersPerAttribute;
+        String[][] columnData = getColumnWiseDataOf(relationIndex);
+        PositionListIndex[] pliArray = new PositionListIndex[columnData.length];
+
+        for (int c = 0; c < columnData.length; c++) {
+            pliArray[c] = calculatePLI(relationIndex, c, columnData[c]);
+        }
+
+        relationPLIsMap.put(relationIndex, pliArray);
+        return pliArray;
     }
+
+    private PositionListIndex calculatePLI(int relationIndex, int columnIndex, String[] column){
+        Map<String, IntArrayList> clusterMap = new HashMap<>();
+
+        int rowIndex = 0;
+        for(String value : column) {
+            if (clusterMap.containsKey(value)) {
+                clusterMap.get(value).add(rowIndex);
+            } else {
+                IntArrayList newCluster = new IntArrayList();
+                newCluster.add(rowIndex);
+                clusterMap.put(value, newCluster);
+            }
+            rowIndex++;
+        }
+
+        List<IntArrayList> clusters = new ArrayList<>();
+
+        if (!this.isNullEqualNull) {
+            clusterMap.remove(null);
+        }
+
+        for (IntArrayList cluster : clusterMap.values()) {
+            if (cluster.size() > 1)
+                clusters.add(cluster);
+        }
+
+        AttributeBitSet attributeBitSet = new AttributeBitSet(relationIndex, columnIndex);
+        return new PositionListIndex(attributeBitSet, clusters);
+    }
+
 
     private String format(AttributeBitSet abs) {
 
@@ -243,39 +234,35 @@ public final class Preprocessor {
         String[] cols = attributeNames.get(abs.getRelationIndex());
 
         StringBuilder sb = new StringBuilder();
-        sb.append(relName).append("[");
+        sb.append(relName).append("(");
 
         BitSet bs = abs.getAttributeIndexSet();
         for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
-            sb.append(cols[i]).append(',');
+            sb.append(cols[i]).append(';');
         }
         sb.setLength(sb.length() - 1);
-        sb.append("]");
+        sb.append(")");
         return sb.toString();
     }
 
-    public void printUCC(UCCResult ucc) {
-        for (AttributeBitSet lhs : ucc) {
-            System.out.println(format(lhs));
+    public void printAttributeSet(AttributeBitSet... sets) {
+        for (int i = 0; i < sets.length; i++) {
+            if (i > 0) System.out.print(", ");
+            System.out.print(format(sets[i]));
         }
+        System.out.println();
     }
 
-    public void printIND(INDResult ind) {
-        Iterator<AttributeBitSet> lhs = ind.lhs().iterator();
-        Iterator<AttributeBitSet> rhs = ind.rhs().iterator();
-
-        while (lhs.hasNext()) {
-            System.out.println(format(lhs.next()) + " ⊆ " + format(rhs.next()));
-        }
+    public void printUCC(UCCResult result) {
+        result.forEach(ucc -> System.out.println(format(ucc.lhs)));
     }
 
-    public void printFD(FDResult fd) {
-        Iterator<AttributeBitSet> lhs = fd.lhs().iterator();
-        Iterator<AttributeBitSet> rhs = fd.rhs().iterator();
+    public void printIND(INDResult result) {
+        result.forEach(ind -> System.out.println(format(ind.lhs) + " ⊆ " + format(ind.rhs)));
+    }
 
-        while (lhs.hasNext()) {
-            System.out.println(format(lhs.next()) + " → " + format(rhs.next()));
-        }
+    public void printFD(FDResult result) {
+        result.forEach(fd -> System.out.println(format(fd.lhs) + " → " + format(fd.rhs)));
     }
 
     // Helper Methods
@@ -297,5 +284,4 @@ public final class Preprocessor {
         }
         return bs;
     }
-
 }

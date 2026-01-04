@@ -2,6 +2,7 @@ package de.metathesis.structures.results;
 
 import de.metathesis.structures.AttributeBitSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -13,6 +14,8 @@ public final class INDResult implements Iterable<INDResult.IND>{
 
     public void add(AttributeBitSet lhsBitSet, AttributeBitSet rhsBitSet) {
         assert (lhsBitSet.size() == rhsBitSet.size());
+
+        if(lhs.contains(lhsBitSet) && rhs.contains(rhsBitSet)) return;
 
         lhs.add(lhsBitSet);
         rhs.add(rhsBitSet);
@@ -30,12 +33,12 @@ public final class INDResult implements Iterable<INDResult.IND>{
         return new IND(lhs.get(index), rhs.get(index));
     }
 
-    public ObjectArrayList<AttributeBitSet> asLhsList() {
-        return this.lhs;
+    public ObjectOpenHashSet<AttributeBitSet> asLhsSet() {
+        return new ObjectOpenHashSet<>(lhs);
     }
 
-    public ObjectArrayList<AttributeBitSet> asRhsList() {
-        return this.rhs;
+    public ObjectOpenHashSet<AttributeBitSet> asRhsSet() {
+        return new ObjectOpenHashSet<>(rhs);
     }
 
     /* --- Separate Iteration --- */

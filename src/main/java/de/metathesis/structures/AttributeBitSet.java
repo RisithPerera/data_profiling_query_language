@@ -39,7 +39,7 @@ public final class AttributeBitSet{
         return (BitSet) this.attributeIndexSet.clone();
     }
 
-    AttributeBitSet union(AttributeBitSet other) {
+    public AttributeBitSet union(AttributeBitSet other) {
         if (this.relationIndex != other.relationIndex) {
             throw new UnsupportedOperationException("Cannot perform union on AttributeBitSets from different relations");
         }
@@ -49,7 +49,7 @@ public final class AttributeBitSet{
         return new AttributeBitSet(this.relationIndex, out);
     }
 
-    AttributeBitSet intersect(AttributeBitSet other) {
+    public AttributeBitSet intersect(AttributeBitSet other) {
         if (this.relationIndex != other.relationIndex) {
             throw new UnsupportedOperationException("Cannot perform intersect on AttributeBitSets from different relations");
         }

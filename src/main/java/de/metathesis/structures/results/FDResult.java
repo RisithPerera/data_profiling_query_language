@@ -2,6 +2,7 @@ package de.metathesis.structures.results;
 
 import de.metathesis.structures.AttributeBitSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -13,6 +14,8 @@ public final class FDResult implements Iterable<FDResult.FD>{
 
     public void add(AttributeBitSet lhsBitSet, AttributeBitSet rhsBitSet) {
         assert (lhsBitSet.getRelationIndex() == rhsBitSet.getRelationIndex());
+
+        if(lhs.contains(lhsBitSet) && rhs.contains(rhsBitSet)) return;
 
         lhs.add(lhsBitSet);
         rhs.add(rhsBitSet);
@@ -30,12 +33,12 @@ public final class FDResult implements Iterable<FDResult.FD>{
         return new FD(lhs.get(index), rhs.get(index));
     }
 
-    public ObjectArrayList<AttributeBitSet> asLhsList() {
-        return this.lhs;
+    public ObjectOpenHashSet<AttributeBitSet> asLhsSet() {
+        return new ObjectOpenHashSet<>(lhs);
     }
 
-    public ObjectArrayList<AttributeBitSet> asRhsList() {
-        return this.rhs;
+    public ObjectOpenHashSet<AttributeBitSet> asRhsSet() {
+        return new ObjectOpenHashSet<>(rhs);
     }
 
     /* --- Separate Iteration --- */
@@ -65,7 +68,7 @@ public final class FDResult implements Iterable<FDResult.FD>{
         };
     }
 
-    /* --- Internal IND Object --- */
+    /* --- Internal FD Object --- */
     public static final class FD {
         public final AttributeBitSet lhs;
         public final AttributeBitSet rhs;

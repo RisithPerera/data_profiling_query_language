@@ -1,7 +1,7 @@
 package de.metathesis.structures.requests;
 
 import de.metathesis.structures.AttributeBitSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 /**
  * Represents a closed set of valid search space variants.
@@ -21,5 +21,5 @@ public sealed interface SearchSpace permits SearchSpace.CC, SearchSpace.Locked {
 
     record CC(int[] relations, int level) implements SearchSpace {}
 
-    record Locked(ObjectArrayList<AttributeBitSet> attributes) implements SearchSpace {}
+    record Locked(ObjectOpenHashSet<AttributeBitSet> attributes) implements SearchSpace {}
 }

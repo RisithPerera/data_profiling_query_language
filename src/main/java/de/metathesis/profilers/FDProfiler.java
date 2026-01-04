@@ -1,6 +1,9 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metathesis.Instructor;
+import de.metathesis.structures.AttributeBitSet;
+import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
@@ -16,19 +19,68 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
         FDResult result = new FDResult();
+        if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
+            for(int rhsRelationIndex : rhs.relations()){
+                for(int lhsRelationIndex : lhs.relations()){
+                    if(lhsRelationIndex != rhsRelationIndex){
+                        continue;
+                    }
 
-        if(input.lhs() instanceof SearchSpace.Locked locked && input.rhs() instanceof SearchSpace.CC cc) {
-            for(int relationIndex : cc.relations()){
-                System.out.println("Profiling  FD  -> Relation: " + relationIndex + " Level: "+ cc.level());
-                if(cc.level() == 1){
+                    if(rhs.level() == 1){
+                        PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(lhsRelationIndex);
 
-                }else{
-
+                        for (PositionListIndex lhsPli : plis) {
+                            for (PositionListIndex rhsPli : plis) {
+                                //If the rhsPli does not split any partitions of the lhsPli, the FD is valid!
+                                PositionListIndex pli = lhsPli.intersect(rhsPli);
+                                if(lhsPli.equals(pli)){
+                                    result.add(lhsPli.getAttributeSet(), rhsPli.getAttributeSet());
+                                }
+                            }
+                        }
+                    }else{
+                        throw new UnsupportedOperationException("Not supported yet! LHS=CC, RHS=CC, Level > 1");
+                    }
                 }
+            }
+        }else if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs){
+            for(int rhsRelationIndex : rhs.relations()){
+                for(AttributeBitSet lhsAttributeSet : lhs.attributes()){
+                    if(lhsAttributeSet.getRelationIndex() != rhsRelationIndex){
+                        continue;
+                    }
+                    Instructor.printLog(String.format("P: FD R:%d L:%d", rhsRelationIndex,  rhs.level()), this.executor);
+                    PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(rhsRelationIndex);
 
+                    for (PositionListIndex lhsPli : plis) {
+                        if(lhsPli.getAttributeSet().equals(lhsAttributeSet)){
+                            for (PositionListIndex rhsPli : plis) {
+                                if(lhsPli.equals(rhsPli)) continue;
+
+                                //If the rhsPli does not split any partitions of the lhsPli, the FD is valid!
+                                PositionListIndex intersectPli = lhsPli.intersect(rhsPli);
+                                if(lhsPli.isEqualClusters(intersectPli)){
+                                    result.add(lhsPli.getAttributeSet(), rhsPli.getAttributeSet());
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
+
         return result;
+
+        /*if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
+
+        }else if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
+
+        }else if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs){
+
+        }else if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs){
+
+        }*/
     }
+
 }
 

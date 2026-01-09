@@ -742,6 +742,16 @@ public class ResultSet implements Collection<List<String>> {
         return Objects.hash(columnNames);
     }
 
+    public void printResults(){
+        for (List<Set<ColumnIdentifier>> row : getRows2()) {
+            for (int i = 0; i < row.size(); i++) {
+                if (i > 0) System.out.print(", ");
+                System.out.print(row.get(i).toString());
+            }
+            System.out.println();
+        }
+    }
+
     @Override
     public String toString() {
         AsciiTable asciiTable = new AsciiTable();

@@ -59,6 +59,16 @@ public final class AttributeBitSet{
         return new AttributeBitSet(this.relationIndex, out);
     }
 
+    public boolean isSubsetOf(AttributeBitSet other) {
+        if (this.relationIndex != other.relationIndex) {
+            throw new UnsupportedOperationException("Cannot compare AttributeBitSets from different relations");
+        }
+
+        BitSet tmp = (BitSet) this.attributeIndexSet.clone();
+        tmp.andNot(other.attributeIndexSet);
+        return tmp.isEmpty();
+    }
+
     public int size() {
         return attributeIndexSet.cardinality();
     }

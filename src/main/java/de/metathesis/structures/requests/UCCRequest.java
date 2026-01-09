@@ -1,14 +1,14 @@
 package de.metathesis.structures.requests;
 
 public final class UCCRequest {
-    private final SearchSpace side;
+    private final SearchSpace lhs;
 
-    public UCCRequest(SearchSpace side) {
-        this.side = side;
+    public UCCRequest(SearchSpace lhs) {
+        this.lhs = lhs;
     }
 
-    public SearchSpace side() {
-        return side;
+    public SearchSpace lhs() {
+        return lhs;
     }
 }
 

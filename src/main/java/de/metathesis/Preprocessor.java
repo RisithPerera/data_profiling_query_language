@@ -105,6 +105,14 @@ public final class Preprocessor {
         return sizes;
     }
 
+    public synchronized Map<String, int[]> getAttributeSizesOf(Map<String, int[]> relationIndexesMap) {
+        Map<String, int[]> relationSizesMap = new HashMap<>(relationIndexesMap.size());
+        for (Map.Entry<String, int[]> relationsEntry : relationIndexesMap.entrySet()) {
+            relationSizesMap.put(relationsEntry.getKey(), getAttributeSizesOf(relationsEntry.getValue()));
+        }
+        return relationSizesMap;
+    }
+
     public AttributeBitSet[] generateApriori(int relationIndex, int level) {
         int cols = getAttributeSizeOf(relationIndex);
 

@@ -1163,6 +1163,34 @@ public class Graph {
             return value;
         }
 
+        public int priority() {
+            /*
+             * Defines the planning priority for dependency execution.
+             *
+             * The order is determined by two principles:
+             *
+             * 1) Set-membership restrictiveness:
+             *    Dependencies that impose stronger constraints on the search space
+             *    are evaluated earlier to prune candidates as soon as possible.
+             *
+             * 2) Computational efficiency and pruning power:
+             *    Dependencies are ordered from those that are cheaper and yield
+             *    strong pruning (UCC), to more expensive or derivative dependencies
+             *    (FD, IND, and their extended variants).
+             */
+            return switch (this) {
+                case U -> 0;
+                case F -> 1;
+                case I -> 2;
+                case I_MINUS -> 3;
+                case U_PLUS -> 4;
+                case F_PLUS -> 5;
+                case F_VALID -> 6;
+                case I_PLUS -> 7;
+                case F_PLUS_VALID -> 8;
+            };
+        }
+
         public static boolean isMinimal(SetMembership set){
             return set == F || set == U || set == I_MINUS;
         }

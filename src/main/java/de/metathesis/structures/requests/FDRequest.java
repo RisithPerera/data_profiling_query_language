@@ -1,6 +1,6 @@
 package de.metathesis.structures.requests;
 
-public class FDRequest {
+public class FDRequest implements Request {
     private final SearchSpace lhs;
     private final SearchSpace rhs;
 
@@ -9,6 +9,9 @@ public class FDRequest {
         this.rhs = rhs;
     }
 
+    @Override
     public SearchSpace lhs() { return lhs; }
+
+    @Override
     public SearchSpace rhs() { return rhs; }
 }

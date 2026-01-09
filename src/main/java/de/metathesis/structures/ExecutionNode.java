@@ -1,26 +1,68 @@
 package de.metathesis.structures;
 
+import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.profilers.AbstractProfiler;
+import de.metathesis.structures.requests.Request;
+import de.metathesis.structures.results.Result;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
-public final class ExecutionNode<I, O> {
+@Getter
+public final class ExecutionNode<In extends Request, Out extends Result<?>> {
+    private final Edge edge;
+    private final int level;
+    private final AbstractProfiler<In, Out> profiler;
+    private final Function<Map<ExecutionNode<?, ?>, Result<?>>, In> inputBuilder;
 
-    public final String id;                 // e.g. "UCC(Y)-L2"
-    public final AbstractProfiler<I, O> profiler;
-    public final I input;
+    private final List<ExecutionNode<?, ?>> parents = new ArrayList<>();
+    private final List<ExecutionNode<?, ?>> children = new ArrayList<>(); //To Track Leaf Nodes
 
-    public final List<ExecutionNode<?, ?>> dependsOn = new ArrayList<>();
-    public final List<ExecutionNode<?, ?>> dependents = new ArrayList<>();
+    @Setter
+    private CompletableFuture<Out> future;
 
-    CompletableFuture<O> future;
-
-    public ExecutionNode(String id, AbstractProfiler<I, O> profiler, I input) {
-        this.id = id;
+    public ExecutionNode(Edge edge,
+                         int level,
+                         AbstractProfiler<In, Out> profiler,
+                         Function<Map<ExecutionNode<?, ?>, Result<?>>, In> inputBuilder) {
+        this.edge = edge;
+        this.level = level;
         this.profiler = profiler;
-        this.input = input;
+        this.inputBuilder = inputBuilder;
+    }
+
+    public CompletableFuture<Out> execute() {
+        CompletableFuture<?>[] parents = this.parents.stream()
+                        .map(ExecutionNode::getFuture)
+                        .toArray(CompletableFuture[]::new);
+
+        this.future = CompletableFuture.allOf(parents)
+                        .thenCompose(v -> {
+                            Map<ExecutionNode<?, ?>, Result<?>> depResults = new HashMap<>();
+                            for (ExecutionNode<?, ?> p : this.parents) {
+                                depResults.put(p, p.getFuture().join());
+                            }
+
+                            In input = inputBuilder.apply(depResults);
+                            return profiler.runAsync(input);
+                        });
+
+        return future;
+    }
+
+    public String getPreviousNodeId() {
+        return this.edge + "_" + (this.level - 1);
+    }
+
+    @Override
+    public String toString() {
+        return this.edge + "_" + this.level;
     }
 }
 

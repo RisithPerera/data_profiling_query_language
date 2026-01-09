@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-public final class FDResult implements Iterable<FDResult.FD>{
+public final class FDResult implements Result<FDResult.FD>{
 
     private final ObjectArrayList<AttributeBitSet> lhs = new ObjectArrayList<>();
     private final ObjectArrayList<AttributeBitSet> rhs = new ObjectArrayList<>();
@@ -21,31 +21,38 @@ public final class FDResult implements Iterable<FDResult.FD>{
         rhs.add(rhsBitSet);
     }
 
+    @Override
     public int size() {
         return lhs.size();
     }
 
+    @Override
     public boolean isEmpty() {
         return lhs.isEmpty();
     }
 
+    @Override
     public FD get(int index) {
         return new FD(lhs.get(index), rhs.get(index));
     }
 
+    @Override
     public ObjectOpenHashSet<AttributeBitSet> asLhsSet() {
         return new ObjectOpenHashSet<>(lhs);
     }
 
+    @Override
     public ObjectOpenHashSet<AttributeBitSet> asRhsSet() {
         return new ObjectOpenHashSet<>(rhs);
     }
 
     /* --- Separate Iteration --- */
+    @Override
     public Iterable<AttributeBitSet> lhs() {
         return lhs;
     }
 
+    @Override
     public Iterable<AttributeBitSet> rhs() {
         return rhs;
     }

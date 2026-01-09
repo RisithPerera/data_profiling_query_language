@@ -6,33 +6,48 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-public final class UCCResult implements Iterable<UCCResult.UCC>{
+public final class UCCResult implements Result<UCCResult.UCC>{
 
     private final ObjectOpenHashSet<AttributeBitSet> lhs = new ObjectOpenHashSet<>();
 
-    public void add(AttributeBitSet lhsBitSet) {
-        lhs.add(lhsBitSet);
+    public boolean add(AttributeBitSet lhsBitSet) {
+        return lhs.add(lhsBitSet);
     }
 
+    @Override
     public int size() {
         return lhs.size();
     }
 
+    @Override
     public boolean isEmpty() {
         return lhs.isEmpty();
     }
 
+    @Override
     public UCC get(int index) {
         return new UCC(lhs.get(index));
     }
 
+    @Override
     public ObjectOpenHashSet<AttributeBitSet> asLhsSet() {
         return lhs;
     }
 
+    @Override
+    public ObjectOpenHashSet<AttributeBitSet> asRhsSet() {
+        return lhs; //Return Same
+    }
+
     /* --- Separate Iteration --- */
+    @Override
     public Iterable<AttributeBitSet> lhs() {
         return lhs;
+    }
+
+    @Override
+    public Iterable<AttributeBitSet> rhs() {
+        return lhs; //Return Same
     }
 
     @Override

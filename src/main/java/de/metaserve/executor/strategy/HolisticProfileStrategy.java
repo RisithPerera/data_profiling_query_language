@@ -9,6 +9,7 @@ import de.metaserve.parser.query.QueryMetadata;
 import de.metathesis.Instructor;
 import de.metathesis.Preprocessor;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -45,21 +46,18 @@ public class HolisticProfileStrategy implements Strategy{
                             .map(Map.Entry::getKey)
                             .toList();
 
-            /* this.relationMap = Map.of(
+            this.relationMap = Map.of(
                     "X", Arrays.asList("R1", "R3", "R5"),
                     "Y", Arrays.asList("R3", "R4"),
                     "Z", Arrays.asList("R1", "R3", "R2")
-            );*/
+            );
 
-            Map<String, int[]> relationIndexMap = preprocessor.initializeSearchSpace(relationMap);
+            instructor.runExecution(orderedEdges, relationMap);
 
-            instructor.runExecution(orderedEdges, relationIndexMap);
-            //instructor.runPipeline(relationIndexMap);
-            //instructor.runUCCOnly(relationIndexMap);
-            metadata.update(QueryEngine.QueryState.COMPUTED_MIN);
         } catch (AlgorithmConfigurationException |InputGenerationException e) {
             throw new RuntimeException(e);
         } finally {
+            metadata.update(QueryEngine.QueryState.COMPUTED_MIN);
             instructor.shutdownAndAwaitTermination();
         }
     }

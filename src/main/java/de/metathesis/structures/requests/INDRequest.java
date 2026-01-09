@@ -1,6 +1,6 @@
 package de.metathesis.structures.requests;
 
-public final class INDRequest {
+public final class INDRequest implements Request{
     private final SearchSpace lhs;
     private final SearchSpace rhs;
 

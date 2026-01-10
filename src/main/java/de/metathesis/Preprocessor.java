@@ -124,7 +124,7 @@ public final class Preprocessor {
             return new AttributeBitSet[0];
         }
 
-        int count = binomial(cols, level);
+        int count = Utility.binomial(cols, level);
         AttributeBitSet[] result = new AttributeBitSet[count];
 
         BigInteger mask = BigInteger.ONE.shiftLeft(level).subtract(BigInteger.ONE);  // first combination
@@ -271,17 +271,6 @@ public final class Preprocessor {
 
     public void printFD(FDResult result) {
         result.forEach(fd -> System.out.println(format(fd.lhs) + " → " + format(fd.rhs)));
-    }
-
-    // Helper Methods
-    private static int binomial(int n, int k) {
-        if (k < 0 || k > n) return 0;
-        if (k == 0 || k == n) return 1;
-        long res = 1;
-        for (int i = 1; i <= k; i++) {
-            res = res * (n - i + 1) / i;
-        }
-        return (int) res;
     }
 
     // Convert BigInteger mask to BitSet

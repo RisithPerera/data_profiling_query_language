@@ -2,7 +2,7 @@ package de.metathesis.profilers;
 
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.Instructor;
+import de.metathesis.Utility;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.requests.INDRequest;
 import de.metathesis.structures.requests.SearchSpace;
@@ -27,7 +27,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs) {
             for(int relationIndex : lhs.relations()){
-                Instructor.printLog(String.format("P: IND R:%d L:%d", relationIndex,  lhs.level()), this.executor);
+                Utility.printLog(String.format("P: IND R:%d L:%d", relationIndex,  lhs.level()), this.executor);
                 String[][] lhsRecords = preprocessor.getColumnWiseDataOf(relationIndex);
                 AttributeBitSet[] lhsAttributeSets = this.preprocessor.generateApriori(relationIndex, lhs.level());
 

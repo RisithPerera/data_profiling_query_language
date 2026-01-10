@@ -1,7 +1,7 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.Instructor;
+import de.metathesis.Utility;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.FDRequest;
@@ -43,13 +43,15 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                     }
                 }
             }
+        }else if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
+            throw new UnsupportedOperationException("LHS=CC RHS=Locked");
         }else if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs){
             for(int rhsRelationIndex : rhs.relations()){
                 for(AttributeBitSet lhsAttributeSet : lhs.attributes()){
                     if(lhsAttributeSet.getRelationIndex() != rhsRelationIndex){
                         continue;
                     }
-                    Instructor.printLog(String.format("P: FD R:%d L:%d", rhsRelationIndex,  rhs.level()), this.executor);
+                    Utility.printLog(String.format("P: FD R:%d L:%d", rhsRelationIndex,  rhs.level()), this.executor);
                     PositionListIndex[] plis = this.preprocessor.getPositionListIndexesOf(rhsRelationIndex);
 
                     for (PositionListIndex lhsPli : plis) {
@@ -67,20 +69,11 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                     }
                 }
             }
+        }else if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs){
+            throw new UnsupportedOperationException("LHS=Locked RHS=Locked");
         }
 
         return result;
-
-        /*if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
-
-        }else if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
-
-        }else if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs){
-
-        }else if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs){
-
-        }*/
     }
-
 }
 

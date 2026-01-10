@@ -1,7 +1,7 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.Instructor;
+import de.metathesis.Utility;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.SearchSpace;
@@ -29,7 +29,7 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
         if(request.lhs() instanceof SearchSpace.CC cc){
             for(int relationIndex : cc.relations()){
-                Instructor.printLog(String.format("P: UCC R:%d L:%d", relationIndex, cc.level()), this.executor);
+                Utility.printLog(String.format("P: UCC R:%d L:%d", relationIndex, cc.level()), this.executor);
                 long currentKey = key(relationIndex, cc.level());
                 long previousKey = key(relationIndex, cc.level() - 1);
                 if(cc.level() == 1){

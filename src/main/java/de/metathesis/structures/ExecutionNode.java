@@ -1,11 +1,11 @@
 package de.metathesis.structures;
 
 import de.metaserve.executor.min.graph.edge.Edge;
+import de.metathesis.Utility;
 import de.metathesis.profilers.AbstractProfiler;
 import de.metathesis.structures.requests.Request;
 import de.metathesis.structures.results.Result;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,7 +24,6 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
     private final List<ExecutionNode<?, ?>> parents = new ArrayList<>();
     private final List<ExecutionNode<?, ?>> children = new ArrayList<>(); //To Track Leaf Nodes
 
-    @Setter
     private CompletableFuture<Out> future;
 
     public ExecutionNode(Edge edge,
@@ -42,14 +41,16 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
                         .map(ExecutionNode::getFuture)
                         .toArray(CompletableFuture[]::new);
 
-        this.future = CompletableFuture.allOf(parents)
+        this.future = CompletableFuture.allOf(parents) //Waiting for all parents to complete
                         .thenCompose(v -> {
                             Map<ExecutionNode<?, ?>, Result<?>> depResults = new HashMap<>();
                             for (ExecutionNode<?, ?> p : this.parents) {
-                                depResults.put(p, p.getFuture().join());
+                                depResults.put(p, p.getFuture().join()); //Collecting parent results (safe join)
                             }
 
                             In input = inputBuilder.apply(depResults);
+
+                            Utility.printLog(String.format("F: %s", this), this.profiler.getExecutor());
                             return profiler.runAsync(input);
                         });
 

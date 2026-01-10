@@ -19,7 +19,9 @@ import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.UCCResult;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public final class Instructor {
 
@@ -50,7 +52,7 @@ public final class Instructor {
         Map<String, int[]> relationIndexMap = this.preprocessor.initializeSearchSpace(relationMap);
         Map<String, int[]> relationSizesMap = this.preprocessor.getAttributeSizesOf(relationIndexMap);
 
-        int globalMaxLevel = relationSizesMap.values().stream().mapToInt(this::max).max().orElse(0);
+        int globalMaxLevel = Utility.max(relationSizesMap.values());
 
         Map<String, ExecutionNode<?, ?>> executionGraph = new LinkedHashMap<>(); //All Graph Nodes
 
@@ -61,8 +63,8 @@ public final class Instructor {
             Map<String, ExecutionNode<?, ?>> lastNodeByVariable = new HashMap<>();
 
             for (Edge edge : orderedEdges) {
-                int[] lhsRelationIndexes = filterRelationsByLevel(relationIndexMap.get(edge.leftName), relationSizesMap.get(edge.leftName), level);
-                int[] rhsRelationIndexes = filterRelationsByLevel(relationIndexMap.get(edge.rightName), relationSizesMap.get(edge.rightName), level);
+                int[] lhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.leftName), relationSizesMap.get(edge.leftName), level);
+                int[] rhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.rightName), relationSizesMap.get(edge.rightName), level);
 
                 boolean isLhsLocked = lastNodeByVariable.containsKey(edge.leftName);
                 boolean isRhsLocked = lastNodeByVariable.containsKey(edge.rightName);
@@ -173,7 +175,7 @@ public final class Instructor {
         CompletableFuture<UCCResult> uccFuture = uccProfiler.runAsync(uccRequest);
         List<CompletableFuture<FDResult>> fdFutures = new ArrayList<>();
 
-        int maxLevel = max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("Y")));
+        int maxLevel = Utility.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("Y")));
 
         //Temporary Collecting Results
         List<UCCResult.UCC> uccResults = new ArrayList<>();
@@ -187,7 +189,7 @@ public final class Instructor {
             // When UCC(L) completes → run IND(L)
             CompletableFuture<INDResult> indFuture = uccFuture.thenCompose(
                     uccResult -> {
-                        Instructor.printLog(String.format("F: UCC     L:%d", currentLevel), this.pool);
+                        Utility.printLog(String.format("F: UCC     L:%d", currentLevel), this.pool);
                         //this.preprocessor.printUCC(uccResult);
                         uccResult.forEach(uccResults::add);
                         INDRequest indRequest = new INDRequest(
@@ -200,7 +202,7 @@ public final class Instructor {
 
             CompletableFuture<FDResult> fdFuture = indFuture.thenCompose(
                     indResult -> {
-                        Instructor.printLog(String.format("F: IND     L:%d", currentLevel), this.pool);
+                        Utility.printLog(String.format("F: IND     L:%d", currentLevel), this.pool);
                         //this.preprocessor.printIND(indResult);
                         indResult.forEach(indResults::add);
                         FDRequest fdRequest = new FDRequest(
@@ -213,7 +215,7 @@ public final class Instructor {
             );
 
             fdFuture.thenAccept( fdResult -> {
-                    Instructor.printLog(String.format("F: FD      L:%d", currentLevel), this.pool);
+                Utility.printLog(String.format("F: FD      L:%d", currentLevel), this.pool);
                     //this.preprocessor.printFD(fdResult);
                     fdResult.forEach(fdResults::add);
                 }
@@ -252,7 +254,7 @@ public final class Instructor {
         UCCRequest uccRequest = new UCCRequest(new SearchSpace.CC(relationIndexMap.get("X"), 1));
         CompletableFuture<UCCResult> uccFuture = uccProfiler.runAsync(uccRequest);
 
-        int maxLevel = max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("X")));
+        int maxLevel = Utility.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("X")));
 
         //Temporary Collecting Results
         List<UCCResult.UCC> uccResults = new ArrayList<>();
@@ -262,7 +264,7 @@ public final class Instructor {
             final int currentLevel = level;
 
             uccFuture.thenAccept( uccResult -> {
-                        Instructor.printLog(String.format("F: FD      L:%d", currentLevel), this.pool);
+                    Utility.printLog(String.format("F: FD L:%d", currentLevel), this.pool);
                         uccResult.forEach(uccResults::add);
                     }
             );
@@ -291,7 +293,7 @@ public final class Instructor {
         UCCRequest uccRequest = new UCCRequest(new SearchSpace.CC(relationIndexMap.get("X"), 1));
         CompletableFuture<UCCResult> uccFuture = uccProfiler.runAsync(uccRequest);
 
-        int maxLevel = max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("X")));
+        int maxLevel = Utility.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("X")));
 
         //Temporary Collecting Results
         List<UCCResult.UCC> uccResults = new ArrayList<>();
@@ -301,7 +303,7 @@ public final class Instructor {
             final int currentLevel = level;
 
             uccFuture.thenAccept( uccResult -> {
-                        Instructor.printLog(String.format("F: FD      L:%d", currentLevel), this.pool);
+                    Utility.printLog(String.format("F: FD L:%d", currentLevel), this.pool);
                         uccResult.forEach(uccResults::add);
                     }
             );
@@ -335,38 +337,5 @@ public final class Instructor {
             pool.shutdownNow();
             Thread.currentThread().interrupt();
         }
-    }
-
-    static int[] filterRelationsByLevel(int[] relations, int[] sizes, int level) {
-        List<Integer> filtered = new ArrayList<>();
-        for (int i = 0; i < relations.length; i++) {
-            if (sizes[i] >= level) {
-                filtered.add(relations[i]);
-            }
-        }
-        return filtered.stream().mapToInt(Integer::intValue).toArray();
-    }
-
-    private int max(int[] sizes) {
-        int m = 0;
-        for (int s : sizes) m = Math.max(m, s);
-        return m;
-    }
-
-
-    public static void printLog(String tag, Executor pool){
-        // 1. Define your executor
-        ThreadPoolExecutor threadPool = (ThreadPoolExecutor) pool;
-
-        // 2. Later in your code, or in a background "Monitor" thread:
-        System.out.printf(
-                "[%s] [%d/%d] Active: %d, Completed: %d, Queue: %d%n",
-                tag,
-                threadPool.getPoolSize(),
-                threadPool.getMaximumPoolSize(),
-                threadPool.getActiveCount(),
-                threadPool.getCompletedTaskCount(),
-                threadPool.getQueue().size()
-        );
     }
 }

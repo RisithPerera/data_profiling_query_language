@@ -8,6 +8,10 @@ import java.util.concurrent.ThreadPoolExecutor;
 This class is for regular helper method. Later will be refactored the code accordingly.
  */
 public class Utility {
+    public static long compositeKey(int a, int b) {
+        return ((long) a << 32) | (b & 0xffffffffL);
+    }
+
     public static int max(Collection<int[]> arr) {
         return arr.stream()
                 .mapToInt(Utility::max)
@@ -71,7 +75,7 @@ public class Utility {
 
         // 2. Later in your code, or in a background "Monitor" thread:
         System.out.printf(
-                "[%s] [%d/%d] Active: %d, Completed: %d, Queue: %d%n",
+                "[%-15s] [%2d/%d] Active: %d, Completed: %d, Queue: %d%n",
                 tag,
                 threadPool.getPoolSize(),
                 threadPool.getMaximumPoolSize(),

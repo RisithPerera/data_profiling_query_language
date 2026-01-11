@@ -15,12 +15,13 @@ import de.metathesis.structures.results.UCCResult;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.*;
 
 import java.math.BigInteger;
 import java.util.*;
+import java.util.function.Supplier;
 
 
 public final class Preprocessor {
@@ -33,7 +34,9 @@ public final class Preprocessor {
     private final Int2ObjectMap<String[]> attributeNames = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectMap<String[][]> relationValues = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectMap<RelationalInput> relationalInputs = new Int2ObjectOpenHashMap<>();
-    private final Int2ObjectMap<PositionListIndex[]> relationPLIsMap = new Int2ObjectOpenHashMap<>();
+
+    //This structure hold entire calculated PLIs so far.
+    private final Long2ObjectMap<Object2ObjectMap<AttributeBitSet, PositionListIndex>> pliMap = new Long2ObjectOpenHashMap<>();
 
     private final int inputRowLimit;
     private final boolean isNullEqualNull;
@@ -70,7 +73,19 @@ public final class Preprocessor {
             }
         }
 
-        // 2. Build index map for variables (X, Y, Z)
+        // 2. Initialize PLI map with level 0
+        for(int relationIndex : relationToIndex.values()){
+            long key = Utility.compositeKey(relationIndex, 0); //Level 0: Size 0
+            AttributeBitSet abs = new AttributeBitSet(relationIndex, new BitSet());
+            PositionListIndex pli = new PositionListIndex(abs, new ArrayList<>());
+
+            Object2ObjectMap<AttributeBitSet, PositionListIndex> level0 = new Object2ObjectOpenHashMap<>();
+            level0.put(abs, pli);
+
+            this.pliMap.put(key, level0);
+        }
+
+        // 3. Build index map for variables (X, Y, Z)
         Map<String, int[]> relationIndexMap = new HashMap<>(relationMap.size());
 
         for (Map.Entry<String, List<String>> relationsEntry : relationMap.entrySet()) {
@@ -116,12 +131,12 @@ public final class Preprocessor {
     public AttributeBitSet[] generateApriori(int relationIndex, int level) {
         int cols = getAttributeSizeOf(relationIndex);
 
-        if (level < 1) {
-            throw new IllegalArgumentException("Level must be between relation column boundary " + relationIndex + " " + level + " " + cols);
+        if (level < 0 ||  level > cols) {
+            throw new IllegalArgumentException("Level " + level + " must be between column boundary (0:" + cols + ") of relation:" + relationIndex);
         }
 
-        if (level > cols) {
-            return new AttributeBitSet[0];
+        if(level == 0) {
+            return new AttributeBitSet[]{new AttributeBitSet(relationIndex, new BitSet())};
         }
 
         int count = Utility.binomial(cols, level);
@@ -146,7 +161,6 @@ public final class Preprocessor {
 
     public synchronized String[][] getColumnWiseDataOf(int relationIndex) throws InputIterationException {
         if(relationValues.containsKey(relationIndex)) {
-            //System.out.println("Return Cached Data: " + relationIndex);
             return relationValues.get(relationIndex);
         }
 
@@ -188,24 +202,85 @@ public final class Preprocessor {
     }
 
     // Simulates reading a CSV and returning a Relation
-    public synchronized PositionListIndex[] getPositionListIndexesOf(int relationIndex) throws InputIterationException {
-        if(relationPLIsMap.containsKey(relationIndex)) {
-            //System.out.println("Return Cached PLI: " + relationIndex);
-            return relationPLIsMap.get(relationIndex);
+    public synchronized PositionListIndex[] getInitialPLIs(int relationIndex) throws InputIterationException {
+        long key = Utility.compositeKey(relationIndex, 1); //Level 1: Size 1
+
+        if(this.pliMap.containsKey(key)) {
+            return this.pliMap.get(key).values().toArray(new PositionListIndex[0]);
         }
 
         String[][] columnData = getColumnWiseDataOf(relationIndex);
-        PositionListIndex[] pliArray = new PositionListIndex[columnData.length];
+        Object2ObjectMap<AttributeBitSet, PositionListIndex> pliArray = new Object2ObjectOpenHashMap<>();
 
         for (int c = 0; c < columnData.length; c++) {
-            pliArray[c] = calculatePLI(relationIndex, c, columnData[c]);
+            PositionListIndex pli = calculateInitialPLI(relationIndex, c, columnData[c]);
+            pliArray.put(pli.getAttributeSet(), pli);
         }
 
-        relationPLIsMap.put(relationIndex, pliArray);
-        return pliArray;
+        this.pliMap.put(key, pliArray);
+        return pliArray.values().toArray(new PositionListIndex[0]);
     }
 
-    private PositionListIndex calculatePLI(int relationIndex, int columnIndex, String[] column){
+    public synchronized void addPLI(PositionListIndex pli){
+        int relationIndex = pli.getAttributeSet().getRelationIndex();
+        int level = pli.getAttributeSet().size();
+        long key = Utility.compositeKey(relationIndex, level);
+
+        this.pliMap.computeIfAbsent(key, k -> new Object2ObjectOpenHashMap<>()).put(pli.getAttributeSet(), pli);
+    }
+
+    public synchronized PositionListIndex getPLI(AttributeBitSet abs) throws InputIterationException {
+        int relationIndex = abs.getRelationIndex();
+        int level = abs.size();
+        long key = Utility.compositeKey(relationIndex, level);
+
+        Object2ObjectMap<AttributeBitSet, PositionListIndex> levelMap = this.pliMap.get(key);
+
+        if (levelMap == null) {
+            if(abs.size() == 1){
+                int pos = abs.getAttributeIndexSet().nextSetBit(0);
+                String[][] columnData = getColumnWiseDataOf(relationIndex);
+                levelMap = new Object2ObjectOpenHashMap<>();
+                PositionListIndex pli = calculateInitialPLI(relationIndex, pos, columnData[pos]);
+                levelMap.put(pli.getAttributeSet(), pli);
+                this.pliMap.put(key, levelMap);
+                return pli;
+            }else{
+                throw new IllegalStateException("PLI cache map is missing for relation: " + relationNames.get(relationIndex) + ", level: " + level);
+            }
+        }
+
+        PositionListIndex pli = levelMap.get(abs);
+
+        if (pli == null) {
+            if(abs.size() == 1){
+                int pos = abs.getAttributeIndexSet().nextSetBit(0);
+                String[][] columnData = getColumnWiseDataOf(relationIndex);
+                pli = calculateInitialPLI(relationIndex, pos, columnData[pos]);
+                levelMap.put(pli.getAttributeSet(), pli);
+                return pli;
+            }else{
+                throw new IllegalStateException("PLI cache is missing for attributeSet: " + abs);
+            }
+        }
+
+        return pli;
+    }
+
+    public PositionListIndex getOrComputePLI(AttributeBitSet abs, Supplier<PositionListIndex> computer) {
+
+        int relationIndex = abs.getRelationIndex();
+        int level = abs.size();
+        long key = Utility.compositeKey(relationIndex, level);
+
+        synchronized (this) {
+            var levelMap = this.pliMap.computeIfAbsent(key, k -> new Object2ObjectOpenHashMap<>());
+
+            return levelMap.computeIfAbsent(abs, a -> computer.get());
+        }
+    }
+
+    private PositionListIndex calculateInitialPLI(int relationIndex, int columnIndex, String[] column){
         Map<String, IntArrayList> clusterMap = new HashMap<>();
 
         int rowIndex = 0;
@@ -234,7 +309,6 @@ public final class Preprocessor {
         AttributeBitSet attributeBitSet = new AttributeBitSet(relationIndex, columnIndex);
         return new PositionListIndex(attributeBitSet, clusters);
     }
-
 
     private String format(AttributeBitSet abs) {
 

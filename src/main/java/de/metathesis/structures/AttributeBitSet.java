@@ -59,6 +59,17 @@ public final class AttributeBitSet{
         return new AttributeBitSet(this.relationIndex, out);
     }
 
+    public AttributeBitSet difference(AttributeBitSet other) {
+        if (this.relationIndex != other.relationIndex) {
+            throw new UnsupportedOperationException("Cannot perform difference on AttributeBitSets from different relations");
+        }
+
+        BitSet out = this.getAttributeIndexSet();
+        out.andNot(other.attributeIndexSet);
+
+        return new AttributeBitSet(this.relationIndex, out);
+    }
+
     public boolean isSubsetOf(AttributeBitSet other) {
         if (this.relationIndex != other.relationIndex) {
             throw new UnsupportedOperationException("Cannot compare AttributeBitSets from different relations");
@@ -71,6 +82,10 @@ public final class AttributeBitSet{
 
     public int size() {
         return attributeIndexSet.cardinality();
+    }
+
+    public boolean isEmpty() {
+        return attributeIndexSet.isEmpty();
     }
 
     private int computeHash() {

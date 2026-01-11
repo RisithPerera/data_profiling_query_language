@@ -1179,15 +1179,15 @@ public class Graph {
              *    (FD, IND, and their extended variants).
              */
             return switch (this) {
-                case U -> 0;
-                case F -> 1;
-                case I -> 2;
-                case I_MINUS -> 3;
-                case U_PLUS -> 4;
-                case F_PLUS -> 5;
-                case F_VALID -> 6;
-                case I_PLUS -> 7;
-                case F_PLUS_VALID -> 8;
+                case U              -> 0;
+                case F              -> 1;
+                case I_MINUS        -> 2;
+                case I              -> 3;
+                case U_PLUS         -> 4;
+                case F_PLUS         -> 5;
+                case F_VALID        -> 6;
+                case I_PLUS         -> 7;
+                case F_PLUS_VALID   -> 8;
             };
         }
 

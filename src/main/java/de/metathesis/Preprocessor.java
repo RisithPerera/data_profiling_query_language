@@ -246,7 +246,19 @@ public final class Preprocessor {
                 this.pliMap.put(key, levelMap);
                 return pli;
             }else{
-                throw new IllegalStateException("PLI cache map is missing for relation: " + relationNames.get(relationIndex) + ", level: " + level);
+                long level1Key = Utility.compositeKey(relationIndex, 1);
+                Object2ObjectMap<AttributeBitSet, PositionListIndex> preLevelMap = this.pliMap.get(level1Key);
+                PositionListIndex pliSingle = null;
+                for(int index : abs.getAttributeIndexSet().stream().toArray()){
+                    AttributeBitSet absSingle = new AttributeBitSet(relationIndex, index);
+                    if(pliSingle == null){
+                        pliSingle = preLevelMap.get(absSingle);
+                    }else{
+                        pliSingle = pliSingle.intersect(preLevelMap.get(absSingle));
+                    }
+                }
+
+                return pliSingle;
             }
         }
 
@@ -260,7 +272,19 @@ public final class Preprocessor {
                 levelMap.put(pli.getAttributeSet(), pli);
                 return pli;
             }else{
-                throw new IllegalStateException("PLI cache is missing for attributeSet: " + abs);
+                long level1Key = Utility.compositeKey(relationIndex, 1);
+                Object2ObjectMap<AttributeBitSet, PositionListIndex> preLevelMap = this.pliMap.get(level1Key);
+                PositionListIndex pliSingle = null;
+                for(int index : abs.getAttributeIndexSet().stream().toArray()){
+                    AttributeBitSet absSingle = new AttributeBitSet(relationIndex, index);
+                    if(pliSingle == null){
+                        pliSingle = preLevelMap.get(absSingle);
+                    }else{
+                        pliSingle = pliSingle.intersect(preLevelMap.get(absSingle));
+                    }
+                }
+
+                return pliSingle;
             }
         }
 

@@ -20,30 +20,32 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
-            return profileF(lhs.relations(), rhs.relations(), lhs.level());
+            return profileCC(lhs.relations(), rhs.relations(), lhs.level());
         }
 
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
-            return profileF_VALID(lhs.relations(), rhs.attributes(), lhs.level());
+            return profileCCLocked(lhs.relations(), rhs.attributes(), lhs.level());
         }
 
         if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs){
-            return profileF_PLUS(lhs.attributes(), rhs.relations());
+            return profileLockedCC(lhs.attributes(), rhs.relations());
         }
 
         if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs){
-            return profileF_PLUS_VALID(lhs.attributes(), rhs.attributes());
+            return profileLocked(lhs.attributes(), rhs.attributes());
         }
 
         throw new IllegalArgumentException("Unsupported FDRequest");
     }
 
-    private FDResult profileF(int[] lhsRelationIndexes,
+    private FDResult profileCC(int[] lhsRelationIndexes,
                               int[] rhsRelationIndexes,
                               int level) throws InputIterationException {
         FDResult result = new FDResult();
         int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
         for(int relationIndex : commonRelationIndexes) {
+            Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
+
             AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
             AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);
 
@@ -55,7 +57,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                 }
 
                 for (AttributeBitSet rhsAbs : initialLevel) {
-                    if(lhsAbs.equals(rhsAbs) || rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
+                    if(rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
                         continue;
                     }
 
@@ -71,7 +73,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         return  result;
     }
 
-    private FDResult profileF_PLUS(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
+    private FDResult profileLockedCC(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
                                    int[] rhsRelationIndexes) throws InputIterationException {
         FDResult result = new FDResult();
         for (AttributeBitSet lhsAbs : lhsAttributes) {
@@ -104,7 +106,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         return  result;
     }
 
-    private FDResult profileF_VALID(int[] lhsRelationIndexes,
+    private FDResult profileCCLocked(int[] lhsRelationIndexes,
                                     ObjectOpenHashSet<AttributeBitSet> rhsAttributes,
                                     int level) throws InputIterationException {
         FDResult result = new FDResult();
@@ -140,7 +142,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         return  result;
     }
 
-    private FDResult profileF_PLUS_VALID(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
+    private FDResult profileLocked(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
                                          ObjectOpenHashSet<AttributeBitSet> rhsAttributes) throws InputIterationException {
         FDResult result = new FDResult();
 
@@ -177,12 +179,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         PositionListIndex intersectedPli = preprocessor.getOrComputePLI(abs, () -> lhsPli.intersect(rhsPli));
 
         //If the rhsPli does not split any partitions of the lhsPli, the FD is valid!
-        if (lhsPli.getClusters().equals(intersectedPli.getClusters())) {
-            System.out.println(lhsPli.getAttributeSet() + "," + rhsPli.getAttributeSet());
-            return true;
-        }
-
-        return false;
+        return lhsPli.getClusters().equals(intersectedPli.getClusters());
     }
 }
 

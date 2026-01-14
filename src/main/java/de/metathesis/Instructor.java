@@ -127,9 +127,11 @@ public final class Instructor {
                 if (node == null) continue;
 
                 // Dependency: previous level of same edge
-                if (executionGraph.containsKey(node.getPreviousNodeId())) {
+                if (!(isRhsLocked || isLhsLocked) && executionGraph.containsKey(node.getPreviousNodeId())) {
                     node.getParents().add(executionGraph.get(node.getPreviousNodeId()));
-                    executionGraph.get(node.getPreviousNodeId()).getChildren().add(node);
+                    //executionGraph.get(node.getPreviousNodeId()).getChildren().add(node);
+                    //node.setPreviousLevel(executionGraph.get(node.getPreviousNodeId()));
+                    //executionGraph.get(node.getPreviousNodeId()).setNextLevel(node);
                 }
 
                 // Dependency: last use of variables

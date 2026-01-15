@@ -1,4 +1,4 @@
-package de;
+package de.metathesis;
 
 import de.metaserve.engine.Metaserve;
 import de.metaserve.util.listener.ComplitionListener;
@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-public class MyTest {
+public class QueryTest {
     Metaserve metaserve;
 
     @BeforeEach

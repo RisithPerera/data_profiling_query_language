@@ -7,6 +7,7 @@ import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.requests.INDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.INDResult;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
@@ -16,7 +17,8 @@ import java.util.concurrent.Executor;
 
 public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
-    private final Object2ObjectOpenHashMap<AttributeBitSet, String[]> cashedTuples = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<AttributeBitSet, String[]> cashedTuples = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectMap<AttributeBitSet, AttributeBitSet> indMap = new Object2ObjectOpenHashMap<>();
 
     public INDProfiler(Executor executor) {
         super(executor);
@@ -46,6 +48,30 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
     private INDResult profileCC(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) throws InputIterationException {
         INDResult result = new INDResult();
+        for(int lhsRelationIndex : lhsRelationIndexes){
+            String[][] lhsRecords = preprocessor.getColumnWiseDataOf(lhsRelationIndex);
+            AttributeBitSet[] lhsAttributeSets = this.preprocessor.generateApriori(lhsRelationIndex, level);
+            for(int rhsRelationIndex : rhsRelationIndexes){
+                String[][] rhsRecords = this.preprocessor.getColumnWiseDataOf(rhsRelationIndex);
+                AttributeBitSet[] rhsAttributeSets = this.preprocessor.generateApriori(rhsRelationIndex, level);
+
+                for(AttributeBitSet lhsAttributeSet : lhsAttributeSets){
+                    String[] lhsTuples = getTuples(lhsRecords, lhsAttributeSet);
+                    for(AttributeBitSet rhsAttributeSet : rhsAttributeSets){
+                        String[] rhsTuples = getTuples(rhsRecords, rhsAttributeSet);
+
+                        if(lhsAttributeSet.getRelationIndex() == rhsAttributeSet.getRelationIndex() &&
+                                !lhsAttributeSet.intersect(rhsAttributeSet).isEmpty()){
+                            continue;
+                        }
+
+                        if (isIncluded(lhsTuples, rhsTuples)) {
+                            result.add(lhsAttributeSet, rhsAttributeSet);
+                        }
+                    }
+                }
+            }
+        }
 
         return  result;
     }
@@ -54,6 +80,30 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                                       int[] rhsRelationIndexes) throws InputIterationException {
         INDResult result = new INDResult();
 
+        for(AttributeBitSet lhsAttributeSet : lhsAttributes){
+            String[][] lhsRecords = preprocessor.getColumnWiseDataOf(lhsAttributeSet.getRelationIndex());
+            String[] lhsTuples = getTuples(lhsRecords, lhsAttributeSet);
+
+            for(int rhsRelationIndex : rhsRelationIndexes){
+                Utility.printLog(String.format("P: IND R:%d L:%d", rhsRelationIndex,  lhsAttributes.size()), this.executor);
+                String[][] rhsRecords = preprocessor.getColumnWiseDataOf(rhsRelationIndex);
+                AttributeBitSet[] rhsAttributeSets = this.preprocessor.generateApriori(rhsRelationIndex, lhsAttributes.size());
+
+                //Instructor.printLog("IND", this.executor);
+                for(AttributeBitSet rhsAttributeSet : rhsAttributeSets){
+                    String[] rhsTuples = getTuples(rhsRecords, rhsAttributeSet);
+
+                    if(lhsAttributeSet.getRelationIndex() == rhsAttributeSet.getRelationIndex() &&
+                            !lhsAttributeSet.intersect(rhsAttributeSet).isEmpty()){
+                        continue;
+                    }
+
+                    if (isIncluded(lhsTuples, rhsTuples)) {
+                        result.add(lhsAttributeSet, rhsAttributeSet);
+                    }
+                }
+            }
+        }
         return  result;
     }
 
@@ -111,7 +161,6 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
             }
         }
 
-
         return result;
     }
 
@@ -155,8 +204,12 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         int i = 0, j = 0;
         while (i < lhs.length && j < rhs.length) {
             int cmp = lhs[i].compareTo(rhs[j]);
-            if (cmp == 0) { i++; j++; }
-            else if (cmp > 0) j++;
+            if (cmp == 0) {
+                i++;
+                j++;
+            } else if (cmp > 0) {
+                j++;
+            }
             else return false;
         }
         return i == lhs.length;

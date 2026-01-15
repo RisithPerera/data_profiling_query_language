@@ -23,15 +23,48 @@ public class MyTest {
     }
 
     @Test
+    public void testUCC() {
+        String query = "SELECT X FROM CC(*) X WHERE UCC(X)";
+        List<ResultSet> resultSetList = metaserve.executeQuery(query);
+        ResultSet first = resultSetList.get(0);
+        first.printResults();
+    }
+
+    @Test
+    public void testIND() {
+        String query = "SELECT X, Y FROM CC(*) X, CC(*) Y WHERE IND(X,Y)";
+        List<ResultSet> resultSetList = metaserve.executeQuery(query);
+        ResultSet first = resultSetList.get(0);
+        first.printResults();
+    }
+
+    @Test
+    public void testFD() {
+        String query = "SELECT X, Y FROM CC(*) X, CC(*) Y WHERE FD(X,Y)";
+        List<ResultSet> resultSetList = metaserve.executeQuery(query);
+        ResultSet first = resultSetList.get(0);
+        first.printResults();
+    }
+
+    @Test
+    public void testQ1() {
+        String query = "SELECT X, Y FROM CC(*) X, CC(*) Y WHERE IND(X,Y) AND UCC(Y)";
+        List<ResultSet> resultSetList = metaserve.executeQuery(query);
+        ResultSet first = resultSetList.get(0);
+        first.printResults();
+    }
+
+    @Test
     public void testQ2() {
         String query = "SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE FD(X,Z) AND IND(X,Y) AND UCC(Y)";
         List<ResultSet> resultSetList = metaserve.executeQuery(query);
-        System.out.println(resultSetList.getFirst().getRows2());
+        ResultSet first = resultSetList.get(0);
+        first.printResults();
     }
 
     @Test
     public void testExtra() {
-        String query = "SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE UCC(Z) AND IND(X,Z) AND IND(X,Y) AND UCC(Y)";
+        String query = "SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE UCC(Z) AND FD(X,Z) AND IND(X,Y) AND UCC(Y)";
         List<ResultSet> resultSetList = metaserve.executeQuery(query);
         System.out.println(resultSetList.getFirst().getRows2());
     }

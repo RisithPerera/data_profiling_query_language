@@ -1,6 +1,7 @@
 package de.metathesis.structures.results;
 
 import de.metathesis.structures.AttributeBitSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.Iterator;
@@ -8,10 +9,33 @@ import java.util.NoSuchElementException;
 
 public final class UCCResult implements Result<UCCResult.UCC>{
 
-    private final ObjectOpenHashSet<AttributeBitSet> lhs = new ObjectOpenHashSet<>();
+    private final ObjectArrayList<AttributeBitSet> lhs = new ObjectArrayList<>();
 
     public boolean add(AttributeBitSet lhsBitSet) {
+        int index = lhs.indexOf(lhsBitSet);
+        if (index >= 0) {
+            return false;
+        }
+
         return lhs.add(lhsBitSet);
+    }
+
+    @Override
+    public void cropByLhsSet(ObjectOpenHashSet<AttributeBitSet> lhsSet) {
+        for (int i = lhs.size() - 1; i >= 0; i--) {
+            if (!lhsSet.contains(lhs.get(i))) {
+                lhs.remove(i);
+            }
+        }
+    }
+
+    @Override
+    public void cropByRhsSet(ObjectOpenHashSet<AttributeBitSet> rhsSet) {
+        for (int i = lhs.size() - 1; i >= 0; i--) {
+            if (!rhsSet.contains(lhs.get(i))) {
+                lhs.remove(i);
+            }
+        }
     }
 
     @Override
@@ -31,12 +55,12 @@ public final class UCCResult implements Result<UCCResult.UCC>{
 
     @Override
     public ObjectOpenHashSet<AttributeBitSet> asLhsSet() {
-        return lhs;
+        return new ObjectOpenHashSet<>(lhs);
     }
 
     @Override
     public ObjectOpenHashSet<AttributeBitSet> asRhsSet() {
-        return lhs; //Return Same
+        return new ObjectOpenHashSet<>(lhs); //Return Same
     }
 
     /* --- Separate Iteration --- */

@@ -4,7 +4,10 @@ import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.Utility;
 import de.metathesis.profilers.AbstractProfiler;
 import de.metathesis.structures.requests.Request;
+import de.metathesis.structures.results.FDResult;
+import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.Result;
+import de.metathesis.structures.results.UCCResult;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -68,7 +71,55 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
             Utility.printLog(String.format("F: %s", this), this.profiler.getExecutor());
             //out.forEach(System.out::println);
             results = out;
+            showResults();
+            cropParentResults();
         });
+    }
+
+    private void showResults(){
+        List<de.metanome.algorithm_integration.results.Result> resultList = new ArrayList<>();
+
+        for(Object x:  this.getResults()) {
+            if(x instanceof UCCResult.UCC ucc){
+                resultList.add(this.profiler.getPreprocessor().formatUCC(ucc));
+            }else if(x instanceof INDResult.IND ind){
+                resultList.add(this.profiler.getPreprocessor().formatIND(ind));
+            }else if(x instanceof FDResult.FD fd){
+                resultList.add(this.profiler.getPreprocessor().formatFD(fd));
+            }
+        }
+        System.out.println(resultList);
+    }
+
+    private void cropParentResults(){
+        System.out.println("Cropping parent results: "+ this);
+        for (ExecutionNode<?, ?> parent : this.parents) {
+            if(parent.getEdge().equals(this.edge)){
+                return;
+            }
+
+            String parentLeftName = parent.getEdge().leftName;
+            String parentRightName = parent.getEdge().rightName;
+
+            String leftName = this.edge.leftName;
+            String rightName = this.edge.rightName;
+
+            if(parentLeftName.equals(leftName)) {
+                parent.getResults().cropByLhsSet(this.getResults().asLhsSet());
+            }
+
+            if(parentRightName.equals(leftName)) {
+                parent.getResults().cropByRhsSet(this.getResults().asLhsSet());
+            }
+
+            if(parentLeftName.equals(rightName)) {
+                parent.getResults().cropByLhsSet(this.getResults().asRhsSet());
+            }
+
+            if(parentRightName.equals(rightName)) {
+                parent.getResults().cropByRhsSet(this.getResults().asRhsSet());
+            }
+        }
     }
 
     public String getPreviousNodeId() {

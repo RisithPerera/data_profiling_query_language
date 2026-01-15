@@ -15,10 +15,36 @@ public final class INDResult implements Result<INDResult.IND>{
     public void add(AttributeBitSet lhsBitSet, AttributeBitSet rhsBitSet) {
         assert (lhsBitSet.size() == rhsBitSet.size());
 
-        if(lhs.contains(lhsBitSet) && rhs.contains(rhsBitSet)) return;
+        int index = lhs.indexOf(lhsBitSet);
+        if (index >= 0) {
+            if (rhs.get(index).equals(rhsBitSet)) {
+                return; // exact pair already exists
+            }
+        }
 
         lhs.add(lhsBitSet);
         rhs.add(rhsBitSet);
+    }
+
+    @Override
+    public void cropByLhsSet(ObjectOpenHashSet<AttributeBitSet> lhsSet) {
+        for (int i = lhs.size() - 1; i >= 0; i--) {
+            if (!lhsSet.contains(lhs.get(i))) {
+                lhs.remove(i);
+                rhs.remove(i);
+            }
+        }
+    }
+
+
+    @Override
+    public void cropByRhsSet(ObjectOpenHashSet<AttributeBitSet> rhsSet) {
+        for (int i = rhs.size() - 1; i >= 0; i--) {
+            if (!rhsSet.contains(rhs.get(i))) {
+                lhs.remove(i);
+                rhs.remove(i);
+            }
+        }
     }
 
     @Override

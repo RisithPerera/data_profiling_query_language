@@ -2,10 +2,18 @@ package de.metathesis;
 
 import de.metanome.MetanomeHelper;
 import de.metanome.algorithm_integration.AlgorithmConfigurationException;
+import de.metanome.algorithm_integration.ColumnCombination;
+import de.metanome.algorithm_integration.ColumnIdentifier;
+import de.metanome.algorithm_integration.ColumnPermutation;
 import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
+import de.metanome.algorithm_integration.results.FunctionalDependency;
+import de.metanome.algorithm_integration.results.InclusionDependency;
+import de.metanome.algorithm_integration.results.MultivaluedDependency;
+import de.metanome.algorithm_integration.results.UniqueColumnCombination;
+import de.metanome.backend.result_postprocessing.results.InclusionDependencyResult;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
@@ -27,6 +35,7 @@ import java.util.function.Supplier;
 public final class Preprocessor {
 
     private static final Preprocessor INSTANCE = new Preprocessor();
+    private static final String NULL_SENTINEL = "<NULL>";
 
     private final Object2IntMap<String> relationToIndex = new Object2IntOpenHashMap<>();
 
@@ -181,7 +190,8 @@ public final class Preprocessor {
             List<String> record = relationalInput.next();
 
             for (int c = 0; c < numAttributes; c++) {
-                cols[c].add(record.get(c));
+                String value =  record.get(c);
+                cols[c].add(value == null || value.isEmpty() ? NULL_SENTINEL : value);
             }
 
             numRecords++;
@@ -357,6 +367,38 @@ public final class Preprocessor {
             System.out.print(format(sets[i]));
         }
         System.out.println();
+    }
+
+    public ColumnIdentifier[] formatAbs(AttributeBitSet abs) {
+        String relName = relationNames.get(abs.getRelationIndex());
+        String[] cols = attributeNames.get(abs.getRelationIndex());
+
+        ColumnIdentifier[] cdList = new ColumnIdentifier[abs.size()];
+
+        BitSet bs = abs.getAttributeIndexSet();
+        int outIdx = 0;
+
+        for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
+            cdList[outIdx++] = new ColumnIdentifier(relName, cols[i]);
+        }
+
+        return cdList;
+    }
+
+    public UniqueColumnCombination formatUCC(UCCResult.UCC ucc) {
+        return new UniqueColumnCombination(formatAbs(ucc.lhs));
+    }
+
+    public InclusionDependency formatIND(INDResult.IND ind) {
+        ColumnPermutation dependant = new ColumnPermutation(formatAbs(ind.lhs));
+        ColumnPermutation referenced = new ColumnPermutation(formatAbs(ind.rhs));
+        return new InclusionDependency(dependant, referenced);
+    }
+
+    public MultivaluedDependency formatFD(FDResult.FD fd) {
+        ColumnCombination determinant = new ColumnCombination(formatAbs(fd.lhs));
+        ColumnCombination dependant = new ColumnCombination(formatAbs(fd.rhs));
+        return new MultivaluedDependency(determinant, dependant);
     }
 
     public void printUCC(UCCResult result) {

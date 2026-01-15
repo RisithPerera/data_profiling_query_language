@@ -9,6 +9,7 @@ import de.metaserve.executor.min.graph.edge.UCCEdge;
 import de.metathesis.profilers.FDProfiler;
 import de.metathesis.profilers.INDProfiler;
 import de.metathesis.profilers.UCCProfiler;
+import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.ExecutionNode;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.INDRequest;
@@ -17,6 +18,7 @@ import de.metathesis.structures.requests.UCCRequest;
 import de.metathesis.structures.results.FDResult;
 import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.UCCResult;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -158,17 +160,90 @@ public final class Instructor {
             }
         }
 
+        //Nodes Should be in order
         for (ExecutionNode<?, ?> node : executionGraph.values()) {
             node.execute();
         }
 
+        Utility.printLog("SCHEDULED", this.pool);
+
+        List<ExecutionNode<?, ?>> leafNodes = executionGraph.values().stream()
+                .filter(n -> n.getChildren().isEmpty())
+                .toList();
+
         // Join leaves
-        CompletableFuture.allOf(
-                executionGraph.values().stream()
-                        .filter(n -> n.getChildren().isEmpty())
-                        .map(ExecutionNode::getFuture)
-                        .toArray(CompletableFuture[]::new)
+        CompletableFuture.allOf(leafNodes.stream()
+                .map(ExecutionNode::getFuture)
+                .toArray(CompletableFuture[]::new)
         ).join();
+        Utility.printLog("FINISH", this.pool);
+
+        Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
+
+        for(Edge edge : orderedEdges){
+            edge.setResults(results.get(edge));
+        }
+    }
+
+    private Map<Edge, List<de.metanome.algorithm_integration.results.Result>> collectResults(Map<String, ExecutionNode<?, ?>> executionGraph) {
+        Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = new HashMap<>();
+
+        if (executionGraph == null) return results;
+
+        for (ExecutionNode<?, ?> node : executionGraph.values()) {
+            if(node.getResults().isEmpty()){
+                continue;
+            }
+
+            if (!results.containsKey(node.getEdge())) {
+                results.put(node.getEdge(), new ArrayList<>());
+            }
+
+            for(Object x:  node.getResults()) {
+                if(x instanceof UCCResult.UCC ucc){
+                    results.get(node.getEdge()).add(this.preprocessor.formatUCC(ucc));
+                }else if(x instanceof INDResult.IND ind){
+                    results.get(node.getEdge()).add(this.preprocessor.formatIND(ind));
+                }else if(x instanceof FDResult.FD fd){
+                    results.get(node.getEdge()).add(this.preprocessor.formatFD(fd));
+                }
+            }
+        }
+
+        return results;
+    }
+
+    private void collectResultsFromLeaf(ExecutionNode<?, ?> node, Map<String, ObjectOpenHashSet<AttributeBitSet>> accumulated) {
+        if(node.getResults().isEmpty()){
+            return;
+        }
+
+        if(node.getParents().isEmpty()){
+            return;
+        }
+
+        if(!accumulated.containsKey(node.getEdge().leftName) && !accumulated.containsKey(node.getEdge().rightName)){
+            accumulated.put(node.getEdge().leftName, node.getResults().asLhsSet());
+            accumulated.put(node.getEdge().rightName, node.getResults().asRhsSet());
+        }
+
+        if(accumulated.containsKey(node.getEdge().leftName) && !accumulated.containsKey(node.getEdge().rightName)){
+            ObjectOpenHashSet<AttributeBitSet> newVariable =  new ObjectOpenHashSet<>();
+            for(AttributeBitSet abs: accumulated.get(node.getEdge().leftName)){
+                for(AttributeBitSet xx: node.getResults().lhs()){
+                    if(abs.equals(xx)){
+                        System.out.println(abs);
+                    }
+                }
+
+            }
+            accumulated.put(node.getEdge().rightName, newVariable);
+        }
+
+
+        for (ExecutionNode<?, ?> grandParent : node.getParents()) {
+            collectResultsFromLeaf(grandParent, accumulated);
+        }
     }
 
     public void runPipeline(Map<String, int[]> relationIndexMap) {

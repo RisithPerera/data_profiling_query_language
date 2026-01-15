@@ -8,6 +8,9 @@ public interface Result<T> extends Iterable<T>{
     int size();
     boolean isEmpty();
 
+    void cropByLhsSet(ObjectOpenHashSet<AttributeBitSet> lhsSet);
+    void cropByRhsSet(ObjectOpenHashSet<AttributeBitSet> rhsSet);
+
     ObjectOpenHashSet<AttributeBitSet> asLhsSet();
     ObjectOpenHashSet<AttributeBitSet> asRhsSet();
 

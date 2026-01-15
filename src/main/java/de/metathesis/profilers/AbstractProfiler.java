@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 public abstract class AbstractProfiler<In extends Request, Out extends Result<?>> implements Profiler<In, Out> {
+    @Getter
     protected final Preprocessor preprocessor;
 
     @Getter

@@ -75,10 +75,11 @@ public class Node {
     }
 
     public int degree() {
-        Set<Edge> allEdges = new HashSet<>();
-        allEdges.addAll(edgesIncoming);
-        allEdges.addAll(edgesOutgoing);
-        return allEdges.size();
+//        Set<Edge> allEdges = new HashSet<>();
+//        allEdges.addAll(edgesIncoming);
+//        allEdges.addAll(edgesOutgoing);
+//        return allEdges.size();
+        return edgesIncoming.size() + edgesOutgoing.size();
     }
 
     public boolean isEmpty() {

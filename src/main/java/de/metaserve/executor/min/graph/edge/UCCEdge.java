@@ -35,4 +35,9 @@ public class UCCEdge extends Edge{
     public Edge copy(HashMap<String, String> mapping) {
         return new UCCEdge(mapping.get(leftName));
     }
+
+    @Override
+    public int degree() {
+        return this.leftNode.degree();
+    }
 }

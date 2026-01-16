@@ -967,6 +967,8 @@ public class Graph {
         Node right = nodes.get(edge.rightName);
         left.addEdge(edge);
         right.addEdge(edge);
+        edge.setLeftNode(left);
+        edge.setRightNode(right);
         if(!hasEdge(edge))
             edges.add(edge);
     }

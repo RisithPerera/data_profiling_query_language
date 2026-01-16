@@ -38,4 +38,9 @@ public class FDEdge extends Edge{
     public Edge copy(HashMap<String, String> mapping) {
         return new FDEdge(mapping.get(leftName), mapping.get(rightName));
     }
+
+    @Override
+    public int degree() {
+        return this.leftNode.degree() + this.rightNode.degree();
+    }
 }

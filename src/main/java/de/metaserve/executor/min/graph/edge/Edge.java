@@ -4,6 +4,7 @@ import de.metanome.algorithm_integration.results.Result;
 import de.metaserve.executor.min.graph.Node;
 import de.metaserve.executor.min.results.ResultsContainer;
 import de.metaserve.util.common.Triple;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +13,10 @@ import java.util.List;
 public abstract class Edge {
     public String leftName;
     public String rightName;
+    @Setter
+    protected Node leftNode;
+    @Setter
+    protected Node rightNode;
     public Edge originalEdge;
 
     List<Triple<Boolean, Edge, Boolean>> neighbors = new ArrayList<>();
@@ -59,6 +64,9 @@ public abstract class Edge {
     }
 
     public abstract Edge copy(HashMap<String, String> mapping);
+
+    //Return a measurement of how each variable is used by other dependencies
+    public abstract int degree();
 
     boolean marked = false;
     public void mark() {

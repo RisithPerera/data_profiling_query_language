@@ -35,4 +35,9 @@ public class INDEdge extends Edge{
     public Edge copy(HashMap<String, String> mapping) {
         return new INDEdge(mapping.get(leftName), mapping.get(rightName));
     }
+
+    @Override
+    public int degree() {
+        return this.leftNode.degree() + this.rightNode.degree();
+    }
 }

@@ -22,12 +22,6 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
     private final AbstractProfiler<In, Out> profiler;
     private final Function<Map<ExecutionNode<?, ?>, Result<?>>, In> inputBuilder;
 
-    @Setter
-    private ExecutionNode<?, ?> previousLevel;
-
-    @Setter
-    private ExecutionNode<?, ?> nextLevel;
-
     private final List<ExecutionNode<?, ?>> parents = new ArrayList<>();
     private final List<ExecutionNode<?, ?>> children = new ArrayList<>(); //To Track Leaf Nodes
 
@@ -45,7 +39,7 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
     }
 
     public void execute() {
-        if (Objects.nonNull(future)) {
+        if (Objects.nonNull(this.future)) {
             return; // prevent double execution
         }
 
@@ -66,12 +60,13 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
                             return profiler.runAsync(input);
                         });
 
+        //Once this node is completed crop it's parent lhs and rhs results.
         this.future.thenAccept(out -> {
             // Result handling belongs here
             Utility.printLog(String.format("F: %s", this), this.profiler.getExecutor());
-            //out.forEach(System.out::println);
+
             results = out;
-            showResults();
+            showResults(); //Testing Purposes
             cropParentResults();
         });
     }

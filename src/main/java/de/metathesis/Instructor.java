@@ -2,6 +2,8 @@ package de.metathesis;
 
 import de.metanome.algorithm_integration.AlgorithmConfigurationException;
 import de.metanome.algorithm_integration.input.InputGenerationException;
+import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
@@ -50,9 +52,15 @@ public final class Instructor {
         return INSTANCE;
     }
 
-    public void runExecution(List<Edge> orderedEdges, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
+    public void runExecution(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
         Map<String, int[]> relationIndexMap = this.preprocessor.initializeSearchSpace(relationMap);
         Map<String, int[]> relationSizesMap = this.preprocessor.getAttributeSizesOf(relationIndexMap);
+
+        //Make an order list of dependencies based on set membership priority order
+        List<Edge> orderedEdges = setMembershipMap.entrySet().stream()
+                .sorted(Comparator.comparingInt(e -> e.getValue().priority()))
+                .map(Map.Entry::getKey)
+                .toList();
 
         int globalMaxLevel = Utility.max(relationSizesMap.values());
 
@@ -65,14 +73,14 @@ public final class Instructor {
             Map<String, ExecutionNode<?, ?>> lastNodeByVariable = new HashMap<>();
 
             for (Edge edge : orderedEdges) {
-                int[] lhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.leftName), relationSizesMap.get(edge.leftName), level);
-                int[] rhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.rightName), relationSizesMap.get(edge.rightName), level);
+                final int[] lhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.leftName), relationSizesMap.get(edge.leftName), level);
+                final int[] rhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.rightName), relationSizesMap.get(edge.rightName), level);
 
-                boolean isLhsLocked = lastNodeByVariable.containsKey(edge.leftName);
-                boolean isRhsLocked = lastNodeByVariable.containsKey(edge.rightName);
+                final boolean isLhsLocked = lastNodeByVariable.containsKey(edge.leftName);
+                final boolean isRhsLocked = lastNodeByVariable.containsKey(edge.rightName);
 
-                ExecutionNode<?, ?> lhsPreviousNode = lastNodeByVariable.get(edge.leftName);
-                ExecutionNode<?, ?> rhsPreviousNode = lastNodeByVariable.get(edge.rightName);
+                final ExecutionNode<?, ?> lhsPreviousNode = lastNodeByVariable.get(edge.leftName);
+                final ExecutionNode<?, ?> rhsPreviousNode = lastNodeByVariable.get(edge.rightName);
 
                 ExecutionNode<?, ?> node = null;
 
@@ -131,9 +139,6 @@ public final class Instructor {
                 // Dependency: previous level of same edge
                 if (!(isRhsLocked || isLhsLocked) && executionGraph.containsKey(node.getPreviousNodeId())) {
                     node.getParents().add(executionGraph.get(node.getPreviousNodeId()));
-                    //executionGraph.get(node.getPreviousNodeId()).getChildren().add(node);
-                    //node.setPreviousLevel(executionGraph.get(node.getPreviousNodeId()));
-                    //executionGraph.get(node.getPreviousNodeId()).setNextLevel(node);
                 }
 
                 // Dependency: last use of variables
@@ -323,84 +328,6 @@ public final class Instructor {
 //                    }
                 }
             }
-        }
-    }
-
-    public void runUCCOnly(Map<String, int[]> relationIndexMap) {
-        // Start UCC(1)
-        UCCRequest uccRequest = new UCCRequest(new SearchSpace.CC(relationIndexMap.get("X"), 1));
-        CompletableFuture<UCCResult> uccFuture = uccProfiler.runAsync(uccRequest);
-
-        int maxLevel = Utility.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("X")));
-
-        //Temporary Collecting Results
-        List<UCCResult.UCC> uccResults = new ArrayList<>();
-
-        for (int level = 1; level <= maxLevel; level++) {
-
-            final int currentLevel = level;
-
-            uccFuture.thenAccept( uccResult -> {
-                    Utility.printLog(String.format("F: FD L:%d", currentLevel), this.pool);
-                        uccResult.forEach(uccResults::add);
-                    }
-            );
-
-            // Prepare UCC(L+1) immediately after UCC(L)
-            if (level < maxLevel) {
-                uccFuture = uccFuture.thenCompose(
-                        ignored -> uccProfiler.runAsync(
-                                new UCCRequest(new SearchSpace.CC(relationIndexMap.get("X"), currentLevel + 1))
-                        )
-                );
-            }
-        }
-
-        System.out.println("Pipeline scheduled");
-        uccFuture.join();
-        System.out.println("Pipeline completed");
-
-        for(UCCResult.UCC ucc : uccResults) {
-            this.preprocessor.printAttributeSet(ucc.lhs);
-        }
-    }
-
-    public void runINDOnly(Map<String, int[]> relationIndexMap) {
-        // Start UCC(1)
-        UCCRequest uccRequest = new UCCRequest(new SearchSpace.CC(relationIndexMap.get("X"), 1));
-        CompletableFuture<UCCResult> uccFuture = uccProfiler.runAsync(uccRequest);
-
-        int maxLevel = Utility.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("X")));
-
-        //Temporary Collecting Results
-        List<UCCResult.UCC> uccResults = new ArrayList<>();
-
-        for (int level = 1; level <= maxLevel; level++) {
-
-            final int currentLevel = level;
-
-            uccFuture.thenAccept( uccResult -> {
-                    Utility.printLog(String.format("F: FD L:%d", currentLevel), this.pool);
-                        uccResult.forEach(uccResults::add);
-                    }
-            );
-
-            // Prepare UCC(L+1) immediately after UCC(L)
-            if (level < maxLevel) {
-                uccFuture = uccFuture.thenCompose(
-                        ignored -> uccProfiler.runAsync(
-                                new UCCRequest(new SearchSpace.CC(relationIndexMap.get("X"), currentLevel + 1))
-                        )
-                );
-            }
-        }
-
-        System.out.println("Pipeline scheduled");
-        uccFuture.join();
-        System.out.println("Pipeline completed");
-
-        for(UCCResult.UCC ucc : uccResults) {
-            this.preprocessor.printAttributeSet(ucc.lhs);
         }
     }
 

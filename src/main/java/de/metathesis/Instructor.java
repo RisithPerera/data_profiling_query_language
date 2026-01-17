@@ -2,15 +2,9 @@ package de.metathesis;
 
 import de.metanome.algorithm_integration.AlgorithmConfigurationException;
 import de.metanome.algorithm_integration.input.InputGenerationException;
-import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.executor.min.graph.edge.Edge;
-import de.metaserve.executor.min.graph.edge.FDEdge;
-import de.metaserve.executor.min.graph.edge.INDEdge;
-import de.metaserve.executor.min.graph.edge.UCCEdge;
-import de.metathesis.profilers.FDProfiler;
-import de.metathesis.profilers.INDProfiler;
-import de.metathesis.profilers.UCCProfiler;
+import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.ExecutionNode;
 import de.metathesis.structures.requests.FDRequest;
@@ -29,27 +23,14 @@ import java.util.concurrent.TimeUnit;
 
 public final class Instructor {
 
-    private static volatile Instructor INSTANCE;
     private final ExecutorService pool;
     private final Preprocessor preprocessor;
-    private final UCCProfiler uccProfiler;
-    private final INDProfiler indProfiler;
-    private final FDProfiler fdProfiler;
+    private final ProfilerFactory profilerFactory;
 
-    private Instructor(ExecutorService pool) {
+    public Instructor(ExecutorService pool) {
         this.pool = pool;
         this.preprocessor = Preprocessor.getInstance();
-        this.uccProfiler = new UCCProfiler(pool);
-        this.indProfiler = new INDProfiler(pool);
-        this.fdProfiler  = new FDProfiler(pool);
-    }
-
-    public static Instructor getInstance(ExecutorService pool) {
-        if (INSTANCE == null) {
-            INSTANCE = new Instructor(pool);
-        }
-
-        return INSTANCE;
+        this.profilerFactory = new ProfilerFactory(pool);
     }
 
     public void runExecution(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
@@ -64,92 +45,42 @@ public final class Instructor {
 
         int globalMaxLevel = Utility.max(relationSizesMap.values());
 
-        Map<String, ExecutionNode<?, ?>> executionGraph = new LinkedHashMap<>(); //All Graph Nodes
+        Map<String, ExecutionNode> executionGraph = new LinkedHashMap<>(); //All Graph Nodes
 
         for (int level = 1; level <= globalMaxLevel; level++) {
-            final int currentLevel = level;
-
-            // Tracks last Execution Node that constrained a variable
-            Map<String, ExecutionNode<?, ?>> lastNodeByVariable = new HashMap<>();
+            // Maps last Execution Node (Edge) used by the variable
+            Map<String, ExecutionNode> lastNodeByVariable = new HashMap<>();
 
             for (Edge edge : orderedEdges) {
+                ExecutionNode node = new ExecutionNode(edge, level, profilerFactory);
+
+                //Filter Relations based on the column size and level
                 final int[] lhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.leftName), relationSizesMap.get(edge.leftName), level);
                 final int[] rhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get(edge.rightName), relationSizesMap.get(edge.rightName), level);
+
+                node.getRelationMap().put(edge.leftName, lhsRelationIndexes);
+                node.getRelationMap().put(edge.rightName, rhsRelationIndexes);
 
                 final boolean isLhsLocked = lastNodeByVariable.containsKey(edge.leftName);
                 final boolean isRhsLocked = lastNodeByVariable.containsKey(edge.rightName);
 
-                final ExecutionNode<?, ?> lhsPreviousNode = lastNodeByVariable.get(edge.leftName);
-                final ExecutionNode<?, ?> rhsPreviousNode = lastNodeByVariable.get(edge.rightName);
-
-                ExecutionNode<?, ?> node = null;
-
-                if (edge instanceof UCCEdge) {
-                    node = new ExecutionNode<>(
-                            edge,
-                            currentLevel,
-                            uccProfiler,
-                            results -> {
-                                SearchSpace lhsSearchSpace = isLhsLocked
-                                        ? new SearchSpace.Locked(results.get(lhsPreviousNode).asLhsSet())
-                                        : new SearchSpace.CC(lhsRelationIndexes, currentLevel);
-
-                                return new UCCRequest(lhsSearchSpace);
-                            }
-                    );
-
-                } else if (edge instanceof INDEdge) {
-                    node = new ExecutionNode<>(
-                            edge,
-                            currentLevel,
-                            indProfiler,
-                            results -> {
-                                SearchSpace lhsSearchSpace = isLhsLocked
-                                        ? new SearchSpace.Locked(results.get(lhsPreviousNode).asLhsSet())
-                                        : new SearchSpace.CC(lhsRelationIndexes, currentLevel);
-
-                                SearchSpace rhsSearchSpace = isRhsLocked
-                                        ? new SearchSpace.Locked(results.get(rhsPreviousNode).asRhsSet())
-                                        : new SearchSpace.CC(rhsRelationIndexes, currentLevel);
-
-                                return new INDRequest(lhsSearchSpace, rhsSearchSpace);
-                            }
-                    );
-                } else if (edge instanceof FDEdge) {
-                    node = new ExecutionNode<>(
-                            edge,
-                            currentLevel,
-                            fdProfiler,
-                            results -> {
-                                SearchSpace lhsSearchSpace = isLhsLocked
-                                        ? new SearchSpace.Locked(results.get(lhsPreviousNode).asLhsSet())
-                                        : new SearchSpace.CC(lhsRelationIndexes, currentLevel);
-
-                                SearchSpace rhsSearchSpace = isRhsLocked
-                                        ? new SearchSpace.Locked(results.get(rhsPreviousNode).asRhsSet())
-                                        : new SearchSpace.CC(rhsRelationIndexes, currentLevel);
-
-                                return new FDRequest(lhsSearchSpace, rhsSearchSpace);
-                            }
-                    );
-                }
-
-                if (node == null) continue;
+                final ExecutionNode lhsPreviousNode = lastNodeByVariable.get(edge.leftName);
+                final ExecutionNode rhsPreviousNode = lastNodeByVariable.get(edge.rightName);
 
                 // Dependency: previous level of same edge
-                if (!(isRhsLocked || isLhsLocked) && executionGraph.containsKey(node.getPreviousNodeId())) {
-                    node.getParents().add(executionGraph.get(node.getPreviousNodeId()));
+                if (!isRhsLocked && !isLhsLocked && executionGraph.containsKey(node.getPreviousNodeId())) {
+                    node.getParents().put("#", executionGraph.get(node.getPreviousNodeId()));
                 }
 
                 // Dependency: last use of variables
                 if (edge.leftName != null && isLhsLocked) {
-                    node.getParents().add(lastNodeByVariable.get(edge.leftName));
-                    lastNodeByVariable.get(edge.leftName).getChildren().add(node);
+                    node.getParents().put(edge.leftName, lhsPreviousNode);
+                    lhsPreviousNode.getChildren().add(node);
                 }
 
                 if (edge.rightName != null && isRhsLocked) {
-                    node.getParents().add(lastNodeByVariable.get(edge.rightName));
-                    lastNodeByVariable.get(edge.rightName).getChildren().add(node);
+                    node.getParents().put(edge.rightName, rhsPreviousNode);
+                    rhsPreviousNode.getChildren().add(node);
                 }
 
                 // Register node
@@ -166,13 +97,13 @@ public final class Instructor {
         }
 
         //Nodes Should be in order
-        for (ExecutionNode<?, ?> node : executionGraph.values()) {
+        for (ExecutionNode node : executionGraph.values()) {
             node.execute();
         }
 
         Utility.printLog("SCHEDULED", this.pool);
 
-        List<ExecutionNode<?, ?>> leafNodes = executionGraph.values().stream()
+        List<ExecutionNode> leafNodes = executionGraph.values().stream()
                 .filter(n -> n.getChildren().isEmpty())
                 .toList();
 
@@ -190,18 +121,18 @@ public final class Instructor {
         }
     }
 
-    private Map<Edge, List<de.metanome.algorithm_integration.results.Result>> collectResults(Map<String, ExecutionNode<?, ?>> executionGraph) {
+    private Map<Edge, List<de.metanome.algorithm_integration.results.Result>> collectResults(Map<String, ExecutionNode> executionGraph) {
         Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = new HashMap<>();
 
         if (executionGraph == null) return results;
 
-        for (ExecutionNode<?, ?> node : executionGraph.values()) {
-            if(node.getResults().isEmpty()){
-                continue;
-            }
-
+        for (ExecutionNode node : executionGraph.values()) {
             if (!results.containsKey(node.getEdge())) {
                 results.put(node.getEdge(), new ArrayList<>());
+            }
+
+            if(node.getResults().isEmpty()){
+                continue;
             }
 
             for(Object x:  node.getResults()) {
@@ -218,7 +149,7 @@ public final class Instructor {
         return results;
     }
 
-    private void collectResultsFromLeaf(ExecutionNode<?, ?> node, Map<String, ObjectOpenHashSet<AttributeBitSet>> accumulated) {
+    private void collectResultsFromLeaf(ExecutionNode node, Map<String, ObjectOpenHashSet<AttributeBitSet>> accumulated) {
         if(node.getResults().isEmpty()){
             return;
         }
@@ -246,7 +177,7 @@ public final class Instructor {
         }
 
 
-        for (ExecutionNode<?, ?> grandParent : node.getParents()) {
+        for (ExecutionNode grandParent : node.getParents().values()) {
             collectResultsFromLeaf(grandParent, accumulated);
         }
     }
@@ -254,7 +185,7 @@ public final class Instructor {
     public void runPipeline(Map<String, int[]> relationIndexMap) {
         // Start UCC(1)
         UCCRequest uccRequest = new UCCRequest(new SearchSpace.CC(relationIndexMap.get("Y"), 1));
-        CompletableFuture<UCCResult> uccFuture = uccProfiler.runAsync(uccRequest);
+        CompletableFuture<UCCResult> uccFuture = this.profilerFactory.getUccProfiler().runAsync(uccRequest);
         List<CompletableFuture<FDResult>> fdFutures = new ArrayList<>();
 
         int maxLevel = Utility.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("Y")));
@@ -278,7 +209,7 @@ public final class Instructor {
                                 new SearchSpace.CC(relationIndexMap.get("X"), currentLevel),
                                 new SearchSpace.Locked(uccResult.asLhsSet())
                         );
-                        return indProfiler.runAsync(indRequest);
+                        return this.profilerFactory.getIndProfiler().runAsync(indRequest);
                     }
             );
 
@@ -292,7 +223,7 @@ public final class Instructor {
                                 new SearchSpace.CC(relationIndexMap.get("Z"), currentLevel)
 
                         );
-                        return fdProfiler.runAsync(fdRequest);
+                        return this.profilerFactory.getFdProfiler().runAsync(fdRequest);
                     }
             );
 
@@ -307,7 +238,7 @@ public final class Instructor {
             // Prepare UCC(L+1) immediately after UCC(L)
             if (level < maxLevel) {
                 uccFuture = uccFuture.thenCompose(
-                                ignored -> uccProfiler.runAsync(
+                                ignored -> this.profilerFactory.getUccProfiler().runAsync(
                                         new UCCRequest(new SearchSpace.CC(relationIndexMap.get("Y"), currentLevel + 1))
                                 )
                         );

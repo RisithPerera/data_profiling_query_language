@@ -2,40 +2,35 @@ package de.metathesis.structures;
 
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.Utility;
-import de.metathesis.profilers.AbstractProfiler;
-import de.metathesis.structures.requests.Request;
+import de.metathesis.profilers.ProfilerFactory;
+import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
 import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.Result;
 import de.metathesis.structures.results.UCCResult;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 
 @Getter
-public final class ExecutionNode<In extends Request, Out extends Result<?>> {
+public final class ExecutionNode {
     private final Edge edge;
     private final int level;
-    private final AbstractProfiler<In, Out> profiler;
-    private final Function<Map<ExecutionNode<?, ?>, Result<?>>, In> inputBuilder;
+    private final ProfilerFactory factory;
 
-    private final List<ExecutionNode<?, ?>> parents = new ArrayList<>();
-    private final List<ExecutionNode<?, ?>> children = new ArrayList<>(); //To Track Leaf Nodes
+    private final Map<String, int[]> relationMap = new HashMap<>();
+    private final Map<String, ExecutionNode> parents = new HashMap<>();
+    private final List<ExecutionNode> children = new ArrayList<>(); //To Track Leaf Nodes
 
-    private CompletableFuture<Out> future;
-    private Out results;
+    private CompletableFuture<? extends Result<?>> future;
+    private Result<?> results;
 
-    public ExecutionNode(Edge edge,
-                         int level,
-                         AbstractProfiler<In, Out> profiler,
-                         Function<Map<ExecutionNode<?, ?>, Result<?>>, In> inputBuilder) {
+    public ExecutionNode(Edge edge, int level, ProfilerFactory factory) {
         this.edge = edge;
         this.level = level;
-        this.profiler = profiler;
-        this.inputBuilder = inputBuilder;
+        this.factory = factory;
     }
 
     public void execute() {
@@ -43,32 +38,45 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
             return; // prevent double execution
         }
 
-        CompletableFuture<?>[] parents = this.parents.stream()
-                        .map(ExecutionNode::getFuture)
-                        .toArray(CompletableFuture[]::new);
+        CompletableFuture<?>[] parents = this.parents.values().stream()
+                    .map(ExecutionNode::getFuture)
+                    .toArray(CompletableFuture[]::new);
 
         this.future = CompletableFuture.allOf(parents) //Waiting for all parents to complete
-                        .thenCompose(v -> {
-                            Map<ExecutionNode<?, ?>, Result<?>> depResults = new HashMap<>();
-                            for (ExecutionNode<?, ?> p : this.parents) {
-                                depResults.put(p, p.getFuture().join()); // Collecting parent results (safe join)
-                            }
+                .thenCompose(v -> {
+                    SearchSpace lhsSearchSpace = initializeSearchSpaceFor(this.edge.leftName);
+                    SearchSpace rhsSearchSpace = initializeSearchSpaceFor(this.edge.rightName);
 
-                            In input = inputBuilder.apply(depResults);
-
-                            Utility.printLog(String.format("S: %s", this), this.profiler.getExecutor());
-                            return profiler.runAsync(input);
-                        });
+                    Utility.printLog(String.format("S: %s", this), this.factory.getExecutor());
+                    return this.factory.run(this.edge, lhsSearchSpace, rhsSearchSpace);
+                });
 
         //Once this node is completed crop it's parent lhs and rhs results.
         this.future.thenAccept(out -> {
             // Result handling belongs here
-            Utility.printLog(String.format("F: %s", this), this.profiler.getExecutor());
+            Utility.printLog(String.format("F: %s", this), this.factory.getExecutor());
 
             results = out;
             showResults(); //Testing Purposes
             cropParentResults();
         });
+
+
+    }
+
+    private SearchSpace initializeSearchSpaceFor(String variable){
+        final boolean isLocked = this.parents.containsKey(variable);
+
+        if (isLocked) {
+            final ExecutionNode connectedNode = this.parents.get(variable);
+            Result<?> nodeResults = connectedNode.getFuture().join(); //Safe join
+
+            boolean isLockedWithLhs =  variable.equals(connectedNode.getEdge().leftName);
+            ObjectOpenHashSet<AttributeBitSet> lhsLockedSpace = isLockedWithLhs ? nodeResults.asLhsSet() : nodeResults.asRhsSet();
+            return new SearchSpace.Locked(lhsLockedSpace);
+        }else{
+            return new SearchSpace.CC(this.relationMap.get(variable), this.level);
+        }
     }
 
     private void showResults(){
@@ -76,23 +84,23 @@ public final class ExecutionNode<In extends Request, Out extends Result<?>> {
 
         for(Object x:  this.getResults()) {
             if(x instanceof UCCResult.UCC ucc){
-                resultList.add(this.profiler.getPreprocessor().formatUCC(ucc));
+                resultList.add(this.factory.getUccProfiler().getPreprocessor().formatUCC(ucc));
             }else if(x instanceof INDResult.IND ind){
-                resultList.add(this.profiler.getPreprocessor().formatIND(ind));
+                resultList.add(this.factory.getIndProfiler().getPreprocessor().formatIND(ind));
             }else if(x instanceof FDResult.FD fd){
-                resultList.add(this.profiler.getPreprocessor().formatFD(fd));
+                resultList.add(this.factory.getFdProfiler().getPreprocessor().formatFD(fd));
             }
         }
         System.out.println(resultList);
     }
 
     private void cropParentResults(){
-        System.out.println("Cropping parent results: "+ this);
-        for (ExecutionNode<?, ?> parent : this.parents) {
+        for (ExecutionNode parent : this.parents.values()) {
             if(parent.getEdge().equals(this.edge)){
                 return;
             }
 
+            System.out.println("Cropping Results Parent: " + parent + " By Child: " + this);
             String parentLeftName = parent.getEdge().leftName;
             String parentRightName = parent.getEdge().rightName;
 

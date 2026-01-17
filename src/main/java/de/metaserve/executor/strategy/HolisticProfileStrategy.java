@@ -10,14 +10,16 @@ import de.metathesis.Instructor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class HolisticProfileStrategy implements Strategy{
 
     private final Graph graph;
     private final QueryMetadata metadata;
-    private Map<String, List<String>> relationMap;
-    private final Instructor instructor;
+    private final Map<String, List<String>> relationMap;
+    private final ExecutorService executor;
 
     public HolisticProfileStrategy(Graph graph, QueryMetadata metadata, Map<String, List<String>> relationMap) {
         this.graph = graph;
@@ -26,7 +28,8 @@ public class HolisticProfileStrategy implements Strategy{
 
         int threadPoolSize = Runtime.getRuntime().availableProcessors();
         System.out.println("Fixed Thread Pool Count: " + threadPoolSize);
-        this.instructor = Instructor.getInstance(Executors.newFixedThreadPool(threadPoolSize));
+
+        this.executor = Executors.newFixedThreadPool(threadPoolSize);
     }
 
     @Override
@@ -34,6 +37,8 @@ public class HolisticProfileStrategy implements Strategy{
         System.out.println("Holistic Profile Strategy Applied!");
 
         metadata.update(QueryEngine.QueryState.QUERY_WAITING_FOR_METANOME);
+
+        Instructor instructor = new Instructor(this.executor);
 
         try {
             instructor.runExecution(this.graph.getSetMembershipMap(), this.relationMap);

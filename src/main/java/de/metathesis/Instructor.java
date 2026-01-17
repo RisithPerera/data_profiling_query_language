@@ -39,7 +39,13 @@ public final class Instructor {
 
         //Make an order list of dependencies based on set membership priority order
         List<Edge> orderedEdges = setMembershipMap.entrySet().stream()
-                .sorted(Comparator.comparingInt(e -> e.getValue().priority()))
+                .sorted(Comparator
+                    // 1. primary: enum priority (lower first)
+                    .comparingInt((Map.Entry<Edge, Graph.SetMembership> e) -> e.getValue().priority())
+
+                    // 2. secondary: dependency count (higher first)
+                    .thenComparing(e -> e.getKey().degree(), Comparator.reverseOrder())
+                )
                 .map(Map.Entry::getKey)
                 .toList();
 
@@ -94,6 +100,19 @@ public final class Instructor {
                     lastNodeByVariable.put(edge.rightName, node);
                 }
             }
+        }
+
+        for (ExecutionNode node : executionGraph.values()) {
+            System.out.println(node.toString());
+            System.out.println("\tParents: ");
+            for (ExecutionNode parent : node.getParents().values()) {
+                System.out.println("\t\t"+parent.toString());
+            }
+            System.out.println("\tChildren: ");
+            for (ExecutionNode child : node.getChildren()) {
+                System.out.println("\t\t"+child.toString());
+            }
+            System.out.println();
         }
 
         //Nodes Should be in order

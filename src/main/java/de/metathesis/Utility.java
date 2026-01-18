@@ -12,6 +12,10 @@ public class Utility {
         return ((long) a << 32) | (b & 0xffffffffL);
     }
 
+    public static long compositeKey(int a, int b, int c) {
+        return ((long) a << 42) | ((long) b << 21) | (long) c;
+    }
+
     public static int max(Collection<int[]> arr) {
         return arr.stream()
                 .mapToInt(Utility::max)

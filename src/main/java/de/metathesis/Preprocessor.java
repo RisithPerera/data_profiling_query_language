@@ -35,7 +35,6 @@ import java.util.function.Supplier;
 public final class Preprocessor {
 
     private static final Preprocessor INSTANCE = new Preprocessor();
-    private static final String NULL_SENTINEL = "<NULL>";
 
     private final Object2IntMap<String> relationToIndex = new Object2IntOpenHashMap<>();
 
@@ -49,10 +48,12 @@ public final class Preprocessor {
 
     private final int inputRowLimit;
     private final boolean isNullEqualNull;
+    private final String nullValue;
 
     private Preprocessor() {
         this.inputRowLimit = InputConfigurationSingleton.get().getFILE_MAX_ROWS();
         this.isNullEqualNull = InputConfigurationSingleton.get().getFILE_NULL_EQUALS_NULL();
+        this.nullValue = InputConfigurationSingleton.get().getFILE_NULL_STRING();
         this.relationToIndex.defaultReturnValue(-1);
     }
 
@@ -191,7 +192,7 @@ public final class Preprocessor {
 
             for (int c = 0; c < numAttributes; c++) {
                 String value =  record.get(c);
-                cols[c].add(value == null || value.isEmpty() ? NULL_SENTINEL : value);
+                cols[c].add(value == null ? this.nullValue : value);
             }
 
             numRecords++;

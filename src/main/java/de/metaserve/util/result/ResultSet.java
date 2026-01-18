@@ -4,10 +4,7 @@ import de.metanome.Metanome;
 import de.metanome.algorithm_integration.ColumnCombination;
 import de.metanome.algorithm_integration.ColumnIdentifier;
 import de.metanome.algorithm_integration.ColumnPermutation;
-import de.metanome.algorithm_integration.results.FunctionalDependency;
-import de.metanome.algorithm_integration.results.InclusionDependency;
-import de.metanome.algorithm_integration.results.Result;
-import de.metanome.algorithm_integration.results.UniqueColumnCombination;
+import de.metanome.algorithm_integration.results.*;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
@@ -515,6 +512,52 @@ public class ResultSet implements Collection<List<String>> {
         }
         addedColumns.add(sourceColumn);
         addedColumns.add(targetColumn);
+    }
+
+    //Added this method just to support Multi Value RHS FunctionalDependency.
+    public void addMVFD(FDEdge edge) {
+        String sourceColumn = edge.leftName;
+        String targetColumn = edge.rightName;
+        int sourceIndex = columnNames.indexOf(sourceColumn);
+        int targetIndex = columnNames.indexOf(targetColumn);
+
+        if (rows2.isEmpty()){
+            for (Result result : edge.getResults()){
+                MultivaluedDependency dep = (MultivaluedDependency) result;
+                List<Set<ColumnIdentifier>> newRow = new ArrayList<>(columnNames.size());
+                Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> fd = mvFdFromDep(dep);
+                for (int i = 0; i < columnNames.size(); i++){
+                    if (sourceIndex == i)
+                        newRow.add(fd.first());
+                    else if(targetIndex == i)
+                        newRow.add(fd.second());
+                    else
+                        newRow.add(null);
+                }
+                rows2.add(newRow);
+            }
+        } else {
+            if ((!addedColumns.contains(sourceColumn)) && (!addedColumns.contains(targetColumn))){
+                throw new RuntimeException("Result collection found an error!");
+            } else if (addedColumns.contains(sourceColumn) && addedColumns.contains(targetColumn)){
+                //throw new RuntimeException("Not implemented yet! (loop)");  @TODO
+                System.out.println("Loop!");
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = fdsToMap(edge.getResults());
+                loopVerify(sourceIndex, targetIndex, map);
+            } else if (addedColumns.contains(sourceColumn)) {
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = fdsToMap(edge.getResults());
+                addValuesInRow(targetIndex, sourceIndex, map);
+            } else if (addedColumns.contains(targetColumn)) {
+                HashMap<Set<ColumnIdentifier>, List<Set<ColumnIdentifier>>> map = fdsToMap(edge.getResults(), true);
+                addValuesInRow(sourceIndex, targetIndex, map);
+            }
+        }
+        addedColumns.add(sourceColumn);
+        addedColumns.add(targetColumn);
+    }
+
+    private Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> mvFdFromDep(MultivaluedDependency dep) {
+        return new Pair<>(ccsToSet(dep.getDeterminant()), dep.getDependant().getColumnIdentifiers());
     }
 
     private Pair<Set<ColumnIdentifier>, Set<ColumnIdentifier>> fdFromDep(FunctionalDependency dep) {

@@ -33,14 +33,9 @@ public class HolisticExecutor implements Executor {
         Strategy strategy = new HolisticProfileStrategy(graph, query.getMetaData(), query.getCCs());
         strategy.apply();
 
-        applyFilters(graph, query.getConditions());
         List<ResultSet> results = graphToTuples(query.getConditions(), graph);
         applySelection(results, query.getSelections());
         applyRowFilter(results, query.getCCs(), query.getNumberOfTables());
-
-        if(!configuration.getOutputType().equals(ExecutorConfiguration.Output.DEFAULT)){
-            //Console.get().print(results);
-        }
 
         query.getMetaData().update(QueryEngine.QueryState.QUERY_RESULT);
         return results;
@@ -56,7 +51,7 @@ public class HolisticExecutor implements Executor {
                 if (edge instanceof INDEdge){
                     resultSet.addIND((INDEdge) edge);
                 } else if (edge instanceof FDEdge){
-                    resultSet.addFD((FDEdge) edge);
+                    resultSet.addMVFD((FDEdge) edge);
                 } else if(edge instanceof UCCEdge && resultSet.getRows2().isEmpty()){
                     //System.out.println("Single UCC in cluster!");
                     resultSet.addUCC((UCCEdge) edge);
@@ -64,6 +59,7 @@ public class HolisticExecutor implements Executor {
             }
             list.add(resultSet);
         }
+
         if (list.size() > 1){
             //System.out.println("Clusters: " + list.size());
             ResultSet baseSet = list.get(0);
@@ -98,8 +94,6 @@ public class HolisticExecutor implements Executor {
                 list.get(0).cardinality(((IND) condition).leftName, ((IND) condition).rightName, "<");
             }
             */
-
-
         }
 
         return list;
@@ -110,15 +104,6 @@ public class HolisticExecutor implements Executor {
             return;
         for (ResultSet result : results){
             result.selectColumnNames(selections);
-        }
-    }
-
-    private void applyFilters(Graph graph, List<Condition> conditions) {
-        for (Condition condition : conditions){
-            if (condition instanceof Dependency) continue;
-            if (condition instanceof Split){
-
-            }
         }
     }
 

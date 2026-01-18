@@ -102,18 +102,7 @@ public final class Instructor {
             }
         }
 
-        for (ExecutionNode node : executionGraph.values()) {
-            System.out.println(node.toString());
-            System.out.println("\tParents: ");
-            for (ExecutionNode parent : node.getParents().values()) {
-                System.out.println("\t\t"+parent.toString());
-            }
-            System.out.println("\tChildren: ");
-            for (ExecutionNode child : node.getChildren()) {
-                System.out.println("\t\t"+child.toString());
-            }
-            System.out.println();
-        }
+        printGraph(executionGraph);
 
         //Nodes Should be in order
         for (ExecutionNode node : executionGraph.values()) {
@@ -166,6 +155,21 @@ public final class Instructor {
         }
 
         return results;
+    }
+
+    private void printGraph(Map<String, ExecutionNode> executionGraph){
+        for (ExecutionNode node : executionGraph.values()) {
+            System.out.println(node.toString());
+            System.out.println("\tParents: ");
+            for (ExecutionNode parent : node.getParents().values()) {
+                System.out.println("\t\t"+parent.toString());
+            }
+            System.out.println("\tChildren: ");
+            for (ExecutionNode child : node.getChildren()) {
+                System.out.println("\t\t"+child.toString());
+            }
+            System.out.println();
+        }
     }
 
     private void collectResultsFromLeaf(ExecutionNode node, Map<String, ObjectOpenHashSet<AttributeBitSet>> accumulated) {

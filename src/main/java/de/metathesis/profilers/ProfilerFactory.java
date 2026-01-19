@@ -41,7 +41,7 @@ public final class ProfilerFactory {
             return this.fdProfiler.runAsync(new FDRequest(lhs, rhs));
         }
 
-        throw new IllegalArgumentException("Unknown edge: " + edge);
+        throw new IllegalArgumentException("Unknown Dependency: " + edge);
     }
 }
 

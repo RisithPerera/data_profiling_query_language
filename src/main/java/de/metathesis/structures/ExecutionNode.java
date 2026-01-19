@@ -57,7 +57,7 @@ public final class ExecutionNode {
             Utility.printLog(String.format("F: %s", this), this.factory.getExecutor());
 
             results = out;
-            showResults(); //Testing Purposes
+            //showResults(); //Testing Purposes
             cropParentResults();
         });
 
@@ -71,7 +71,10 @@ public final class ExecutionNode {
             final ExecutionNode connectedNode = this.parents.get(variable);
             Result<?> nodeResults = connectedNode.getFuture().join(); //Safe join
 
+            //Check the variable is matched with parent lhs variable.
             boolean isLockedWithLhs =  variable.equals(connectedNode.getEdge().leftName);
+
+            //If isLockedWithLhs True then take lhs attributeSet list otherwise get rhs attributeSet list
             ObjectOpenHashSet<AttributeBitSet> lhsLockedSpace = isLockedWithLhs ? nodeResults.asLhsSet() : nodeResults.asRhsSet();
             return new SearchSpace.Locked(lhsLockedSpace);
         }else{

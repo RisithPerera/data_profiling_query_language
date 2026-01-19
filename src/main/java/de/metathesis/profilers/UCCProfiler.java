@@ -65,6 +65,10 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
                             PositionListIndex pli2 = this.preprocessor.getPLI(previousNonUCCs.get(j));
 
                             AttributeBitSet abs = pli1.getAttributeSet().union(pli2.getAttributeSet());
+                            if(abs.size() == cc.level()){
+                                continue;
+                            }
+
                             if(isContainSubsetOf(foundUCCs, abs)){
                                 continue;
                             }

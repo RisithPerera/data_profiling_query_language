@@ -102,7 +102,7 @@ public final class Instructor {
             }
         }
 
-        printGraph(executionGraph);
+        //printGraph(executionGraph);
 
         //Nodes Should be in order
         for (ExecutionNode node : executionGraph.values()) {
@@ -120,7 +120,7 @@ public final class Instructor {
                 .map(ExecutionNode::getFuture)
                 .toArray(CompletableFuture[]::new)
         ).join();
-        Utility.printLog("FINISH", this.pool);
+        Utility.printLog("FINISHED", this.pool);
 
         Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
 

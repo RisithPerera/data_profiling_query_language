@@ -9,14 +9,10 @@ import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.INDResult;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
@@ -24,10 +20,10 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
     /* ===================== CACHES ===================== */
 
     // AttributeBitSet -> sorted unique tuple list
-    private final Object2ObjectMap<AttributeBitSet, String[]> cachedTuples = new Object2ObjectOpenHashMap<>();
+    private final Map<AttributeBitSet, String[]> cachedTuples = new ConcurrentHashMap<>();
 
     // Transitive closure: lhs -> {rhs1, rhs2, ...}
-    private final Object2ObjectMap<AttributeBitSet, ObjectOpenHashSet<AttributeBitSet>> indClosure = new Object2ObjectOpenHashMap<>();
+    private final Map<AttributeBitSet, ObjectOpenHashSet<AttributeBitSet>> indClosure = new ConcurrentHashMap<>();
 
     private final LongSet fullyCheckedCC = new LongOpenHashSet();
 

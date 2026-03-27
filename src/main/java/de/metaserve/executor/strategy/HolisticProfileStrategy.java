@@ -7,10 +7,8 @@ import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.parser.query.QueryMetadata;
 import de.metathesis.Instructor;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 

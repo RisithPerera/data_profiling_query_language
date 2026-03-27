@@ -27,75 +27,92 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
     @Override
     public UCCResult profile(UCCRequest input) throws InputIterationException {
+
+        if (input.lhs() instanceof SearchSpace.CC cc) {
+            return profileCC(cc.relations(), cc.level());
+        }
+
+        if (input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs) {
+            return profileLocked(lhs.attributes());
+        }
+
+        throw new IllegalArgumentException("Unsupported UCCRequest");
+    }
+
+    private UCCResult profileCC(int[] lhsRelations, int level) throws InputIterationException {
         UCCResult result = new UCCResult();
+        for(int relationIndex : lhsRelations) {
+            Utility.printLog(String.format("P: UCC R:%d L:%d", relationIndex, level), this.executor);
+            long currentKey = Utility.compositeKey(relationIndex, level);
+            long previousKey = Utility.compositeKey(relationIndex, level - 1);
 
-        if(input.lhs() instanceof SearchSpace.CC cc){
-            for(int relationIndex : cc.relations()){
-                Utility.printLog(String.format("P: UCC R:%d L:%d", relationIndex, cc.level()), this.executor);
-                long currentKey = Utility.compositeKey(relationIndex, cc.level());
-                long previousKey = Utility.compositeKey(relationIndex, cc.level() - 1);
+            ObjectArrayList<AttributeBitSet> currentNonUniques = new ObjectArrayList<>();
+            ObjectOpenHashSet<AttributeBitSet> foundUCCs = this.uccPerRelation.computeIfAbsent(relationIndex, k -> new ObjectOpenHashSet<>());
 
-                ObjectArrayList<AttributeBitSet> currentNonUniques = new ObjectArrayList<>();
+            if (level == 1) {
+                PositionListIndex[] plis = this.preprocessor.getInitialPLIs(relationIndex);
 
-                if(cc.level() == 1){
-                    PositionListIndex[] plis = this.preprocessor.getInitialPLIs(relationIndex);
+                // Calculate all unary UCCs and unary non-UCCs
+                for (PositionListIndex pli : plis) {
+                    if (pli.isUnique()) {
+                        foundUCCs.add(pli.getAttributeSet());
+                        result.add(pli.getAttributeSet());
+                    } else {
+                        currentNonUniques.add(pli.getAttributeSet());
+                    }
+                }
 
-                    // Calculate all unary UCCs and unary non-UCCs
-                    for(PositionListIndex pli : plis) {
-                        if (pli.isUnique()) {
-                            result.add(pli.getAttributeSet());
-                        } else {
-                            currentNonUniques.add(pli.getAttributeSet());
+            } else {
+                ObjectArrayList<AttributeBitSet> previousNonUCCs = this.nonUCCPerRelationLevel.get(previousKey);
+
+                if (previousNonUCCs == null) {
+                    return result;
+                }
+
+
+                ObjectOpenHashSet<AttributeBitSet> calculatedAttributeSet = new ObjectOpenHashSet<>();
+
+                for (int i = 0; i < previousNonUCCs.size(); i++) {
+                    PositionListIndex pli1 = this.preprocessor.getPLI(previousNonUCCs.get(i));
+                    for (int j = i + 1; j < previousNonUCCs.size(); j++) {
+                        PositionListIndex pli2 = this.preprocessor.getPLI(previousNonUCCs.get(j));
+
+                        AttributeBitSet abs = pli1.getAttributeSet().union(pli2.getAttributeSet());
+                        if (abs.size() != level) {
+                            continue;
                         }
-                    }
 
-                }else{
-                    ObjectArrayList<AttributeBitSet> previousNonUCCs = this.nonUCCPerRelationLevel.get(previousKey);
+                        if (isContainSubsetOf(foundUCCs, abs)) {
+                            continue;
+                        }
 
-                    if(previousNonUCCs == null){
-                        return result;
-                    }
+                        //Get the cached intersected PLI or compute
+                        PositionListIndex pli = preprocessor.getOrComputePLI(abs, () -> pli1.intersect(pli2));
 
-                    ObjectOpenHashSet<AttributeBitSet> foundUCCs = this.uccPerRelation.computeIfAbsent(relationIndex, k -> new ObjectOpenHashSet<>());
-                    ObjectOpenHashSet<AttributeBitSet> calculatedAttributeSet = new ObjectOpenHashSet<>();
-
-                    for (int i = 0; i < previousNonUCCs.size(); i++) {
-                        PositionListIndex pli1 = this.preprocessor.getPLI(previousNonUCCs.get(i));
-                        for (int j = i + 1; j < previousNonUCCs.size(); j++) {
-                            PositionListIndex pli2 = this.preprocessor.getPLI(previousNonUCCs.get(j));
-
-                            AttributeBitSet abs = pli1.getAttributeSet().union(pli2.getAttributeSet());
-                            if(abs.size() == cc.level()){
-                                continue;
-                            }
-
-                            if(isContainSubsetOf(foundUCCs, abs)){
-                                continue;
-                            }
-
-                            //Get the cached intersected PLI or compute
-                            PositionListIndex pli = preprocessor.getOrComputePLI(abs, () -> pli1.intersect(pli2));
-
-                            if(!calculatedAttributeSet.contains(pli.getAttributeSet()) && pli.getAttributeSet().size() == cc.level()){
-                                calculatedAttributeSet.add(pli.getAttributeSet());
-                                if (pli.isUnique()) {
-                                    foundUCCs.add(pli.getAttributeSet());
-                                    result.add(pli.getAttributeSet());
-                                } else {
-                                    currentNonUniques.add(pli.getAttributeSet());
-                                }
+                        if (!calculatedAttributeSet.contains(pli.getAttributeSet()) && pli.getAttributeSet().size() == level) {
+                            calculatedAttributeSet.add(pli.getAttributeSet());
+                            if (pli.isUnique()) {
+                                foundUCCs.add(pli.getAttributeSet());
+                                result.add(pli.getAttributeSet());
+                            } else {
+                                currentNonUniques.add(pli.getAttributeSet());
                             }
                         }
                     }
                 }
-                this.nonUCCPerRelationLevel.put(currentKey, currentNonUniques);
             }
-        } else if(input.lhs() instanceof SearchSpace.Locked lhs){
-            for(AttributeBitSet abs : lhs.attributes()){
-                PositionListIndex pli = this.preprocessor.getPLI(abs);
-                if (pli.isUnique()) {
-                    result.add(pli.getAttributeSet());
-                }
+
+            this.nonUCCPerRelationLevel.put(currentKey, currentNonUniques);
+        }
+            return result;
+    }
+
+    private UCCResult profileLocked(ObjectOpenHashSet<AttributeBitSet> lhsAttrs) throws InputIterationException {
+        UCCResult result = new UCCResult();
+        for(AttributeBitSet abs : lhsAttrs){
+            PositionListIndex pli = this.preprocessor.getPLI(abs);
+            if (pli.isUnique()) {
+                result.add(pli.getAttributeSet());
             }
         }
 

@@ -7,11 +7,15 @@ import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.concurrent.Executor;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
+
+    private final Int2ObjectMap<ObjectOpenHashSet<FDResult.FD>> fdPerRelation = new Int2ObjectOpenHashMap<>();
 
     public FDProfiler(Executor executor) {
         super(executor);
@@ -46,15 +50,13 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         for(int relationIndex : commonRelationIndexes) {
             Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
 
+            ObjectOpenHashSet<FDResult.FD> foundFDs = this.fdPerRelation.computeIfAbsent(relationIndex, k -> new ObjectOpenHashSet<>());
+
             AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
             AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);
 
             for (AttributeBitSet lhsAbs : currentLevel) {
                 PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-                if(lhsPli.isUnique()){
-                    //TODO:Avoiding unique LHS, Needs to discuss this team
-                    continue;
-                }
 
                 for (AttributeBitSet rhsAbs : initialLevel) {
                     if(rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
@@ -63,7 +65,12 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
                     PositionListIndex rhsPli = this.preprocessor.getPLI(rhsAbs);
 
+                    if (isContainSubsetOf(foundFDs, lhsAbs, rhsAbs)) {
+                        continue;
+                    }
+
                     if(isFD(lhsPli, rhsPli)){
+                        foundFDs.add(new FDResult.FD(lhsPli.getAttributeSet(), rhsPli.getAttributeSet()));
                         result.add(lhsPli.getAttributeSet(), rhsPli.getAttributeSet());
                     }
                 }
@@ -180,6 +187,15 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
         //If the rhsPli does not split any partitions of the lhsPli, the FD is valid!
         return lhsPli.getClusters().equals(intersectedPli.getClusters());
+    }
+
+    private boolean isContainSubsetOf(ObjectOpenHashSet<FDResult.FD> absSet, AttributeBitSet lhsAbs, AttributeBitSet rhsAbs){
+        for(FDResult.FD fd : absSet){
+            if(fd.rhs.equals(rhsAbs) && fd.lhs.isSubsetOf(lhsAbs)){
+                return true;
+            }
+        }
+        return false;
     }
 }
 

@@ -1,10 +1,11 @@
 package de.metathesis.structures;
 
 import lombok.Getter;
+import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Immutable representation of a set of integer indices using a BitSet.
@@ -24,17 +25,29 @@ public final class AttributeBitSet{
     @Getter
     private final int hashCode; //Cashing Hash for performance
 
-    public AttributeBitSet(int relationIndex, int columnIndex) {
+    @Getter
+    private final String relation; //Temporary Fields
+
+    @Getter
+    private final String[] attributeSet; //Temporary Fields
+
+    public AttributeBitSet(int relationIndex, int columnIndex, String relation, String attribute) {
         this.relationIndex = relationIndex;
         this.attributeIndexSet = new BitSet();
         this.attributeIndexSet.set(columnIndex);
         this.hashCode = computeHash();
+
+        this.relation = relation;
+        this.attributeSet = new String[]{attribute};
     }
 
-    public AttributeBitSet(int relationIndex, BitSet attributeIndexSet) {
+    public AttributeBitSet(int relationIndex, BitSet attributeIndexSet, String relation, String[] attributeList) {
         this.relationIndex = relationIndex;
         this.attributeIndexSet = (BitSet) attributeIndexSet.clone();
         this.hashCode = computeHash();
+
+        this.relation = relation;
+        this.attributeSet = attributeList;
     }
 
     public BitSet getAttributeIndexSet() {
@@ -48,7 +61,8 @@ public final class AttributeBitSet{
 
         BitSet out = this.getAttributeIndexSet();
         out.or(other.attributeIndexSet);
-        return new AttributeBitSet(this.relationIndex, out);
+
+        return new AttributeBitSet(this.relationIndex, out, this.relation, new String[0]);
     }
 
     public AttributeBitSet intersect(AttributeBitSet other) {
@@ -58,7 +72,7 @@ public final class AttributeBitSet{
 
         BitSet out = this.getAttributeIndexSet();
         out.and(other.attributeIndexSet);
-        return new AttributeBitSet(this.relationIndex, out);
+        return new AttributeBitSet(this.relationIndex, out, this.relation, new String[0]);
     }
 
     public AttributeBitSet difference(AttributeBitSet other) {
@@ -69,7 +83,7 @@ public final class AttributeBitSet{
         BitSet out = this.getAttributeIndexSet();
         out.andNot(other.attributeIndexSet);
 
-        return new AttributeBitSet(this.relationIndex, out);
+        return new AttributeBitSet(this.relationIndex, out, this.relation, new String[0]);
     }
 
     public boolean isSubsetOf(AttributeBitSet other) {
@@ -97,7 +111,7 @@ public final class AttributeBitSet{
             lhsPos++;
         }
 
-        return new AttributeBitSet(relationIndex, projected);
+        return new AttributeBitSet(relationIndex, projected, this.relation, new String[0]);
     }
 
     public List<AttributeBitSet> immediateSubsets() {
@@ -110,7 +124,7 @@ public final class AttributeBitSet{
         for (int bit = attributeIndexSet.nextSetBit(0); bit >= 0; bit = attributeIndexSet.nextSetBit(bit + 1)) {
             BitSet bs = (BitSet) attributeIndexSet.clone();
             bs.clear(bit);
-            subsets.add(new AttributeBitSet(relationIndex, bs));
+            subsets.add(new AttributeBitSet(relationIndex, bs, this.relation, new String[0]));
         }
 
         return subsets;
@@ -145,6 +159,6 @@ public final class AttributeBitSet{
 
     @Override
     public String toString() {
-        return "(" + this.relationIndex + ":" + attributeIndexSet.toString() + ")";
+        return "(" + this.relationIndex + ":" + this.attributeIndexSet.toString() + ") -> (" + this.relation + ":" + Arrays.toString(this.attributeSet) + ")";
     }
 }

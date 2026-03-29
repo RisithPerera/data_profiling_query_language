@@ -9,11 +9,9 @@ import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
-import de.metanome.algorithm_integration.results.FunctionalDependency;
 import de.metanome.algorithm_integration.results.InclusionDependency;
 import de.metanome.algorithm_integration.results.MultivaluedDependency;
 import de.metanome.algorithm_integration.results.UniqueColumnCombination;
-import de.metanome.backend.result_postprocessing.results.InclusionDependencyResult;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
@@ -30,6 +28,7 @@ import it.unimi.dsi.fastutil.objects.*;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 
 public final class Preprocessor {
@@ -66,7 +65,7 @@ public final class Preprocessor {
         for (List<String> relations : relationMap.values()) {
             for (String relation : relations) {
                 if (relationToIndex.getInt(relation) == -1) {
-                    System.out.println("Initialize Relation: " + relation);
+                    //System.out.println("Initialize Relation: " + relation);
                     int id = relationNames.size();
                     relationToIndex.put(relation, id);
                     relationNames.put(id, relation);
@@ -84,9 +83,15 @@ public final class Preprocessor {
         }
 
         // 2. Initialize PLI map with level 0
+        // This needs to think little bit
         for(int relationIndex : relationToIndex.values()){
             long key = Utility.compositeKey(relationIndex, 0); //Level 0: Size 0
-            AttributeBitSet abs = new AttributeBitSet(relationIndex, new BitSet());
+            AttributeBitSet abs = new AttributeBitSet(
+                    relationIndex,
+                    new BitSet(),
+                    this.relationNames.get(relationIndex),
+                    new String[]{}
+            );
             PositionListIndex pli = new PositionListIndex(abs, new ArrayList<>());
 
             Object2ObjectMap<AttributeBitSet, PositionListIndex> level0 = new Object2ObjectOpenHashMap<>();
@@ -146,7 +151,12 @@ public final class Preprocessor {
         }
 
         if(level == 0) {
-            return new AttributeBitSet[]{new AttributeBitSet(relationIndex, new BitSet())};
+            return new AttributeBitSet[]{new AttributeBitSet(
+                    relationIndex,
+                    new BitSet(),
+                    this.relationNames.get(relationIndex),
+                    new String[]{}
+            )};
         }
 
         int count = Utility.binomial(cols, level);
@@ -158,7 +168,12 @@ public final class Preprocessor {
         int idx = 0;
         while (mask.compareTo(limit) < 0) {
             BitSet bitSet = toBitSet(mask, cols);
-            result[idx++] = new AttributeBitSet(relationIndex, bitSet);
+
+            String[] columns = bitSet.stream()
+                    .mapToObj(i -> attributeNames.get(relationIndex)[i])
+                    .toArray(String[]::new);
+
+            result[idx++] = new AttributeBitSet(relationIndex, bitSet, this.relationNames.get(relationIndex), columns);
 
             // Gosper's hack for BigInteger
             BigInteger c = mask.and(mask.negate());
@@ -261,7 +276,13 @@ public final class Preprocessor {
                 Object2ObjectMap<AttributeBitSet, PositionListIndex> preLevelMap = this.pliMap.get(level1Key);
                 PositionListIndex pliSingle = null;
                 for(int index : abs.getAttributeIndexSet().stream().toArray()){
-                    AttributeBitSet absSingle = new AttributeBitSet(relationIndex, index);
+                    AttributeBitSet absSingle = new AttributeBitSet(
+                            relationIndex,
+                            index,
+                            this.relationNames.get(relationIndex),
+                            this.attributeNames.get(relationIndex)[index]
+                    );
+
                     if(pliSingle == null){
                         pliSingle = preLevelMap.get(absSingle);
                     }else{
@@ -287,7 +308,12 @@ public final class Preprocessor {
                 Object2ObjectMap<AttributeBitSet, PositionListIndex> preLevelMap = this.pliMap.get(level1Key);
                 PositionListIndex pliSingle = null;
                 for(int index : abs.getAttributeIndexSet().stream().toArray()){
-                    AttributeBitSet absSingle = new AttributeBitSet(relationIndex, index);
+                    AttributeBitSet absSingle = new AttributeBitSet(
+                            relationIndex,
+                            index,
+                            this.relationNames.get(relationIndex),
+                            this.attributeNames.get(relationIndex)[index]
+                    );
                     if(pliSingle == null){
                         pliSingle = preLevelMap.get(absSingle);
                     }else{
@@ -341,7 +367,12 @@ public final class Preprocessor {
                 clusters.add(cluster);
         }
 
-        AttributeBitSet attributeBitSet = new AttributeBitSet(relationIndex, columnIndex);
+        AttributeBitSet attributeBitSet = new AttributeBitSet(
+                relationIndex,
+                columnIndex,
+                this.relationNames.get(relationIndex),
+                this.attributeNames.get(relationIndex)[columnIndex]
+        );
         return new PositionListIndex(attributeBitSet, clusters);
     }
 

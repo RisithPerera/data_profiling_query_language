@@ -106,7 +106,7 @@ public final class FDResult implements Result<FDResult.FD>{
         public final AttributeBitSet lhs;
         public final AttributeBitSet rhs;
 
-        private FD(AttributeBitSet lhs, AttributeBitSet rhs) {
+        public FD(AttributeBitSet lhs, AttributeBitSet rhs) {
             this.lhs = lhs;
             this.rhs = rhs;
         }

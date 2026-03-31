@@ -229,7 +229,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
             return cached;
         }
 
-        String[][] records = this.preprocessor.getColumnWiseDataOf(abs.getRelationIndex());
+        String[][] records = this.preprocessor.getRelation(abs.getRelationIndex()).getAttributeValues();
         String[] tuples = buildTuples(records, abs);
 
         this.cachedTuples.put(abs, tuples);

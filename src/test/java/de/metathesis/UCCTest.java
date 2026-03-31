@@ -3,15 +3,12 @@ package de.metathesis;
 import de.metanome.algorithm_integration.AlgorithmConfigurationException;
 import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metaserve.DPQLParser;
 import de.metaserve.util.exceptions.TablesDiscoveryException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.profilers.UCCProfiler;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.requests.UCCRequest;
 import de.metathesis.structures.results.UCCResult;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,13 +22,14 @@ import java.util.concurrent.Executors;
 public class UCCTest {
 
     private static Preprocessor preprocessor;
+    private static ResultFormatter resultFormatter;
     private static UCCProfiler uccProfiler;
     private static Map<String, int[]> relationIndexMap;
     private static Map<String, int[]> relationSizesMap;
 
     @BeforeAll
     public static void setupNode() throws InputGenerationException, AlgorithmConfigurationException {
-        InputConfigurationSingleton.get().setDATA_SET("TPCH_12");
+        InputConfigurationSingleton.get().setDATA_SET("WDC");
         InputConfigurationSingleton.get().setFILE_VALUE_SEPARATOR(",");
 
         int threadPoolSize = Runtime.getRuntime().availableProcessors();
@@ -44,6 +42,8 @@ public class UCCTest {
         preprocessor = Preprocessor.getInstance();
         relationIndexMap = preprocessor.initializeSearchSpace(relationMap);
         relationSizesMap = preprocessor.getAttributeSizesOf(relationIndexMap);
+
+        resultFormatter = ResultFormatter.getInstance();
     }
 
     @Test
@@ -59,7 +59,7 @@ public class UCCTest {
 
             System.out.println("--------- Level: " + level + " Result Size: " + result.size());
             for(UCCResult.UCC ucc:  result) {
-                System.out.println(preprocessor.formatUCC(ucc));
+                System.out.println(resultFormatter.formatUCC(ucc));
             }
         }
     }

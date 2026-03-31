@@ -1,5 +1,6 @@
 package de.metathesis;
 
+import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -29,6 +30,7 @@ public class Utility {
         return m;
     }
 
+    // Helper Methods
     public static int[] intersect(int[] arr1, int[] arr2) {
         Set<Integer> setA = new HashSet<>();
         for (int x : arr1){
@@ -51,7 +53,15 @@ public class Utility {
         return result;
     }
 
-    // Helper Methods
+    // Convert BigInteger mask to BitSet
+    public static BitSet toBitSet(BigInteger mask, int cols) {
+        BitSet bs = new BitSet(cols);
+        for (int i = 0; i < cols; i++) {
+            if (mask.testBit(i)) bs.set(i);
+        }
+        return bs;
+    }
+
     public static int binomial(int n, int k) {
         if (k < 0 || k > n) return 0;
         if (k == 0 || k == n) return 1;

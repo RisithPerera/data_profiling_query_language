@@ -7,10 +7,6 @@ import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.ExecutionNode;
-import de.metathesis.structures.requests.FDRequest;
-import de.metathesis.structures.requests.INDRequest;
-import de.metathesis.structures.requests.SearchSpace;
-import de.metathesis.structures.requests.UCCRequest;
 import de.metathesis.structures.results.FDResult;
 import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.UCCResult;
@@ -26,11 +22,13 @@ public final class Instructor {
     private final ExecutorService pool;
     private final Preprocessor preprocessor;
     private final ProfilerFactory profilerFactory;
+    private final ResultFormatter resultFormatter;
 
     public Instructor(ExecutorService pool) {
         this.pool = pool;
         this.preprocessor = Preprocessor.getInstance();
         this.profilerFactory = new ProfilerFactory(pool);
+        this.resultFormatter = ResultFormatter.getInstance();
     }
 
     public void runExecution(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
@@ -145,11 +143,11 @@ public final class Instructor {
 
             for(Object x:  node.getResults()) {
                 if(x instanceof UCCResult.UCC ucc){
-                    results.get(node.getEdge()).add(this.preprocessor.formatUCC(ucc));
+                    results.get(node.getEdge()).add(this.resultFormatter.formatUCC(ucc));
                 }else if(x instanceof INDResult.IND ind){
-                    results.get(node.getEdge()).add(this.preprocessor.formatIND(ind));
+                    results.get(node.getEdge()).add(this.resultFormatter.formatIND(ind));
                 }else if(x instanceof FDResult.FD fd){
-                    results.get(node.getEdge()).add(this.preprocessor.formatFD(fd));
+                    results.get(node.getEdge()).add(this.resultFormatter.formatFD(fd));
                 }
             }
         }
@@ -202,86 +200,6 @@ public final class Instructor {
 
         for (ExecutionNode grandParent : node.getParents().values()) {
             collectResultsFromLeaf(grandParent, accumulated);
-        }
-    }
-
-    public void runPipeline(Map<String, int[]> relationIndexMap) {
-        // Start UCC(1)
-        UCCRequest uccRequest = new UCCRequest(new SearchSpace.CC(relationIndexMap.get("Y"), 1));
-        CompletableFuture<UCCResult> uccFuture = this.profilerFactory.getUccProfiler().runAsync(uccRequest);
-        List<CompletableFuture<FDResult>> fdFutures = new ArrayList<>();
-
-        int maxLevel = Utility.max(this.preprocessor.getAttributeSizesOf(relationIndexMap.get("Y")));
-
-        //Temporary Collecting Results
-        List<UCCResult.UCC> uccResults = new ArrayList<>();
-        List<INDResult.IND> indResults = new ArrayList<>();
-        List<FDResult.FD> fdResults = new ArrayList<>();
-
-        for (int level = 1; level <= maxLevel; level++) {
-
-            final int currentLevel = level;
-
-            // When UCC(L) completes → run IND(L)
-            CompletableFuture<INDResult> indFuture = uccFuture.thenCompose(
-                    uccResult -> {
-                        Utility.printLog(String.format("F: UCC     L:%d", currentLevel), this.pool);
-                        //this.preprocessor.printUCC(uccResult);
-                        uccResult.forEach(uccResults::add);
-                        INDRequest indRequest = new INDRequest(
-                                new SearchSpace.CC(relationIndexMap.get("X"), currentLevel),
-                                new SearchSpace.Locked(uccResult.asLhsSet())
-                        );
-                        return this.profilerFactory.getIndProfiler().runAsync(indRequest);
-                    }
-            );
-
-            CompletableFuture<FDResult> fdFuture = indFuture.thenCompose(
-                    indResult -> {
-                        Utility.printLog(String.format("F: IND     L:%d", currentLevel), this.pool);
-                        //this.preprocessor.printIND(indResult);
-                        indResult.forEach(indResults::add);
-                        FDRequest fdRequest = new FDRequest(
-                                new SearchSpace.Locked(indResult.asLhsSet()),
-                                new SearchSpace.CC(relationIndexMap.get("Z"), currentLevel)
-
-                        );
-                        return this.profilerFactory.getFdProfiler().runAsync(fdRequest);
-                    }
-            );
-
-            fdFuture.thenAccept( fdResult -> {
-                Utility.printLog(String.format("F: FD      L:%d", currentLevel), this.pool);
-                    //this.preprocessor.printFD(fdResult);
-                    fdResult.forEach(fdResults::add);
-                }
-            );
-            fdFutures.add(fdFuture); //Collecting Leaf Nodes
-
-            // Prepare UCC(L+1) immediately after UCC(L)
-            if (level < maxLevel) {
-                uccFuture = uccFuture.thenCompose(
-                                ignored -> this.profilerFactory.getUccProfiler().runAsync(
-                                        new UCCRequest(new SearchSpace.CC(relationIndexMap.get("Y"), currentLevel + 1))
-                                )
-                        );
-            }
-        }
-
-        System.out.println("Pipeline scheduled");
-        CompletableFuture.allOf(fdFutures.toArray(new CompletableFuture[0])).join();
-        System.out.println("Pipeline completed");
-        for(FDResult.FD fd : fdResults){
-            for(INDResult.IND ind : indResults) {
-                if(fd.lhs.equals(ind.lhs)){
-                    this.preprocessor.printAttributeSet(fd.lhs, ind.rhs, fd.rhs);
-//                    for(UCCResult.UCC ucc : uccResults) {
-//                        if(ind.rhs.equals(ucc.lhs)){
-//
-//                        }
-//                    }
-                }
-            }
         }
     }
 

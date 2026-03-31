@@ -2,6 +2,7 @@ package de.metathesis.structures;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,9 @@ public class PositionListIndex {
     private final AttributeBitSet attributeSet;
     private final List<IntArrayList> clusters;
 
+    @Setter
+    private int numUniqueValues;
+
     public PositionListIndex(AttributeBitSet attributeSet, List<IntArrayList> clusters) {
         this.attributeSet = attributeSet;
         this.clusters = clusters;
@@ -18,6 +22,10 @@ public class PositionListIndex {
 
     public boolean isUnique() {
         return this.clusters.isEmpty();
+    }
+
+    public int getNumNonUniqueValues() {
+        return clusters.size();
     }
 
     public PositionListIndex intersect(PositionListIndex other) {

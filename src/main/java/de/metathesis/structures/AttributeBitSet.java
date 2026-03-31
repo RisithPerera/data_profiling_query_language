@@ -1,11 +1,12 @@
 package de.metathesis.structures;
 
+import de.metathesis.Preprocessor;
 import lombok.Getter;
-import lombok.Setter;
 
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.List;
 
 /**
  * Immutable representation of a set of integer indices using a BitSet.
@@ -25,29 +26,19 @@ public final class AttributeBitSet{
     @Getter
     private final int hashCode; //Cashing Hash for performance
 
-    @Getter
-    private final String relation; //Temporary Fields
+    private final Preprocessor preprocessor = Preprocessor.getInstance(); //This is temporary
 
-    @Getter
-    private final String[] attributeSet; //Temporary Fields
-
-    public AttributeBitSet(int relationIndex, int columnIndex, String relation, String attribute) {
+    public AttributeBitSet(int relationIndex, int columnIndex) {
         this.relationIndex = relationIndex;
         this.attributeIndexSet = new BitSet();
         this.attributeIndexSet.set(columnIndex);
         this.hashCode = computeHash();
-
-        this.relation = relation;
-        this.attributeSet = new String[]{attribute};
     }
 
-    public AttributeBitSet(int relationIndex, BitSet attributeIndexSet, String relation, String[] attributeList) {
+    public AttributeBitSet(int relationIndex, BitSet attributeIndexSet) {
         this.relationIndex = relationIndex;
         this.attributeIndexSet = (BitSet) attributeIndexSet.clone();
         this.hashCode = computeHash();
-
-        this.relation = relation;
-        this.attributeSet = attributeList;
     }
 
     public BitSet getAttributeIndexSet() {
@@ -61,8 +52,7 @@ public final class AttributeBitSet{
 
         BitSet out = this.getAttributeIndexSet();
         out.or(other.attributeIndexSet);
-
-        return new AttributeBitSet(this.relationIndex, out, this.relation, new String[0]);
+        return new AttributeBitSet(this.relationIndex, out);
     }
 
     public AttributeBitSet intersect(AttributeBitSet other) {
@@ -72,7 +62,7 @@ public final class AttributeBitSet{
 
         BitSet out = this.getAttributeIndexSet();
         out.and(other.attributeIndexSet);
-        return new AttributeBitSet(this.relationIndex, out, this.relation, new String[0]);
+        return new AttributeBitSet(this.relationIndex, out);
     }
 
     public AttributeBitSet difference(AttributeBitSet other) {
@@ -83,7 +73,7 @@ public final class AttributeBitSet{
         BitSet out = this.getAttributeIndexSet();
         out.andNot(other.attributeIndexSet);
 
-        return new AttributeBitSet(this.relationIndex, out, this.relation, new String[0]);
+        return new AttributeBitSet(this.relationIndex, out);
     }
 
     public boolean isSubsetOf(AttributeBitSet other) {
@@ -111,7 +101,7 @@ public final class AttributeBitSet{
             lhsPos++;
         }
 
-        return new AttributeBitSet(relationIndex, projected, this.relation, new String[0]);
+        return new AttributeBitSet(relationIndex, projected);
     }
 
     public List<AttributeBitSet> immediateSubsets() {
@@ -124,7 +114,7 @@ public final class AttributeBitSet{
         for (int bit = attributeIndexSet.nextSetBit(0); bit >= 0; bit = attributeIndexSet.nextSetBit(bit + 1)) {
             BitSet bs = (BitSet) attributeIndexSet.clone();
             bs.clear(bit);
-            subsets.add(new AttributeBitSet(relationIndex, bs, this.relation, new String[0]));
+            subsets.add(new AttributeBitSet(relationIndex, bs));
         }
 
         return subsets;
@@ -157,8 +147,19 @@ public final class AttributeBitSet{
         return hashCode;
     }
 
+    //This is temporary for testing purposes
     @Override
     public String toString() {
-        return "(" + this.relationIndex + ":" + this.attributeIndexSet.toString() + ") -> (" + this.relation + ":" + Arrays.toString(this.attributeSet) + ")";
+        Relation relation = this.preprocessor.getRelation(this.relationIndex);
+
+        String[] columns = this.attributeIndexSet.stream()
+                .mapToObj(i -> relation.getAttributeNames()[i])
+                .toArray(String[]::new);
+
+        return "(" + relation.getName() + ":" + Arrays.toString(columns) + ")";
+    }
+
+    public String toStringOriginal() {
+        return "(" + this.relationIndex + ":" + attributeIndexSet.toString() + ")";
     }
 }

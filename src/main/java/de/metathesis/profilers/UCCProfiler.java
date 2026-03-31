@@ -50,7 +50,7 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
             ObjectOpenHashSet<AttributeBitSet> foundUCCs = this.uccPerRelation.computeIfAbsent(relationIndex, k -> new ObjectOpenHashSet<>());
 
             if (level == 1) {
-                PositionListIndex[] plis = this.preprocessor.getInitialPLIs(relationIndex);
+                PositionListIndex[] plis = this.preprocessor.getRelation(relationIndex).getUnaryPLIs();
 
                 // Calculate all unary UCCs and unary non-UCCs
                 for (PositionListIndex pli : plis) {
@@ -87,7 +87,7 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
                         }
 
                         //Get the cached intersected PLI or compute
-                        PositionListIndex pli = preprocessor.getOrComputePLI(abs, () -> pli1.intersect(pli2));
+                        PositionListIndex pli = this.preprocessor.getPLI(abs);
 
                         if (!calculatedAttributeSet.contains(pli.getAttributeSet()) && pli.getAttributeSet().size() == level) {
                             calculatedAttributeSet.add(pli.getAttributeSet());

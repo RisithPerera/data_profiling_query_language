@@ -183,7 +183,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
     private boolean isFD(PositionListIndex lhsPli, PositionListIndex rhsPli){
         AttributeBitSet abs = lhsPli.getAttributeSet().union(rhsPli.getAttributeSet());
-        PositionListIndex intersectedPli = preprocessor.getOrComputePLI(abs, () -> lhsPli.intersect(rhsPli));
+        PositionListIndex intersectedPli = this.preprocessor.getPLI(abs);
 
         //If the rhsPli does not split any partitions of the lhsPli, the FD is valid!
         return lhsPli.getClusters().equals(intersectedPli.getClusters());

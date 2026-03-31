@@ -1,6 +1,7 @@
 package de.metathesis.structures;
 
 import de.metaserve.executor.min.graph.edge.Edge;
+import de.metathesis.ResultFormatter;
 import de.metathesis.Utility;
 import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.structures.requests.SearchSpace;
@@ -87,11 +88,11 @@ public final class ExecutionNode {
 
         for(Object x:  this.getResults()) {
             if(x instanceof UCCResult.UCC ucc){
-                resultList.add(this.factory.getUccProfiler().getPreprocessor().formatUCC(ucc));
+                resultList.add(ResultFormatter.getInstance().formatUCC(ucc));
             }else if(x instanceof INDResult.IND ind){
-                resultList.add(this.factory.getIndProfiler().getPreprocessor().formatIND(ind));
+                resultList.add(ResultFormatter.getInstance().formatIND(ind));
             }else if(x instanceof FDResult.FD fd){
-                resultList.add(this.factory.getFdProfiler().getPreprocessor().formatFD(fd));
+                resultList.add(ResultFormatter.getInstance().formatFD(fd));
             }
         }
         System.out.println(resultList);

@@ -19,7 +19,7 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
 
     public AttributeRepresentative(PositionListIndex pli, int numOfAttributes) {
         this.attributeIndex = pli.getAttributeSet().getAttributeIndexSet().nextSetBit(0);
-        this.clusters = new ArrayList<>(pli.getClusters());
+        this.clusters = new ArrayList<>(pli.getClusters()); //Create a shallow copy of cluster
         this.numOfAttributes = numOfAttributes;
         this.agree = new BitSet(numOfAttributes);
     }

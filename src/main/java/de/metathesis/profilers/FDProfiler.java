@@ -5,7 +5,6 @@ import de.metathesis.Sampler;
 import de.metathesis.Utility;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
-import de.metathesis.structures.Relation;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
@@ -54,7 +53,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
 
             Sampler sampler = this.preprocessor.getSampler(relationIndex);
-            sampler.start();
+            sampler.run();
 
             int count = 0;
             String[] headers = sampler.getRelation().getAttributeNames();

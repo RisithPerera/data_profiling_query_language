@@ -137,11 +137,7 @@ public final class Preprocessor {
     }
 
     public Sampler getSampler(int relationIndex){
-        return this.samplerMap.computeIfAbsent(relationIndex, k -> {
-            Sampler sampler = new Sampler(getRelation(k));
-            sampler.init();
-            return sampler;
-        });
+        return this.samplerMap.computeIfAbsent(relationIndex, k -> new Sampler(getRelation(k)));
     }
 
     public synchronized PositionListIndex getPLI(AttributeBitSet abs) {
@@ -225,6 +221,9 @@ public final class Preprocessor {
             // Build compressed records for sampling
             int[][] compressed = buildCompressedRecords(unaryPLIs, numOfRecords);
 
+            //Sorting PLIs Based on Cluster Size
+            rearrangeUnaryPLIs(unaryPLIs, numOfRecords);
+
             relation.markLoaded(relationData, unaryPLIs,  compressed);
         }catch (Exception e) {
             throw new RuntimeException("Issue with Relation Loading Process", e);
@@ -269,6 +268,39 @@ public final class Preprocessor {
         return plis;
     }
 
+    private void rearrangeUnaryPLIs(PositionListIndex[] plis, int numOfRecords){
+        // Sort plis by number of clusters: For searching in the covers and for validation,
+        // it is good to have attributes with few non-unique values and many clusters left in the prefix tree
+
+        // Step 1: Sort clusters within each PLI by size
+        for (PositionListIndex pli : plis) {
+            pli.getClusters().sort((c1, c2) -> c2.size() - c1.size());
+        }
+
+        // Sort 2: Sort PLIs by largest cluster
+        Arrays.sort(plis, (p1, p2) -> {
+            int max1 = p1.getClusters().isEmpty() ? 0 : p1.getClusters().getFirst().size();
+            int max2 = p2.getClusters().isEmpty() ? 0 : p2.getClusters().getFirst().size();
+            return max2 - max1;
+        });
+
+        // TODO: For Cluster Inside Sorting, needs to Check Whether Use the same approach as HyFD
+        // Sort 3: clusters by rowClusterCount descending
+        int[] rowClusterCount = new int[numOfRecords];
+        for (PositionListIndex pli : plis) {
+            for (IntArrayList cluster : pli.getClusters()) {
+                for (int rowId : cluster) rowClusterCount[rowId]++;
+            }
+        }
+
+        // Sort 4: Should — sort ROWS within each cluster
+        for (PositionListIndex pli : plis) {
+            for (IntArrayList cluster : pli.getClusters()) {
+                cluster.sort((r1, r2) -> rowClusterCount[r2] - rowClusterCount[r1]);
+            }
+        }
+    }
+
     private static int[][] buildCompressedRecords(PositionListIndex[] plis, int numOfRecords) {
         // Direct [row][col] matrix
         int[][] compressedRecords = new int[numOfRecords][plis.length];
@@ -290,90 +322,4 @@ public final class Preprocessor {
 
         return compressedRecords;
     }
-
-   /* public synchronized PositionListIndex getPLI(AttributeBitSet abs) throws InputIterationException {
-        int relationIndex = abs.getRelationIndex();
-        int level = abs.size();
-        long key = Utility.compositeKey(relationIndex, level);
-
-        Object2ObjectMap<AttributeBitSet, PositionListIndex> levelMap = this.pliMap.get(key);
-
-        if (levelMap == null) {
-            if(abs.size() == 1){
-                int pos = abs.getAttributeIndexSet().nextSetBit(0);
-                String[][] columnData = getColumnWiseDataOf(relationIndex);
-                levelMap = new Object2ObjectOpenHashMap<>();
-                PositionListIndex pli = calculateInitialPLI(relationIndex, pos, columnData[pos]);
-                levelMap.put(pli.getAttributeSet(), pli);
-                this.pliMap.put(key, levelMap);
-                return pli;
-            }else{
-                long level1Key = Utility.compositeKey(relationIndex, 1);
-                Object2ObjectMap<AttributeBitSet, PositionListIndex> preLevelMap = this.pliMap.get(level1Key);
-                PositionListIndex pliSingle = null;
-                for(int index : abs.getAttributeIndexSet().stream().toArray()){
-                    AttributeBitSet absSingle = new AttributeBitSet(
-                            relationIndex,
-                            index,
-                            this.relationNames.get(relationIndex),
-                            this.attributeNames.get(relationIndex)[index]
-                    );
-
-                    if(pliSingle == null){
-                        pliSingle = preLevelMap.get(absSingle);
-                    }else{
-                        pliSingle = pliSingle.intersect(preLevelMap.get(absSingle));
-                    }
-                }
-
-                return pliSingle;
-            }
-        }
-
-        PositionListIndex pli = levelMap.get(abs);
-
-        if (pli == null) {
-            if(abs.size() == 1){
-                int pos = abs.getAttributeIndexSet().nextSetBit(0);
-                String[][] columnData = getColumnWiseDataOf(relationIndex);
-                pli = calculateInitialPLI(relationIndex, pos, columnData[pos]);
-                levelMap.put(pli.getAttributeSet(), pli);
-                return pli;
-            }else{
-                long level1Key = Utility.compositeKey(relationIndex, 1);
-                Object2ObjectMap<AttributeBitSet, PositionListIndex> preLevelMap = this.pliMap.get(level1Key);
-                PositionListIndex pliSingle = null;
-                for(int index : abs.getAttributeIndexSet().stream().toArray()){
-                    AttributeBitSet absSingle = new AttributeBitSet(
-                            relationIndex,
-                            index,
-                            this.relationNames.get(relationIndex),
-                            this.attributeNames.get(relationIndex)[index]
-                    );
-                    if(pliSingle == null){
-                        pliSingle = preLevelMap.get(absSingle);
-                    }else{
-                        pliSingle = pliSingle.intersect(preLevelMap.get(absSingle));
-                    }
-                }
-
-                return pliSingle;
-            }
-        }
-
-        return pli;
-    }
-
-    public PositionListIndex getOrComputePLI(AttributeBitSet abs, Supplier<PositionListIndex> computer) {
-
-        int relationIndex = abs.getRelationIndex();
-        int level = abs.size();
-        long key = Utility.compositeKey(relationIndex, level);
-
-        synchronized (this) {
-            var levelMap = this.pliMap.computeIfAbsent(key, k -> new Object2ObjectOpenHashMap<>());
-
-            return levelMap.computeIfAbsent(abs, a -> computer.get());
-        }
-    }*/
 }

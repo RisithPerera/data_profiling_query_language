@@ -12,8 +12,6 @@ import de.metathesis.structures.Relation;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.math.BigInteger;
@@ -25,11 +23,10 @@ public final class Preprocessor {
     private static final Preprocessor INSTANCE = new Preprocessor();
     private static final double CACHE_MEMORY_THRESHOLD = 0.8;
 
-    // Initialized at startup
-    private final Object2IntMap<Relation> relationToIndex = new Object2IntOpenHashMap<>();
-    private final Int2ObjectMap<Relation> relationMapX = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<Relation> relationMap = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<Sampler> samplerMap = new Int2ObjectOpenHashMap<>();
 
-    //This structure cache higher arity PLIs temporary and remove least recently used one.
+    //This structure cache n-ary PLIs temporary and remove least recently used one.
     private final LinkedHashMap<AttributeBitSet, PositionListIndex> pliCache = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<AttributeBitSet, PositionListIndex> eldest) {
@@ -45,34 +42,40 @@ public final class Preprocessor {
         this.inputRowLimit = InputConfigurationSingleton.get().getFILE_MAX_ROWS();
         this.isNullEqualNull = InputConfigurationSingleton.get().getFILE_NULL_EQUALS_NULL();
         this.nullValue = InputConfigurationSingleton.get().getFILE_NULL_STRING();
-        this.relationToIndex.defaultReturnValue(-1);
     }
 
     public static Preprocessor getInstance() {
         return INSTANCE;
     }
 
-    public Map<String, int[]> initializeSearchSpace(Map<String, List<String>> relationNameMap) throws AlgorithmConfigurationException, InputGenerationException {
-
+    public Map<String, int[]> initializeSearchSpace(Map<String, List<String>> relationNameMap) {
         Map<String, int[]> relationIndexMap = new HashMap<>(relationNameMap.size());
 
         for (Map.Entry<String, List<String>> entry : relationNameMap.entrySet()) {
-            List<Integer> relations = new ArrayList<>();
+            List<Integer> relationIndexList = new ArrayList<>();
             for (String relationName : entry.getValue()) {
-                if (this.relationToIndex.getInt(relationName) == -1) {
-                    int id = this.relationMapX.size();
+                Relation relation = this.relationMap.values().stream()
+                        .filter(r -> r.getName().equals(relationName))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            int id = this.relationMap.size();
+                            try {
+                                RelationalInputGenerator inputGenerator = MetanomeHelper.getInput(relationName);
+                                RelationalInput relationalInput = inputGenerator.generateNewCopy();
+                                assert Objects.nonNull(relationalInput) : "Input generation failed!";
 
-                    RelationalInputGenerator inputGenerator = MetanomeHelper.getInput(relationName);
-                    RelationalInput relationalInput = inputGenerator.generateNewCopy();
-                    assert relationalInput != null : "Input generation failed!";
+                                Relation newRelation = new Relation(id, relationalInput);
 
-                    Relation relation = new Relation(id, relationalInput);
-
-                    this.relationMapX.put(id, relation);
-                    relations.add(id);
-                }
+                                this.relationMap.put(id, newRelation);
+                                return newRelation;
+                            } catch (InputGenerationException | AlgorithmConfigurationException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+                relationIndexList.add(relation.getIndex());
             }
-            relationIndexMap.put(entry.getKey(), relations.stream().mapToInt(Integer::intValue).toArray());
+
+            relationIndexMap.put(entry.getKey(), relationIndexList.stream().mapToInt(Integer::intValue).toArray());
         }
 
         return relationIndexMap;
@@ -84,7 +87,7 @@ public final class Preprocessor {
             int[] sizes = new int[relationsEntry.getValue().length];
 
             for (int i = 0; i < relationsEntry.getValue().length; i++) {
-                sizes[i] = this.relationMapX.get(relationsEntry.getValue()[i]).getNumOfAttributes();
+                sizes[i] = this.relationMap.get(relationsEntry.getValue()[i]).getNumOfAttributes();
             }
 
             relationSizesMap.put(relationsEntry.getKey(), sizes);
@@ -93,7 +96,7 @@ public final class Preprocessor {
     }
 
     public AttributeBitSet[] generateApriori(int relationIndex, int level) {
-        int cols = this.relationMapX.get(relationIndex).getNumOfAttributes();
+        int cols = this.relationMap.get(relationIndex).getNumOfAttributes();
 
         if (level < 0 ||  level > cols) {
             throw new IllegalArgumentException("Level " + level + " must be between column boundary (0:" + cols + ") of relation:" + relationIndex);
@@ -125,10 +128,20 @@ public final class Preprocessor {
     }
 
     public Relation getRelation(int relationIndex) {
-        //TODO: For INDs loading only data is enough. PLI is not needed
+        assert this.relationMap.containsKey(relationIndex) : "Relation not available!";
+
+        //TODO: For INDs loading only data is enough. PLI is not needed. Need to tackle it.
         loadRelationData(relationIndex);
 
-        return this.relationMapX.get(relationIndex);
+        return this.relationMap.get(relationIndex);
+    }
+
+    public Sampler getSampler(int relationIndex){
+        return this.samplerMap.computeIfAbsent(relationIndex, k -> {
+            Sampler sampler = new Sampler(getRelation(k));
+            sampler.init();
+            return sampler;
+        });
     }
 
     public synchronized PositionListIndex getPLI(AttributeBitSet abs) {
@@ -137,14 +150,14 @@ public final class Preprocessor {
 
         if (abs.size() == 1) {
             int attrIndex = abs.getAttributeIndexSet().nextSetBit(0);
-            return this.relationMapX.get(abs.getRelationIndex()).getUnaryPLIs()[attrIndex];
+            return this.relationMap.get(abs.getRelationIndex()).getUnaryPLIs()[attrIndex];
         }
 
         // Check LRU cache first
         PositionListIndex cached = pliCache.get(abs);
         if (cached != null) return cached;
 
-        Relation relation = this.relationMapX.get(abs.getRelationIndex());
+        Relation relation = this.relationMap.get(abs.getRelationIndex());
 
         // Compute by intersecting unary PLIs
         PositionListIndex result = null;
@@ -167,7 +180,7 @@ public final class Preprocessor {
     }
 
     private void loadRelationData(int relationIndex) {
-        Relation relation = this.relationMapX.get(relationIndex);
+        Relation relation = this.relationMap.get(relationIndex);
 
         if (relation.isDataLoaded()){
             return; // already loaded
@@ -175,7 +188,7 @@ public final class Preprocessor {
 
         int numAttributes = relation.getNumOfAttributes();
 
-        try(RelationalInput relationalInput = this.relationMapX.get(relationIndex).getRelationalInput()){
+        try(RelationalInput relationalInput = this.relationMap.get(relationIndex).getRelationalInput()){
             assert relationalInput != null : "Preprocessor Initialization Failed";
 
             int numOfRecords = 0;
@@ -207,12 +220,12 @@ public final class Preprocessor {
             }
 
             // Build unary PLIs
-            PositionListIndex[] unary = buildUnaryPLIs(relationIndex, relationData);
+            PositionListIndex[] unaryPLIs = buildUnaryPLIs(relationIndex, relationData);
 
             // Build compressed records for sampling
-            int[][] compressed = buildCompressedRecords(unary, numOfRecords);
+            int[][] compressed = buildCompressedRecords(unaryPLIs, numOfRecords);
 
-            relation.markLoaded(relationData, unary,  compressed);
+            relation.markLoaded(relationData, unaryPLIs,  compressed);
         }catch (Exception e) {
             throw new RuntimeException("Issue with Relation Loading Process", e);
         }

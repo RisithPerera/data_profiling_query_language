@@ -1,9 +1,11 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metathesis.Sampler;
 import de.metathesis.Utility;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
+import de.metathesis.structures.Relation;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
@@ -11,6 +13,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
+import java.util.BitSet;
 import java.util.concurrent.Executor;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
@@ -24,7 +27,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
-            return profileCC(lhs.relations(), rhs.relations(), lhs.level());
+            return profileCCWithSampling(lhs.relations(), rhs.relations(), lhs.level());
         }
 
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
@@ -41,6 +44,32 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
         throw new IllegalArgumentException("Unsupported FDRequest");
     }
+
+    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
+
+        FDResult result = new FDResult();
+        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
+
+        for(int relationIndex : commonRelationIndexes) {
+            Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
+
+            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+            sampler.start();
+
+            int count = 0;
+            String[] headers = sampler.getRelation().getAttributeNames();
+            for (int rhs = 0; rhs < sampler.getRelation().getNumOfAttributes(); rhs++) {
+                for (BitSet lhs : sampler.getPositiveCover().get(rhs)) {
+                    System.out.println(toAttrNames(lhs, headers) + ", [" + headers[rhs] + "]");
+                    count++;
+                }
+            }
+            System.out.println("\nResult Count: " + count);
+        }
+
+        return  result;
+    }
+
 
     private FDResult profileCC(int[] lhsRelationIndexes,
                               int[] rhsRelationIndexes,
@@ -196,6 +225,16 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             }
         }
         return false;
+    }
+
+    private String toAttrNames(BitSet indices, String[] headers) {
+        if (indices.isEmpty()) return "[]";
+
+        StringBuilder sb = new StringBuilder("[");
+        indices.stream().forEach(i -> sb.append(headers[i]).append(","));
+        sb.deleteCharAt(sb.length() - 1);
+        sb.append("]");
+        return sb.toString();
     }
 }
 

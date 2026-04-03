@@ -4,6 +4,7 @@ import de.metanome.algorithm_integration.input.RelationalInput;
 import lombok.Getter;
 
 import java.util.Objects;
+import java.util.PriorityQueue;
 
 public class Relation {
     @Getter private final int index;
@@ -33,7 +34,8 @@ public class Relation {
     }
 
     public String getName() {
-        return this.relationalInput.relationName();
+        String fullName = this.relationalInput.relationName();
+        return fullName.endsWith(".csv") ? fullName.replace(".csv", "") : fullName;
     }
 
     public String[] getAttributeNames() {
@@ -70,6 +72,6 @@ public class Relation {
         if (!(o instanceof Relation other)) return false;
 
         //TODO: Need to check by File Path not Just by File name
-        return this.getIndex() == other.getIndex() && Objects.equals(this.getName(), other.getName());
+        return Objects.equals(this.getName(), other.getName());
     }
 }

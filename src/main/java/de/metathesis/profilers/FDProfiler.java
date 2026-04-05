@@ -13,6 +13,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.BitSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
@@ -44,29 +46,65 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         throw new IllegalArgumentException("Unsupported FDRequest");
     }
 
-    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
-
+    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) throws InputIterationException {
         FDResult result = new FDResult();
         int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
 
-        for(int relationIndex : commonRelationIndexes) {
+        for (int relationIndex : commonRelationIndexes) {
             Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
 
             Sampler sampler = this.preprocessor.getSampler(relationIndex);
-            sampler.run();
+            Map<Integer, List<BitSet>> posCover = sampler.run();
 
-            int count = 0;
-            String[] headers = sampler.getRelation().getAttributeNames();
-            for (int rhs = 0; rhs < sampler.getRelation().getNumOfAttributes(); rhs++) {
-                for (BitSet lhs : sampler.getPositiveCover().get(rhs)) {
-                    System.out.println(toAttrNames(lhs, headers) + ", [" + headers[rhs] + "]");
-                    count++;
+            // Generate all size-L LHS combos
+            AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
+            AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);
+
+            for (AttributeBitSet lhsAbs : currentLevel) {
+                for (AttributeBitSet rhsAbs : initialLevel) {
+                    if(rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
+                        continue;
+                    }
+
+                    // In PosCover check any subset of lhsAbs valid for this rhs?
+                    if (isCoveredByPosCover(lhsAbs.getAttributeIndexSet(), posCover.get(rhsAbs.getAttributeIndexSet().nextSetBit(0)))) {
+                        result.add(lhsAbs, rhsAbs);
+                        continue;
+                    }
+
+                    // PLI validation
+                    PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
+                    if (lhsPli.isUnique()) {
+                        result.add(lhsAbs, rhsAbs);
+                        continue; // unique LHS → always valid but skip per existing convention
+                    }
+
+                    PositionListIndex rhsPli = this.preprocessor.getPLI(rhsAbs);
+
+                    if (isFD(lhsPli, rhsPli)) {
+                        result.add(lhsAbs, rhsAbs);
+                    }
                 }
             }
-            System.out.println("\nResult Count: " + count);
         }
 
-        return  result;
+        return result;
+    }
+
+    private boolean isCoveredByPosCover(BitSet lhsAbs, List<BitSet> posCoverForRhs) {
+        if (posCoverForRhs == null || posCoverForRhs.isEmpty()) {
+            return false;
+        }
+        for (BitSet  candidate : posCoverForRhs) {
+            if (candidate.isEmpty()) {
+                continue; // empty set means uninitialized/trivial, not a real FD
+            }
+
+            BitSet tmp = (BitSet) lhsAbs.clone();
+            tmp.andNot(candidate);
+            return tmp.isEmpty();
+        }
+        return false;
     }
 
 

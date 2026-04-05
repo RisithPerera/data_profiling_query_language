@@ -7,17 +7,21 @@ import java.util.*;
 
 public class AttributeRepresentative implements Comparable<AttributeRepresentative> {
     @Getter
+    private final int relationIndex;
+
+    @Getter
     private final int attributeIndex;
     private final int numOfAttributes;
     private final List<IntArrayList> clusters;
     private final BitSet agree;
 
     @Getter
-    private int windowDistance = 0;
+    private int windowDistance = 0; //Unsafe
     private int numNewViolations = 0;
     private int numComparisons = 0;
 
     public AttributeRepresentative(PositionListIndex pli, int numOfAttributes) {
+        this.relationIndex = pli.getAttributeSet().getRelationIndex();
         this.attributeIndex = pli.getAttributeSet().getAttributeIndexSet().nextSetBit(0);
         this.clusters = new ArrayList<>(pli.getClusters()); //Create a shallow copy of cluster
         this.numOfAttributes = numOfAttributes;

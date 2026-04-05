@@ -1,11 +1,13 @@
 package de.metathesis;
 
+import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.AttributeRepresentative;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
 import lombok.Getter;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Sampler {
     @Getter
@@ -17,10 +19,10 @@ public class Sampler {
     private final PriorityQueue<AttributeRepresentative> samplingQueue = new PriorityQueue<>();
 
     @Getter
-    private final Map<Integer, List<BitSet>> negativeCover = new HashMap<>();
+    private final Map<Integer, List<BitSet>> negativeCover = new ConcurrentHashMap<>();
 
     @Getter
-    private final Map<Integer, List<BitSet>> positiveCover = new HashMap<>();
+    private final Map<Integer, List<BitSet>> positiveCover = new ConcurrentHashMap<>();
 
     private boolean isInitialSampling = true;
 
@@ -30,6 +32,7 @@ public class Sampler {
         // Initialize covers
         for (int rhs = 0; rhs < this.relation.getNumOfAttributes(); rhs++) {
             this.negativeCover.put(rhs, new ArrayList<>());
+
             List<BitSet> candidates = new ArrayList<>();
             candidates.add(new BitSet(this.relation.getNumOfAttributes()));
             this.positiveCover.put(rhs, candidates);

@@ -24,6 +24,14 @@ public class PositionListIndex {
         return this.clusters.isEmpty();
     }
 
+    public boolean isConstant(int numRecords) {
+        if (numRecords <= 1)
+            return true;
+        if ((this.clusters.size() == 1) && (this.clusters.get(0).size() == numRecords))
+            return true;
+        return false;
+    }
+
     public int getNumNonUniqueValues() {
         return clusters.size();
     }

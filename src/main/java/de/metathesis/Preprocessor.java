@@ -277,12 +277,12 @@ public final class Preprocessor {
             pli.getClusters().sort((c1, c2) -> c2.size() - c1.size());
         }
 
-        // Sort 2: Sort PLIs by largest cluster
-        Arrays.sort(plis, (p1, p2) -> {
-            int max1 = p1.getClusters().isEmpty() ? 0 : p1.getClusters().getFirst().size();
-            int max2 = p2.getClusters().isEmpty() ? 0 : p2.getClusters().getFirst().size();
-            return max2 - max1;
-        });
+        // Sort 2: Sort PLIs by largest cluster //TODO: Need to think how to Keep PLI match with the original index
+//        Arrays.sort(plis, (p1, p2) -> {
+//            int max1 = p1.getClusters().isEmpty() ? 0 : p1.getClusters().getFirst().size();
+//            int max2 = p2.getClusters().isEmpty() ? 0 : p2.getClusters().getFirst().size();
+//            return max2 - max1;
+//        });
 
         // TODO: For Cluster Inside Sorting, needs to Check Whether Use the same approach as HyFD
         // Sort 3: clusters by rowClusterCount descending

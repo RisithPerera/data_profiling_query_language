@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ import java.util.concurrent.Executor;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
-    private final Int2ObjectMap<ObjectOpenHashSet<FDResult.FD>> fdPerRelation = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<Map<Integer, List<BitSet>>> confirmedPosCover = new Int2ObjectOpenHashMap<>();
 
     public FDProfiler(Executor executor) {
         super(executor);
@@ -56,9 +57,38 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             Sampler sampler = this.preprocessor.getSampler(relationIndex);
             Map<Integer, List<BitSet>> posCover = sampler.run();
 
-            // Generate all size-L LHS combos
-            AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
-            AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);
+            for (int rhsIdx = 0; rhsIdx < sampler.getRelation().getNumOfAttributes(); rhsIdx++) {
+                List<BitSet> lhsPositiveCover = new ArrayList<>(posCover.get(rhsIdx));
+
+                for (BitSet lhsPositiveCandidate : lhsPositiveCover) {
+                    //TODO: Constants column handling needs to discuss
+                    if(level <= 1 && lhsPositiveCandidate.isEmpty()){
+                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhsPositiveCandidate);
+                        AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, rhsIdx);
+                        result.add(lhsAbs, rhsAbs);
+                    }
+
+                    if(lhsPositiveCandidate.cardinality() >= level){
+                        List<BitSet> lhsPositiveSubsets = this.preprocessor.produceSubSets(lhsPositiveCandidate, level);
+
+                        for(BitSet lhsPositiveSubset : lhsPositiveSubsets){
+                            // PLI validation
+                            AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhsPositiveSubset);
+                            AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, rhsIdx);
+
+                            PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
+
+                            if (lhsPli.isUnique() || isFD(lhsPli, this.preprocessor.getPLI(rhsAbs))) {
+                                result.add(lhsAbs, rhsAbs);
+                                Utility.addMinimalWithSplit(posCover.get(rhsIdx), lhsPositiveCandidate, lhsPositiveSubset); //Fix is needs here right?
+                            }
+                        }
+                    }
+                }
+            }
+
+           /* AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
+              AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);
 
             for (AttributeBitSet lhsAbs : currentLevel) {
                 for (AttributeBitSet rhsAbs : initialLevel) {
@@ -85,7 +115,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                         result.add(lhsAbs, rhsAbs);
                     }
                 }
-            }
+            }*/
         }
 
         return result;
@@ -116,7 +146,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         for(int relationIndex : commonRelationIndexes) {
             Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
 
-            ObjectOpenHashSet<FDResult.FD> foundFDs = this.fdPerRelation.computeIfAbsent(relationIndex, k -> new ObjectOpenHashSet<>());
+            ObjectOpenHashSet<FDResult.FD> foundFDs = new ObjectOpenHashSet<>(); //this.fdPerRelation.computeIfAbsent(relationIndex, k -> new ObjectOpenHashSet<>());
 
             AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
             AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);

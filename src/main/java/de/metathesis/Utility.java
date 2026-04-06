@@ -62,6 +62,49 @@ public class Utility {
         return bs;
     }
 
+    public static boolean addMaximal(List<BitSet> sets, BitSet newSet) {
+        for (BitSet existing : sets) {
+            if (isSubset(newSet, existing)) {
+                return false;
+            }
+        }
+        sets.removeIf(existing -> isSubset(existing, newSet));
+        sets.add((BitSet) newSet.clone());
+        return true;
+    }
+
+    public static void addMinimal(List<BitSet> sets, BitSet newSet) {
+        for (BitSet existing : sets) {
+            if (isSubset(existing, newSet)) {
+                return;
+            }
+        }
+        sets.removeIf(existing -> isSubset(newSet, existing));
+        sets.add((BitSet) newSet.clone());
+    }
+
+    public static void addMinimalWithSplit(List<BitSet> sets, BitSet parent, BitSet confirmed) {
+        // Remove the parent candidate
+        sets.remove(parent);
+
+        // Add confirmed minimal
+        addMinimal(sets, confirmed);
+
+        // Add remaining bits as separate candidate
+        BitSet remaining = (BitSet) parent.clone();
+        remaining.andNot(confirmed);
+
+        if (remaining.cardinality() > 0) {
+            addMinimal(sets, remaining);
+        }
+    }
+
+    public static boolean isSubset(BitSet a, BitSet b) {
+        BitSet temp = (BitSet) a.clone();
+        temp.and(b);
+        return temp.equals(a);
+    }
+
     public static int binomial(int n, int k) {
         if (k < 0 || k > n) return 0;
         if (k == 0 || k == n) return 1;

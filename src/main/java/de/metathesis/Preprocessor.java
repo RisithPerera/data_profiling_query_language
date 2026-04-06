@@ -7,6 +7,7 @@ import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.structures.AttributeBitSet;
+import de.metathesis.structures.ClusterComparator;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -127,6 +128,39 @@ public final class Preprocessor {
         return result;
     }
 
+    public List<BitSet> produceSubSets(BitSet superSet, int level) {
+        int[] bits = superSet.stream().toArray();
+        int n = bits.length;
+
+        if (level > n) throw new IllegalArgumentException(
+                "Level " + level + " exceeds superSet size " + n
+        );
+
+        if (level == n) return List.of((BitSet) superSet.clone());
+
+        List<BitSet> result = new ArrayList<>();
+
+        int mask = (1 << level) - 1;
+        int limit = (1 << n);
+
+        while (mask < limit) {
+            BitSet subset = new BitSet();
+            for (int i = 0; i < n; i++) {
+                if ((mask & (1 << i)) != 0) {
+                    subset.set(bits[i]); // map back to actual bit positions
+                }
+            }
+            result.add(subset);
+
+            // Gosper's hack
+            int c = mask & (-mask);
+            int r = mask + c;
+            mask = (((r ^ mask) >> 2) / c) | r;
+        }
+
+        return result;
+    }
+
     public Relation getRelation(int relationIndex) {
         assert this.relationMap.containsKey(relationIndex) : "Relation not available!";
 
@@ -222,7 +256,7 @@ public final class Preprocessor {
             int[][] compressed = buildCompressedRecords(unaryPLIs, numOfRecords);
 
             //Sorting PLIs Based on Cluster Size
-            rearrangeUnaryPLIs(unaryPLIs, numOfRecords);
+            rearrangeUnaryPLIs(unaryPLIs, numOfRecords, compressed);
 
             relation.markLoaded(relationData, unaryPLIs,  compressed);
         }catch (Exception e) {
@@ -268,7 +302,7 @@ public final class Preprocessor {
         return plis;
     }
 
-    private void rearrangeUnaryPLIs(PositionListIndex[] plis, int numOfRecords){
+    private void rearrangeUnaryPLIs(PositionListIndex[] plis, int numOfRecords, int[][] compressed){
         // Sort plis by number of clusters: For searching in the covers and for validation,
         // it is good to have attributes with few non-unique values and many clusters left in the prefix tree
 
@@ -284,21 +318,30 @@ public final class Preprocessor {
 //            return max2 - max1;
 //        });
 
-        // TODO: For Cluster Inside Sorting, needs to Check Whether Use the same approach as HyFD
-        // Sort 3: clusters by rowClusterCount descending
-        int[] rowClusterCount = new int[numOfRecords];
-        for (PositionListIndex pli : plis) {
-            for (IntArrayList cluster : pli.getClusters()) {
-                for (int rowId : cluster) rowClusterCount[rowId]++;
-            }
-        }
+//        // TODO: For Cluster Inside Sorting, needs to Check Whether Use the same approach as HyFD. Below using the Original version
+//        // Sort 3: clusters by rowClusterCount descending
+//        int[] rowClusterCount = new int[numOfRecords];
+//        for (PositionListIndex pli : plis) {
+//            for (IntArrayList cluster : pli.getClusters()) {
+//                for (int rowId : cluster) rowClusterCount[rowId]++;
+//            }
+//        }
+//
+//        // Sort 4: Should — sort ROWS within each cluster
+//        for (PositionListIndex pli : plis) {
+//            for (IntArrayList cluster : pli.getClusters()) {
+//                cluster.sort((r1, r2) -> rowClusterCount[r2] - rowClusterCount[r1]);
+//            }
+//        }
 
-        // Sort 4: Should — sort ROWS within each cluster
-        for (PositionListIndex pli : plis) {
-            for (IntArrayList cluster : pli.getClusters()) {
-                cluster.sort((r1, r2) -> rowClusterCount[r2] - rowClusterCount[r1]);
-            }
-        }
+        //TODO: This will affect on PLI intersection because its assume cluster numbers are in order.
+//        ClusterComparator comparator = new ClusterComparator(compressed, compressed[0].length - 1, 1);
+//        for (PositionListIndex pli : plis) {
+//            for (IntArrayList cluster : pli.getClusters()) {
+//                cluster.sort(comparator);
+//            }
+//            comparator.incrementActiveKey();
+//        }
     }
 
     private static int[][] buildCompressedRecords(PositionListIndex[] plis, int numOfRecords) {

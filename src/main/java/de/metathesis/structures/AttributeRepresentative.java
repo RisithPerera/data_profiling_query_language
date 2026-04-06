@@ -1,5 +1,6 @@
 package de.metathesis.structures;
 
+import de.metathesis.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;
 
@@ -54,9 +55,9 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
                 continue;
             }
 
-            for (int idx = 0; idx < cluster.size() - this.windowDistance; idx++) {
-                int r1 = cluster.getInt(idx);
-                int r2 = cluster.getInt(idx + this.windowDistance);
+            for (int i = 0; i < cluster.size() - this.windowDistance; i++) {
+                int r1 = cluster.getInt(i);
+                int r2 = cluster.getInt(i + this.windowDistance);
 
                 agree.clear();
                 for (int col = 0; col < numOfAttributes; col++) {
@@ -72,14 +73,17 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
                 disagree.flip(0, numOfAttributes);
 
                 for (int rhs = disagree.nextSetBit(0); rhs >= 0; rhs = disagree.nextSetBit(rhs + 1)) {
-                    boolean isNew = addMaximal(negativeCover.get(rhs), agree);
+                    boolean isNew = Utility.addMaximal(negativeCover.get(rhs), agree);
                     if (isNew) {
                         positiveCover.put(rhs, specialize(negativeCover.get(rhs), rhs));
                         numNewViolations++;
                     }
                 }
+
+                System.out.printf("Attr: %d (%d, %d) Comp: %d, Violations: %d\n", this.attributeIndex, r1, r2, this.numComparisons, this.numNewViolations);
             }
         }
+        System.out.println("------------------------");
     }
 
     public boolean isExhausted() {
@@ -94,10 +98,10 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
             List<BitSet> newCandidates = new ArrayList<>();
 
             for (BitSet candidate : candidates) {
-                boolean isHit = isSubset(candidate, violation);
+                boolean isHit = Utility.isSubset(candidate, violation);
 
                 if (!isHit) {
-                    addMinimal(newCandidates, candidate);
+                    Utility.addMinimal(newCandidates, candidate);
                 } else {
                     //add one attr from outside violation
                     for (int attr = 0; attr < numOfAttributes; attr++) {
@@ -111,7 +115,7 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
 
                         BitSet specialized = (BitSet) candidate.clone();
                         specialized.set(attr);
-                        addMinimal(newCandidates, specialized);
+                        Utility.addMinimal(newCandidates, specialized);
                     }
                 }
             }
@@ -120,32 +124,5 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
         }
 
         return candidates;
-    }
-
-    private boolean addMaximal(List<BitSet> sets, BitSet newSet) {
-        for (BitSet existing : sets) {
-            if (isSubset(newSet, existing)) {
-                return false;
-            }
-        }
-        sets.removeIf(existing -> isSubset(existing, newSet));
-        sets.add((BitSet) newSet.clone());
-        return true;
-    }
-
-    private void addMinimal(List<BitSet> sets, BitSet newSet) {
-        for (BitSet existing : sets) {
-            if (isSubset(existing, newSet)) {
-                return;
-            }
-        }
-        sets.removeIf(existing -> isSubset(newSet, existing));
-        sets.add((BitSet) newSet.clone());
-    }
-
-    private boolean isSubset(BitSet a, BitSet b) {
-        BitSet temp = (BitSet) a.clone();
-        temp.and(b);
-        return temp.equals(a);
     }
 }

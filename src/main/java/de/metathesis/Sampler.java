@@ -28,23 +28,48 @@ public class Sampler {
 
     public Sampler(Relation relation) {
         this.relation = relation;
+        int numOfAttributes = this.relation.getNumOfAttributes();
 
         // Initialize covers
-        for (int rhs = 0; rhs < this.relation.getNumOfAttributes(); rhs++) {
-            this.negativeCover.put(rhs, new ArrayList<>());
+        for (int attributeIndex = 0; attributeIndex < numOfAttributes; attributeIndex++) {
+            this.negativeCover.put(attributeIndex, new ArrayList<>());
+            this.positiveCover.put(attributeIndex, new ArrayList<>());
+        }
 
-            List<BitSet> candidates = new ArrayList<>();
-            candidates.add(new BitSet(this.relation.getNumOfAttributes()));
-            this.positiveCover.put(rhs, candidates);
+        // Handle trivial cases from unary PLIs before sampling
+        for (int attributeIndex = 0; attributeIndex < numOfAttributes; attributeIndex++) {
+            PositionListIndex pli = relation.getUnaryPLIs()[attributeIndex];
+
+            if (pli.isConstant(this.relation.getNumOfRecords())) {
+                // If the column is constant, It is determined by all other columns
+                BitSet emptyLhsCandidate = new BitSet(numOfAttributes);
+                Utility.addMinimal(this.positiveCover.get(attributeIndex), emptyLhsCandidate);
+            } else if (pli.isUnique()) {
+                // If the column is unique, it determines all other columns
+                for (int rhsAttributeIndex = 0; rhsAttributeIndex < numOfAttributes; rhsAttributeIndex++) {
+                    if (rhsAttributeIndex == attributeIndex) continue;
+
+                    BitSet singleLhsCandidate = new BitSet(numOfAttributes);
+                    singleLhsCandidate.set(attributeIndex);
+                    Utility.addMinimal(this.positiveCover.get(rhsAttributeIndex), singleLhsCandidate);
+                }
+            } else {
+                // Normal column initialize with full complement
+                BitSet fullLhsCandidate = new BitSet(numOfAttributes);
+                fullLhsCandidate.set(0, numOfAttributes);
+                fullLhsCandidate.clear(attributeIndex);
+                Utility.addMinimal(this.positiveCover.get(attributeIndex), fullLhsCandidate);
+            }
         }
     }
 
     public Map<Integer, List<BitSet>> run() {
         if(isInitialSampling){
             for (PositionListIndex pli : this.relation.getUnaryPLIs()) {
-                if (pli.getClusters().isEmpty()){
-                    continue; // unique column -> skip
+                if(pli.isUnique() || pli.isConstant(this.relation.getNumOfRecords())){
+                    continue;
                 }
+
                 AttributeRepresentative representer = new AttributeRepresentative(pli, this.relation.getNumOfAttributes());
                 representer.runNext(this.relation.getCompressedRecords(), this.negativeCover, this.positiveCover);
 

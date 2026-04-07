@@ -33,7 +33,10 @@ public class Sampler {
         // Initialize covers
         for (int attributeIndex = 0; attributeIndex < numOfAttributes; attributeIndex++) {
             this.negativeCover.put(attributeIndex, new ArrayList<>());
-            this.positiveCover.put(attributeIndex, new ArrayList<>());
+
+            List<BitSet> candidates = new ArrayList<>();
+            candidates.add(new BitSet(this.relation.getNumOfAttributes()));
+            this.positiveCover.put(attributeIndex, candidates);
         }
 
         // Handle trivial cases from unary PLIs before sampling
@@ -51,14 +54,8 @@ public class Sampler {
 
                     BitSet singleLhsCandidate = new BitSet(numOfAttributes);
                     singleLhsCandidate.set(attributeIndex);
-                    Utility.addMinimal(this.positiveCover.get(rhsAttributeIndex), singleLhsCandidate);
+                    Utility.addMaximal(this.positiveCover.get(rhsAttributeIndex), singleLhsCandidate);
                 }
-            } else {
-                // Normal column initialize with full complement
-                BitSet fullLhsCandidate = new BitSet(numOfAttributes);
-                fullLhsCandidate.set(0, numOfAttributes);
-                fullLhsCandidate.clear(attributeIndex);
-                Utility.addMinimal(this.positiveCover.get(attributeIndex), fullLhsCandidate);
             }
         }
     }
@@ -71,7 +68,7 @@ public class Sampler {
                 }
 
                 AttributeRepresentative representer = new AttributeRepresentative(pli, this.relation.getNumOfAttributes());
-                representer.runNext(this.relation.getCompressedRecords(), this.negativeCover, this.positiveCover);
+                representer.runNext(this.relation.getCompressedRecords(), this.negativeCover, this.positiveCover, this.efficiencyThreshold);
 
                 if (!representer.isExhausted() && representer.getEfficiency() > 0.0f) {
                     samplingQueue.add(representer);
@@ -93,7 +90,7 @@ public class Sampler {
 
         while (!samplingQueue.isEmpty() && (this.samplingQueue.peek().getEfficiency() >= this.efficiencyThreshold)) {
             AttributeRepresentative representer = samplingQueue.poll();
-            representer.runNext(this.relation.getCompressedRecords(), this.negativeCover, this.positiveCover);
+            representer.runNext(this.relation.getCompressedRecords(), this.negativeCover, this.positiveCover, this.efficiencyThreshold);
 
             System.out.printf("Attribute: %d, WindowDistance: %d, Efficiency: %f, Threshold: %f\n",
                     representer.getAttributeIndex(),

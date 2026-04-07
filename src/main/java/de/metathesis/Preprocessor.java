@@ -308,7 +308,12 @@ public final class Preprocessor {
 
         // Step 1: Sort clusters within each PLI by size
         for (PositionListIndex pli : plis) {
-            pli.getClusters().sort((c1, c2) -> c2.size() - c1.size());
+            pli.getClusters().sort((c1, c2) -> {
+                int cmp = c2.size() - c1.size();
+                if (cmp != 0) return cmp;
+                // tie-break: first element (clusters are internally sorted)
+                return Integer.compare(c1.getInt(0), c2.getInt(0));
+            });
         }
 
         // Sort 2: Sort PLIs by largest cluster //TODO: Need to think how to Keep PLI match with the original index

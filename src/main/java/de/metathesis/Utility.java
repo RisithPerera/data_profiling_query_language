@@ -83,6 +83,31 @@ public class Utility {
         sets.add((BitSet) newSet.clone());
     }
 
+//    public static void addMinimalWithSplit(List<BitSet> sets, BitSet newSet) {
+//        for (BitSet existing : sets) {
+//            if (isSubset(existing, newSet)) {
+//                return;
+//            }
+//        }
+//
+//        List<BitSet> remainders = new ArrayList<>();
+//
+//        sets.removeIf(existing -> {
+//            if (isSubset(newSet, existing)) {
+//                BitSet remainder = (BitSet) existing.clone();
+//                remainder.andNot(newSet); // strip out newSet bits gives (C,D)
+//                if (!remainder.isEmpty()) {
+//                    remainders.add(remainder);
+//                }
+//                return true; // remove the original superset
+//            }
+//            return false;
+//        });
+//
+//        sets.add((BitSet) newSet.clone());
+//        sets.addAll(remainders);
+//    }
+
     public static void addMinimalWithSplit(List<BitSet> sets, BitSet parent, BitSet confirmed) {
         // Remove the parent candidate
         sets.remove(parent);

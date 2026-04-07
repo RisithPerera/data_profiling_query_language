@@ -40,7 +40,7 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
         return Float.compare(o.getEfficiency(), this.getEfficiency());
     }
 
-    public void runNext(int[][] compressedRecords, Map<Integer, List<BitSet>> negativeCover, Map<Integer, List<BitSet>> positiveCover) {
+    public void runNext(int[][] compressedRecords, Map<Integer, List<BitSet>> negativeCover, Map<Integer, List<BitSet>> positiveCover, float efficiencyThreshold) {
         this.windowDistance++;
         this.numNewViolations = 0; // reset in each round
         this.numComparisons = 0;
@@ -80,10 +80,16 @@ public class AttributeRepresentative implements Comparable<AttributeRepresentati
                     }
                 }
 
-                System.out.printf("Attr: %d (%d, %d) Comp: %d, Violations: %d\n", this.attributeIndex, r1, r2, this.numComparisons, this.numNewViolations);
+                //System.out.printf("Attr: %d (%d, %d) Comp: %d, Violations: %d\n", this.attributeIndex, r1, r2, this.numComparisons, this.numNewViolations);
+//
+//                if(this.getEfficiency() < efficiencyThreshold / 2.0){
+//                    //Dont waste too much time on same cluster
+//                    System.out.printf("Stop Sampling at Efficiency: %.2f\n", this.getEfficiency());
+//                    break;
+//                }
             }
         }
-        System.out.println("------------------------");
+        //System.out.println("------------------------");
     }
 
     public boolean isExhausted() {

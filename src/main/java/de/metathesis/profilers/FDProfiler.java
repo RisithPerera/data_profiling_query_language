@@ -68,7 +68,17 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                         result.add(lhsAbs, rhsAbs);
                     }
 
-                    if(lhsPositiveCandidate.cardinality() >= level){
+                    if(level == lhsPositiveCandidate.cardinality()){
+                        // PLI validation
+                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhsPositiveCandidate);
+                        AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, rhsIdx);
+
+                        PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
+
+                        if (lhsPli.isUnique() || isFD(lhsPli, this.preprocessor.getPLI(rhsAbs))) {
+                            result.add(lhsAbs, rhsAbs);
+                        }
+                    }else if(level < lhsPositiveCandidate.cardinality()){
                         List<BitSet> lhsPositiveSubsets = this.preprocessor.produceSubSets(lhsPositiveCandidate, level);
 
                         for(BitSet lhsPositiveSubset : lhsPositiveSubsets){

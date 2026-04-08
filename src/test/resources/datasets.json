@@ -1,0 +1,51 @@
+[
+  {
+    "name": "WDC",
+    "separator": ";",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "TPCH_12",
+    "separator": ",",
+    "quoteChar": "'",
+    "hasHeader": false,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "Cars",
+    "separator": ",",
+    "quoteChar": "'",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "Sakila",
+    "separator": ",",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "Small TPCE",
+    "separator": "\t",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "ACNH",
+    "separator": ",",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "AdventureWorks",
+    "separator": ";",
+    "quoteChar": "'",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  }
+]

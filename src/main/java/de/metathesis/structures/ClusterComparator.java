@@ -25,11 +25,14 @@ public class ClusterComparator implements Comparator<Integer> {
 
         int value1 = this.sortKeys[o1][this.activeKey1];
         int value2 = this.sortKeys[o2][this.activeKey1];
+
         int result = value2 - value1;
+
         if (result == 0) {
             value1 = this.sortKeys[o1][this.activeKey2];
             value2 = this.sortKeys[o2][this.activeKey2];
         }
+
         return value2 - value1;
     }
 

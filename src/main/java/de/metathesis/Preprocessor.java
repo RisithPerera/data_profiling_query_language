@@ -26,6 +26,8 @@ public final class Preprocessor {
 
     private final Int2ObjectMap<Relation> relationMap = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectMap<Sampler> samplerMap = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<Sampler2> sampler2Map = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<Validator> validatorMap = new Int2ObjectOpenHashMap<>();
 
     //This structure cache n-ary PLIs temporary and remove least recently used one.
     private final LinkedHashMap<AttributeBitSet, PositionListIndex> pliCache = new LinkedHashMap<>(16, 0.75f, true) {
@@ -174,6 +176,14 @@ public final class Preprocessor {
         return this.samplerMap.computeIfAbsent(relationIndex, k -> new Sampler(getRelation(k)));
     }
 
+    public Sampler2 getSampler2(int relationIndex){
+        return this.sampler2Map.computeIfAbsent(relationIndex, k -> new Sampler2(getRelation(k)));
+    }
+
+    public Validator getValidator(int relationIndex){
+        return this.validatorMap.computeIfAbsent(relationIndex, k -> new Validator(getRelation(k)));
+    }
+
     public synchronized PositionListIndex getPLI(AttributeBitSet abs) {
 
         loadRelationData(abs.getRelationIndex());
@@ -295,6 +305,7 @@ public final class Preprocessor {
 
             PositionListIndex pli = new PositionListIndex(attributeBitSet, clusters);
             pli.setNumUniqueValues(numUniqueValues);
+            pli.setNumOfRecords(columns[0].length);
 
             plis[columnIndex] = pli;
         }

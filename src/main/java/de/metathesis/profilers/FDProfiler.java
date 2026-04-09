@@ -1,21 +1,20 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.Sampler;
-import de.metathesis.Utility;
+import de.metathesis.*;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
+import de.metathesis.structures.Relation;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executor;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
@@ -29,7 +28,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
-            return profileCCWithSampling(lhs.relations(), rhs.relations(), lhs.level());
+            return profileCCWithSampling2(lhs.relations(), rhs.relations(), lhs.level());
         }
 
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
@@ -47,7 +46,40 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         throw new IllegalArgumentException("Unsupported FDRequest");
     }
 
-    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) throws InputIterationException {
+    private Map<Integer, List<BitSet>> profile(int relationIndex, int level) {
+
+        Sampler2 sampler = this.preprocessor.getSampler2(relationIndex);
+        Validator validator = this.preprocessor.getValidator(relationIndex);
+
+        List<IntIntImmutablePair> suggestions = new ArrayList<>();
+        do {
+            FDSet newNonFds = sampler.run(suggestions);
+            suggestions = validator.validate(newNonFds, level);
+        } while (suggestions != null);
+
+        return validator.results(level);
+    }
+
+    private FDResult profileCCWithSampling2(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
+        FDResult result = new FDResult();
+        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
+
+        for (int relationIndex : commonRelationIndexes) {
+            Map<Integer, List<BitSet>> results = profile(relationIndex, level);
+
+            for(Map.Entry<Integer, List<BitSet>> entry : results.entrySet()){
+                AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
+                for (BitSet lhs : entry.getValue()) {
+                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
+                    result.add(lhsAbs, rhsAbs);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
         FDResult result = new FDResult();
         int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
 

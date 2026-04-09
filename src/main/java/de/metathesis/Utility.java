@@ -140,6 +140,15 @@ public class Utility {
         return (int) res;
     }
 
+    public static void match(BitSet agree, int[] row1, int[] row2){
+        agree.clear();
+        for (int col = 0; col < row1.length; col++) {
+            if (row1[col] != -1 && row1[col] == row2[col]) {
+                agree.set(col);
+            }
+        }
+    }
+
     public static int[] filterByLevel(int[] relations, int[] sizes, int level) {
 
         List<Integer> filtered = new ArrayList<>();

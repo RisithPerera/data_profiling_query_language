@@ -15,6 +15,9 @@ public class PositionListIndex {
     @Setter
     private int numUniqueValues;
 
+    @Setter
+    private int numOfRecords;
+
     public PositionListIndex(AttributeBitSet attributeSet, List<IntArrayList> clusters) {
         this.attributeSet = attributeSet;
         this.clusters = clusters;
@@ -24,12 +27,12 @@ public class PositionListIndex {
         return this.clusters.isEmpty();
     }
 
-    public boolean isConstant(int numRecords) {
-        if (numRecords <= 1)
+    public boolean isConstant() {
+        if (this.numOfRecords <= 1) {
             return true;
-        if ((this.clusters.size() == 1) && (this.clusters.get(0).size() == numRecords))
-            return true;
-        return false;
+        }
+
+        return (this.clusters.size() == 1) && (this.clusters.getFirst().size() == this.numOfRecords);
     }
 
     public int getNumNonUniqueValues() {

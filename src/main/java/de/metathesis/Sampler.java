@@ -43,7 +43,7 @@ public class Sampler {
         for (int attributeIndex = 0; attributeIndex < numOfAttributes; attributeIndex++) {
             PositionListIndex pli = relation.getUnaryPLIs()[attributeIndex];
 
-            if (pli.isConstant(this.relation.getNumOfRecords())) {
+            if (pli.isConstant()) {
                 // If the column is constant, It is determined by all other columns
                 BitSet emptyLhsCandidate = new BitSet(numOfAttributes);
                 Utility.addMinimal(this.positiveCover.get(attributeIndex), emptyLhsCandidate);
@@ -63,7 +63,7 @@ public class Sampler {
     public Map<Integer, List<BitSet>> run() {
         if(isInitialSampling){
             for (PositionListIndex pli : this.relation.getUnaryPLIs()) {
-                if(pli.isUnique() || pli.isConstant(this.relation.getNumOfRecords())){
+                if(pli.isUnique() || pli.isConstant()){
                     continue;
                 }
 

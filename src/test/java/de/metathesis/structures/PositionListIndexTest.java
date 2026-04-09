@@ -12,6 +12,11 @@ public class PositionListIndexTest {
 
     @Test
     public void testIntersectionCorrectness() {
+        /*  Assumptions:
+            Each Cluster is sorted by its row index
+            Each Cluster array is sorted by its cluster size
+         */
+
         PositionListIndex pli1 = new PositionListIndex(new AttributeBitSet(0, 0), List.of(cluster(0,1,2,5), cluster(3,4)));
         PositionListIndex pli2 = new PositionListIndex(new AttributeBitSet(0, 1), List.of(cluster(0,1), cluster(2,3,4,5)));
         PositionListIndex pli3 = new PositionListIndex(new AttributeBitSet(0, 2), List.of(cluster(0,1), cluster(2,5), cluster(3,4)));
@@ -24,6 +29,7 @@ public class PositionListIndexTest {
         assertEquals(pli3.getClusters(), pli1.intersect(pli2).getClusters());
         assertEquals(pli3.getClusters(), pli2.intersect(pli1).getClusters());
         assertEquals(pli4.getClusters(), pli1.intersect(pli2).intersect(pli5).getClusters());
+        assertEquals(pli4.getClusters(), pli5.intersect(pli2).intersect(pli1).getClusters());
         assertEquals(pli7.getClusters(), pli1.intersect(pli6).intersect(pli3).getClusters());
     }
 

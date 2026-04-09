@@ -28,7 +28,7 @@ public class UCCTest {
     private static Map<String, int[]> relationSizesMap;
 
     @BeforeAll
-    public static void setupNode() throws InputGenerationException, AlgorithmConfigurationException {
+    public static void setupNode() {
         InputConfigurationSingleton.get().setDATA_SET("WDC");
         InputConfigurationSingleton.get().setFILE_VALUE_SEPARATOR(",");
 

@@ -46,6 +46,66 @@ public class Validator2 {
         }
     }
 
+    BitSet processValidation(BitSet lhs, BitSet rhs) {
+        BitSet validRhs = (BitSet) rhs.clone();
+        int[] rhsAttrs = rhs.stream().toArray();
+
+        int firstAttr = lhs.nextSetBit(0);
+        BitSet remainingLhs = (BitSet) lhs.clone();
+        remainingLhs.clear(firstAttr);
+
+        for (IntArrayList cluster : plis[firstAttr].getClusters()) {
+            Long2IntOpenHashMap representative = new Long2IntOpenHashMap();
+            Long2ObjectOpenHashMap<int[]> seen = new Long2ObjectOpenHashMap<>();
+
+            for (int rec : cluster) {
+                long key = clusterKey(remainingLhs, rec);
+                if (key == Long.MIN_VALUE) {
+                    continue;
+                }
+
+                if (seen.containsKey(key)) {
+                    int[] existing = seen.get(key);
+                    for (int r = validRhs.nextSetBit(0); r >= 0; r = validRhs.nextSetBit(r + 1)) {
+                        int idx = 0;
+                        while (rhsAttrs[idx] != r) {
+                            idx++;
+                        }
+
+                        if (compressed[rec][r] == -1 || compressed[rec][r] != existing[idx]) {
+                            validRhs.clear(r);
+                            if (validRhs.isEmpty()) {
+                                return validRhs;
+                            }
+                        }
+                    }
+                } else {
+                    int[] vals = new int[rhsAttrs.length];
+                    for (int i = 0; i < rhsAttrs.length; i++) {
+                        vals[i] = compressed[rec][rhsAttrs[i]];
+                    }
+                    seen.put(key, vals);
+                    representative.put(key, rec);
+                }
+            }
+        }
+        return validRhs;
+    }
+
+    private long clusterKey(BitSet lhs, int rec) {
+        long key = 0;
+        int shift = 0;
+        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
+            int v = compressed[rec][attr];
+            if (v == -1) {
+                return Long.MIN_VALUE;
+            }
+            key |= ((long) v << shift);
+            shift += 21;
+        }
+        return key;
+    }
+
     public List<IntIntImmutablePair> validate(FDSet newNonFds, int targetLevel) {
         System.out.printf("Validate Current level: %d, Target level: %d\n", currentLevel, targetLevel);
         induct(newNonFds);
@@ -347,18 +407,4 @@ public class Validator2 {
         return validRhs;
     }
 
-    private long clusterKey(BitSet lhs, int rec) {
-        long key = 0;
-        int shift = 0;
-        for (int attr = lhs.nextSetBit(0); attr >= 0;
-             attr = lhs.nextSetBit(attr + 1)) {
-            int v = compressed[rec][attr];
-            if (v == -1) {
-                return Long.MIN_VALUE;
-            }
-            key |= ((long) v << shift);
-            shift += 21;
-        }
-        return key;
-    }
 }

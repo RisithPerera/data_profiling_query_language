@@ -1,5 +1,19 @@
 [
   {
+    "name": "TEST2",
+    "separator": ",",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "TEST3",
+    "separator": ",",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
     "name": "WDC",
     "separator": ";",
     "quoteChar": "\"",
@@ -16,7 +30,14 @@
   {
     "name": "Cars",
     "separator": ",",
-    "quoteChar": "'",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "Cars2",
+    "separator": ",",
+    "quoteChar": "\"",
     "hasHeader": true,
     "fileEnding": "csv"
   },
@@ -43,6 +64,13 @@
   },
   {
     "name": "AdventureWorks",
+    "separator": ";",
+    "quoteChar": "'",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "AdventureWorksTest",
     "separator": ";",
     "quoteChar": "'",
     "hasHeader": true,

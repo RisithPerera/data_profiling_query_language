@@ -1,4 +1,4 @@
-package de.metathesis;
+package de.metathesis.structures;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
@@ -7,14 +7,14 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-public class FDSet {
+public class NegativeCover {
     @Getter
     private final List<ObjectOpenHashSet<BitSet>> fdLevels = new ArrayList<>();
 
     @Getter
     private final int numAttributes;
 
-    public FDSet(int numAttributes) {
+    public NegativeCover(int numAttributes) {
         this.numAttributes = numAttributes;
     }
 

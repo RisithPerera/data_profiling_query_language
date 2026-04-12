@@ -1,9 +1,6 @@
 package de.metathesis;
 
-import de.metathesis.structures.AttributeRepresentative2;
-import de.metathesis.structures.ClusterComparator;
-import de.metathesis.structures.PositionListIndex;
-import de.metathesis.structures.Relation;
+import de.metathesis.structures.*;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import lombok.Getter;
@@ -22,17 +19,17 @@ public class Sampler2 {
     private boolean isInitialSampling = true;
 
     @Getter
-    private final FDSet negCover;
+    private final NegativeCover negCover;
 
     public Sampler2(Relation relation) {
         this.relation = relation;
-        this.negCover = new FDSet(relation.getNumOfAttributes());
+        this.negCover = new NegativeCover(relation.getNumOfAttributes());
     }
 
-    public FDSet run(Set<IntIntImmutablePair> comparisonSuggestions) {
+    public NegativeCover run(Set<IntIntImmutablePair> comparisonSuggestions) {
         int numAttributes = relation.getNumOfAttributes();
         int[][] compressedRecords = relation.getCompressedRecords();
-        FDSet newNonFds = new FDSet(numAttributes);
+        NegativeCover newNonFds = new NegativeCover(numAttributes);
 
         if (!comparisonSuggestions.isEmpty()) {
             BitSet agree = new BitSet(numAttributes);

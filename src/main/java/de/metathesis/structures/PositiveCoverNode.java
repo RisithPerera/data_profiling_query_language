@@ -1,6 +1,7 @@
-package de.metathesis;
+package de.metathesis.structures;
 
 
+import de.metathesis.Utility;
 import lombok.Getter;
 
 import java.util.ArrayList;

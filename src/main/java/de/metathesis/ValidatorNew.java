@@ -1,6 +1,8 @@
 package de.metathesis;
 
+import de.metathesis.structures.NegativeCover;
 import de.metathesis.structures.PositionListIndex;
+import de.metathesis.structures.PositiveCoverNode;
 import de.metathesis.structures.Relation;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -226,7 +228,7 @@ public class ValidatorNew {
     }
 
     // Validate using positive cover induction
-    public Set<IntIntImmutablePair> validateWithPositiveCover(ExecutorService executor, FDSet newNegativeCover, int level) throws ExecutionException, InterruptedException {
+    public Set<IntIntImmutablePair> validateWithPositiveCover(ExecutorService executor, NegativeCover newNegativeCover, int level) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
         List<CandidateFD> candidates = getCandidatesAtLevel(level);
@@ -315,7 +317,7 @@ public class ValidatorNew {
     }
 
     //Induces the positive cover from a negative cover (agree-sets).
-    public void inductPositiveCover(FDSet negCover) {
+    public void inductPositiveCover(NegativeCover negCover) {
         for (int i = negCover.getFdLevels().size() - 1; i >= 0; i--) { //Iterate in reverse order
             for(BitSet agreeLhs : negCover.getFdLevels().get(i)){
                 BitSet violatedRhs = (BitSet) agreeLhs.clone();

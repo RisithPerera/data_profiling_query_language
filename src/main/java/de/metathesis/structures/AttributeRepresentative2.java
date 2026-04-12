@@ -1,6 +1,5 @@
 package de.metathesis.structures;
 
-import de.metathesis.FDSet;
 import de.metathesis.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;
@@ -40,7 +39,7 @@ public class AttributeRepresentative2 implements Comparable<AttributeRepresentat
         return Float.compare(o.getEfficiency(), this.getEfficiency());
     }
 
-    public void runNext(int[][] compressedRecords, FDSet negCover, FDSet newNonFds) {
+    public void runNext(int[][] compressedRecords, NegativeCover negCover, NegativeCover newNonFds) {
         this.windowDistance++;
         this.numNewViolations = 0;
         this.numComparisons = 0;

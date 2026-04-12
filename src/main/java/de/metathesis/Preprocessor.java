@@ -24,7 +24,6 @@ public final class Preprocessor {
     private static final double CACHE_MEMORY_THRESHOLD = 0.8;
 
     private final Int2ObjectMap<Relation> relationMap = new Int2ObjectOpenHashMap<>();
-    private final Int2ObjectMap<Sampler> samplerMap = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectMap<Sampler2> sampler2Map = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectMap<ValidatorNew> validatorMap = new Int2ObjectOpenHashMap<>();
 
@@ -169,10 +168,6 @@ public final class Preprocessor {
         loadRelationData(relationIndex);
 
         return this.relationMap.get(relationIndex);
-    }
-
-    public Sampler getSampler(int relationIndex){
-        return this.samplerMap.computeIfAbsent(relationIndex, k -> new Sampler(getRelation(k)));
     }
 
     public Sampler2 getSampler2(int relationIndex){

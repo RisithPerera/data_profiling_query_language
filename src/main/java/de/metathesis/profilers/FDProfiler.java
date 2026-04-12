@@ -1,7 +1,7 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.FDSet;
+import de.metathesis.structures.NegativeCover;
 import de.metathesis.Sampler2;
 import de.metathesis.Utility;
 import de.metathesis.ValidatorNew;
@@ -55,7 +55,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
             do {
-                FDSet newNonFds = sampler.run(suggestions);
+                NegativeCover newNonFds = sampler.run(suggestions);
                 suggestions = validator.validateWithPositiveCover(this.executor, newNonFds, level);
             } while (suggestions != null);
 
@@ -110,6 +110,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
         return result;
     }
+
     //================================================= OLD
     /*private Map<Integer, List<BitSet>> profile(int relationIndex, int level) {
 
@@ -144,9 +145,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         return result;
     }*/
 
-    private FDResult profileCC(int[] lhsRelationIndexes,
-                              int[] rhsRelationIndexes,
-                              int level) throws InputIterationException {
+    private FDResult profileCC(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) throws InputIterationException {
         FDResult result = new FDResult();
         int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
         for(int relationIndex : commonRelationIndexes) {

@@ -13,6 +13,7 @@ import lombok.Getter;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 @Getter
 public final class ProfilerFactory {
@@ -21,7 +22,7 @@ public final class ProfilerFactory {
     private final INDProfiler indProfiler;
     private final FDProfiler fdProfiler;
 
-    public ProfilerFactory(Executor executor) {
+    public ProfilerFactory(ExecutorService executor) {
         this.executor = executor;
         this.uccProfiler = new UCCProfiler(executor);
         this.indProfiler = new INDProfiler(executor);

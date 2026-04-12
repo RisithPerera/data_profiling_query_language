@@ -8,15 +8,16 @@ import lombok.Getter;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 public abstract class AbstractProfiler<In extends Request, Out extends Result<?>> implements Profiler<In, Out> {
     @Getter
     protected final Preprocessor preprocessor;
 
     @Getter
-    protected final Executor executor;
+    protected final ExecutorService executor;
 
-    public AbstractProfiler(Executor executor) {
+    public AbstractProfiler(ExecutorService executor) {
         this.executor = executor;
         this.preprocessor = Preprocessor.getInstance();
     }

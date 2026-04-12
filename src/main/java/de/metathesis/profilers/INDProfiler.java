@@ -14,6 +14,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
@@ -27,7 +28,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
     private final LongSet fullyCheckedCC = new LongOpenHashSet();
 
-    public INDProfiler(Executor executor) {
+    public INDProfiler(ExecutorService executor) {
         super(executor);
     }
 

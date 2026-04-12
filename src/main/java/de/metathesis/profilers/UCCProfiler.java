@@ -15,13 +15,14 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
     private final Long2ObjectMap<ObjectArrayList<AttributeBitSet>> nonUCCPerRelationLevel = new Long2ObjectOpenHashMap<>();
     private final Int2ObjectMap<ObjectOpenHashSet<AttributeBitSet>> uccPerRelation = new Int2ObjectOpenHashMap<>();
 
-    public UCCProfiler(Executor executor) {
+    public UCCProfiler(ExecutorService executor) {
         super(executor);
     }
 

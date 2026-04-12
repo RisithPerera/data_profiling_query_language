@@ -15,13 +15,16 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
     private final Int2ObjectMap<Map<Integer, List<BitSet>>> confirmedPosCover = new Int2ObjectOpenHashMap<>();
 
-    public FDProfiler(Executor executor) {
+    public FDProfiler(ExecutorService executor) {
         super(executor);
     }
 

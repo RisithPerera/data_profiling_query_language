@@ -140,6 +140,32 @@ public class Utility {
         return (int) res;
     }
 
+    public static BitSet[] generateApriori(int cols, int level) {
+        if(level == 0) {
+            return new BitSet[]{new BitSet()};
+        }
+
+        int count = Utility.binomial(cols, level);
+        BitSet[] result = new BitSet[count];
+
+        BigInteger mask = BigInteger.ONE.shiftLeft(level).subtract(BigInteger.ONE);  // first combination
+        BigInteger limit = BigInteger.ONE.shiftLeft(cols);
+
+        int idx = 0;
+        while (mask.compareTo(limit) < 0) {
+            BitSet bitSet = Utility.toBitSet(mask, cols);
+
+            result[idx++] = bitSet;
+
+            // Gosper's hack for BigInteger
+            BigInteger c = mask.and(mask.negate());
+            BigInteger r = mask.add(c);
+            mask = r.or(r.xor(mask).shiftRight(2).divide(c));
+        }
+
+        return result;
+    }
+
     public static void match(BitSet agree, int[] row1, int[] row2){
         agree.clear();
         for (int col = 0; col < row1.length; col++) {

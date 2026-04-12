@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.*;
 
@@ -215,7 +216,7 @@ public class Validator2 {
 
     // --- Induction ---
     private void induct(FDSet newNonFds) {
-        List<Set<BitSet>> levels = newNonFds.getFdLevels();
+        List<ObjectOpenHashSet<BitSet>> levels = newNonFds.getFdLevels();
         for (int i = levels.size() - 1; i >= 0; i--) {
             for (BitSet lhs : levels.get(i)) {
                 BitSet rhs = (BitSet) lhs.clone();

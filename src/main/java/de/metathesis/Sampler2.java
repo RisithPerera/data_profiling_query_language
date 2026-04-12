@@ -11,6 +11,7 @@ import lombok.Getter;
 import java.util.BitSet;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 public class Sampler2 {
     @Getter
@@ -29,7 +30,7 @@ public class Sampler2 {
         this.negCover = new FDSet(relation.getNumOfAttributes());
     }
 
-    public FDSet run(List<IntIntImmutablePair> comparisonSuggestions) {
+    public FDSet run(Set<IntIntImmutablePair> comparisonSuggestions) {
         int numAttributes = relation.getNumOfAttributes();
         int[][] compressedRecords = relation.getCompressedRecords();
         FDSet newNonFds = new FDSet(numAttributes);

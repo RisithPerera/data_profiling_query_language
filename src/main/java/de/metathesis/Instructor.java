@@ -51,7 +51,7 @@ public final class Instructor {
 
         Map<String, ExecutionNode> executionGraph = new LinkedHashMap<>(); //All Graph Nodes
 
-        for (int level = 1; level <= globalMaxLevel; level++) {
+        for (int level = 0; level <= globalMaxLevel; level++) {
             // Maps last Execution Node (Edge) used by the variable
             Map<String, ExecutionNode> lastNodeByVariable = new HashMap<>();
 

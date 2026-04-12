@@ -31,7 +31,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
-            return profileCCWithSampling2(lhs.relations(), rhs.relations(), lhs.level());
+            return profileCCWithSampling(lhs.relations(), rhs.relations(), lhs.level());
         }
 
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
@@ -49,7 +49,70 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         throw new IllegalArgumentException("Unsupported FDRequest");
     }
 
-    private Map<Integer, List<BitSet>> profile(int relationIndex, int level) {
+    private Map<BitSet, List<BitSet>> profile(int relationIndex, int level) {
+        try {
+            Sampler2 sampler = this.preprocessor.getSampler2(relationIndex);
+            ValidatorNew validator = this.preprocessor.getValidator(relationIndex);
+
+            Set<IntIntImmutablePair> suggestions = new HashSet<>();
+            do {
+                FDSet newNonFds = sampler.run(suggestions);
+                suggestions = validator.validateWithPositiveCover(this.executor, newNonFds, level);
+            } while (suggestions != null);
+
+            return validator.collectResults(level);
+        }catch (ExecutionException | InterruptedException e){
+            throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "at level: " + level, e);
+        }
+    }
+
+    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
+        FDResult result = new FDResult();
+        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
+
+        for (int relationIndex : commonRelationIndexes) {
+            Map<BitSet, List<BitSet>> results = profile(relationIndex, level);
+
+            for (Map.Entry<BitSet, List<BitSet>> entry : results.entrySet()) {
+                AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
+
+                for (BitSet lhs : entry.getValue()) {
+                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
+                    result.add(lhsAbs, rhsAbs);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private FDResult profileCCWithValidation(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
+        FDResult result = new FDResult();
+        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
+
+        for (int relationIndex : commonRelationIndexes) {
+            try {
+                ValidatorNew validator = this.preprocessor.getValidator(relationIndex);
+
+                Map<BitSet, List<BitSet>> results = validator.validateDirectly(this.executor, level);
+
+                for (Map.Entry<BitSet, List<BitSet>> entry : results.entrySet()) {
+                    AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
+
+                    for (BitSet lhs : entry.getValue()) {
+                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
+                        result.add(lhsAbs, rhsAbs);
+                    }
+                }
+            }catch (ExecutionException | InterruptedException e){
+                throw new RuntimeException(e);
+            }
+        }
+
+        return result;
+    }
+    //================================================= OLD
+    /*private Map<Integer, List<BitSet>> profile(int relationIndex, int level) {
 
         Sampler2 sampler = this.preprocessor.getSampler2(relationIndex);
         Validator validator = this.preprocessor.getValidator(relationIndex);
@@ -80,108 +143,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         }
 
         return result;
-    }
-
-    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
-        FDResult result = new FDResult();
-        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
-
-        for (int relationIndex : commonRelationIndexes) {
-            Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
-
-            Sampler sampler = this.preprocessor.getSampler(relationIndex);
-            Map<Integer, List<BitSet>> posCover = sampler.run();
-
-            for (int rhsIdx = 0; rhsIdx < sampler.getRelation().getNumOfAttributes(); rhsIdx++) {
-                List<BitSet> lhsPositiveCover = new ArrayList<>(posCover.get(rhsIdx));
-
-                for (BitSet lhsPositiveCandidate : lhsPositiveCover) {
-                    //TODO: Constants column handling needs to discuss
-                    if(level <= 1 && lhsPositiveCandidate.isEmpty()){
-                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhsPositiveCandidate);
-                        AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, rhsIdx);
-                        result.add(lhsAbs, rhsAbs);
-                    }
-
-                    if(level == lhsPositiveCandidate.cardinality()){
-                        // PLI validation
-                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhsPositiveCandidate);
-                        AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, rhsIdx);
-
-                        PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-
-                        if (lhsPli.isUnique() || isFD(lhsPli, this.preprocessor.getPLI(rhsAbs))) {
-                            result.add(lhsAbs, rhsAbs);
-                        }
-                    }else if(level < lhsPositiveCandidate.cardinality()){
-                        List<BitSet> lhsPositiveSubsets = this.preprocessor.produceSubSets(lhsPositiveCandidate, level);
-
-                        for(BitSet lhsPositiveSubset : lhsPositiveSubsets){
-                            // PLI validation
-                            AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhsPositiveSubset);
-                            AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, rhsIdx);
-
-                            PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-
-                            if (lhsPli.isUnique() || isFD(lhsPli, this.preprocessor.getPLI(rhsAbs))) {
-                                result.add(lhsAbs, rhsAbs);
-                                Utility.addMinimalWithSplit(posCover.get(rhsIdx), lhsPositiveCandidate, lhsPositiveSubset); //Fix is needs here right?
-                            }
-                        }
-                    }
-                }
-            }
-
-           /* AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
-              AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);
-
-            for (AttributeBitSet lhsAbs : currentLevel) {
-                for (AttributeBitSet rhsAbs : initialLevel) {
-                    if(rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
-                        continue;
-                    }
-
-                    // In PosCover check any subset of lhsAbs valid for this rhs?
-                    if (isCoveredByPosCover(lhsAbs.getAttributeIndexSet(), posCover.get(rhsAbs.getAttributeIndexSet().nextSetBit(0)))) {
-                        result.add(lhsAbs, rhsAbs);
-                        continue;
-                    }
-
-                    // PLI validation
-                    PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-                    if (lhsPli.isUnique()) {
-                        result.add(lhsAbs, rhsAbs);
-                        continue; // unique LHS → always valid but skip per existing convention
-                    }
-
-                    PositionListIndex rhsPli = this.preprocessor.getPLI(rhsAbs);
-
-                    if (isFD(lhsPli, rhsPli)) {
-                        result.add(lhsAbs, rhsAbs);
-                    }
-                }
-            }*/
-        }
-
-        return result;
-    }
-
-    private boolean isCoveredByPosCover(BitSet lhsAbs, List<BitSet> posCoverForRhs) {
-        if (posCoverForRhs == null || posCoverForRhs.isEmpty()) {
-            return false;
-        }
-        for (BitSet  candidate : posCoverForRhs) {
-            if (candidate.isEmpty()) {
-                continue; // empty set means uninitialized/trivial, not a real FD
-            }
-
-            BitSet tmp = (BitSet) lhsAbs.clone();
-            tmp.andNot(candidate);
-            return tmp.isEmpty();
-        }
-        return false;
-    }
-
+    }*/
 
     private FDResult profileCC(int[] lhsRelationIndexes,
                               int[] rhsRelationIndexes,

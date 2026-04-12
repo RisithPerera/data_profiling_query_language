@@ -1,12 +1,13 @@
 package de.metathesis;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
 
 import java.util.*;
 
 public class FDSet {
     @Getter
-    private final List<Set<BitSet>> fdLevels = new ArrayList<>();
+    private final List<ObjectOpenHashSet<BitSet>> fdLevels = new ArrayList<>();
 
     @Getter
     private final int numAttributes;
@@ -19,7 +20,7 @@ public class FDSet {
         int card = equalAttrs.cardinality();
 
         while (fdLevels.size() <= card){
-            fdLevels.add(new HashSet<>());
+            fdLevels.add(new ObjectOpenHashSet<>());
         }
 
         return fdLevels.get(card).add((BitSet) equalAttrs.clone());

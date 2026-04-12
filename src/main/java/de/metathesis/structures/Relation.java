@@ -4,7 +4,6 @@ import de.metanome.algorithm_integration.input.RelationalInput;
 import lombok.Getter;
 
 import java.util.Objects;
-import java.util.PriorityQueue;
 
 public class Relation {
     @Getter private final int index;

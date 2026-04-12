@@ -5,7 +5,10 @@ import de.metathesis.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Iterator;
+import java.util.List;
 
 public class AttributeRepresentative2 implements Comparable<AttributeRepresentative2> {
 

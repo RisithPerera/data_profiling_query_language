@@ -7,7 +7,6 @@ import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.structures.AttributeBitSet;
-import de.metathesis.structures.ClusterComparator;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;

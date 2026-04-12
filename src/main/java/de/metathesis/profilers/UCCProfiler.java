@@ -14,7 +14,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {

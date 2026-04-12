@@ -7,7 +7,6 @@ import de.metathesis.structures.results.Result;
 import lombok.Getter;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 public abstract class AbstractProfiler<In extends Request, Out extends Result<?>> implements Profiler<In, Out> {

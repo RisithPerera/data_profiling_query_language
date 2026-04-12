@@ -13,7 +13,6 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {

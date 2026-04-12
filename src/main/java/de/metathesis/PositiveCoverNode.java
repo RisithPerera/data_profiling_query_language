@@ -1,7 +1,6 @@
 package de.metathesis;
 
 
-import de.metanome.algorithms.hyfd.structures.FDTreeElement;
 import lombok.Getter;
 
 import java.util.ArrayList;

@@ -1,6 +1,7 @@
 package de.metathesis;
 
 import lombok.Getter;
+
 import java.util.BitSet;
 
 public class FDTree {

@@ -1,6 +1,5 @@
 package de.metathesis;
 
-import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.AttributeRepresentative;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;

@@ -69,28 +69,41 @@ public class PositiveCoverNode {
         }
     }
 
-    public PositiveCoverNode addFunctionalDependency(BitSet lhs, int rhs) {
+    public void addFunctionalDependency(BitSet lhs, int rhs) {
         PositiveCoverNode currentNode = this;
         currentNode.rhsAttributes.set(rhs);
 
-        int lhsLength = 0;
         for (int i = lhs.nextSetBit(0); i >= 0; i = lhs.nextSetBit(i + 1)) {
-            lhsLength++;
-
-            if (currentNode.getChildren() == null) {
+            if (currentNode.children == null) {
                 currentNode.children = new PositiveCoverNode[this.numAttributes];
-                currentNode.getChildren()[i] = new PositiveCoverNode(this.numAttributes);
-            } else if (currentNode.getChildren()[i] == null) {
-                currentNode.getChildren()[i] = new PositiveCoverNode(this.numAttributes);
+                currentNode.children[i] = new PositiveCoverNode(this.numAttributes);
+            } else if (currentNode.children[i] == null) {
+                currentNode.children[i] = new PositiveCoverNode(this.numAttributes);
             }
 
-            currentNode = currentNode.getChildren()[i];
+            currentNode = currentNode.children[i];
             currentNode.rhsAttributes.set(rhs);
         }
         currentNode.rhsCandidateFds.set(rhs);
+    }
 
-        //this.depth = Math.max(this.depth, lhsLength);
-        return currentNode;
+    // Marks lhs -> rhs as confirmed valid. Sets the bit in rhsValidatedFds at the node for lhs.
+    public void markAsValidate(BitSet lhs, BitSet rhs) {
+        PositiveCoverNode current = this;
+        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
+            if (current.children == null) {
+                current.children = new PositiveCoverNode[this.numAttributes];
+            }
+
+            if (current.children[attr] == null) {
+                current.children[attr] = new PositiveCoverNode(numAttributes);
+            }
+
+            current = current.children[attr];
+        }
+
+        current.getRhsValidatedFds().or(rhs);
+        current.getRhsCandidateFds().or(rhs);
     }
 
     public List<BitSet> getFdAndGeneralizations(BitSet lhs, int rhs) {

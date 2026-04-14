@@ -2,9 +2,9 @@ package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.structures.NegativeCover;
-import de.metathesis.Sampler2;
+import de.metathesis.Sampler;
 import de.metathesis.Utility;
-import de.metathesis.ValidatorNew;
+import de.metathesis.FDValidator;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.FDRequest;
@@ -13,6 +13,7 @@ import de.metathesis.structures.results.FDResult;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
+import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.*;
@@ -50,8 +51,8 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
     private Map<BitSet, List<BitSet>> profile(int relationIndex, int level) {
         try {
-            Sampler2 sampler = this.preprocessor.getSampler2(relationIndex);
-            ValidatorNew validator = this.preprocessor.getValidator(relationIndex);
+            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+            FDValidator validator = this.preprocessor.getValidator(relationIndex);
 
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
             do {
@@ -91,7 +92,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
         for (int relationIndex : commonRelationIndexes) {
             try {
-                ValidatorNew validator = this.preprocessor.getValidator(relationIndex);
+                FDValidator validator = this.preprocessor.getValidator(relationIndex);
 
                 Map<BitSet, List<BitSet>> results = validator.validateDirectly(this.executor, level);
 
@@ -181,37 +182,62 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         return  result;
     }
 
-    private FDResult profileLockedCC(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
-                                   int[] rhsRelationIndexes) throws InputIterationException {
+    private FDResult profileLockedCC(ObjectOpenHashSet<AttributeBitSet> lhsAttributes, int[] rhsRelationIndexes) {
         FDResult result = new FDResult();
+
+        // Group lhs by relationIndex, only if that relation is in rhsRelationIndexes
+        Set<Integer> rhsRelationSet = new HashSet<>();
+        for (int idx : rhsRelationIndexes) {rhsRelationSet.add(idx);}
+
+        Map<Integer, List<BitSet>> lhsByRelation = new HashMap<>();
         for (AttributeBitSet lhsAbs : lhsAttributes) {
-            PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-            if(lhsPli.isUnique()){
-                //TODO:Avoiding unique LHS, Needs to discuss this team
-                continue;
+            int relIdx = lhsAbs.getRelationIndex();
+            if (!rhsRelationSet.contains(relIdx)) continue;
+            lhsByRelation.computeIfAbsent(relIdx, k -> new ArrayList<>()).add(lhsAbs.getAttributeIndexSet());
+        }
+
+        // Process each relation independently
+        for (Map.Entry<Integer, List<BitSet>> entry : lhsByRelation.entrySet()) {
+            int relationIndex = entry.getKey();
+            List<BitSet> lhsList = entry.getValue();
+
+            FDValidator validator = this.preprocessor.getValidator(relationIndex);
+            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+
+            // Build pending pairs: lhs -> current rhs candidates
+            // Use LinkedHashMap to preserve order
+            List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList = new ArrayList<>();
+            for (BitSet lhs : lhsList) {
+                BitSet rhs = new BitSet(validator.getNumAttributes());
+                rhs.set(0, validator.getNumAttributes());
+                rhs.andNot(lhs);
+                pendingList.add(new ObjectObjectImmutablePair<>(lhs, rhs));
             }
 
-            for(int rhsRelationIndex : rhsRelationIndexes) {
-                if(rhsRelationIndex != lhsAbs.getRelationIndex()){ //Relation Matching
-                    continue;
-                }
+            // Track confirmed valid rhs per lhs across rounds
+            List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmedList = new ArrayList<>();
 
-                AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(rhsRelationIndex, 1); //Get Level 1 Rhs
+            Set<IntIntImmutablePair> suggestions = new HashSet<>();
 
-                for (AttributeBitSet rhsAbs : initialLevel) {
-                    if(lhsAbs.equals(rhsAbs) || rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
-                        continue;
-                    }
+            do {
+                NegativeCover newNonFds = sampler.run(suggestions);
+                suggestions = validator.validateLockedCandidates(newNonFds, pendingList, confirmedList);
+            } while (suggestions != null);
 
-                    PositionListIndex rhsPli = this.preprocessor.getPLI(rhsAbs);
+            // Collect results
+            for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedList) {
+                BitSet lhs = confirmedPair.left();
+                BitSet rhs = confirmedPair.right();
 
-                    if(isFD(lhsPli, rhsPli)){
-                        result.add(lhsPli.getAttributeSet(), rhsPli.getAttributeSet());
-                    }
+                AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
+                for (int attr = rhs.nextSetBit(0); attr >= 0; attr = rhs.nextSetBit(attr + 1)) {
+                    AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, attr);
+                    result.add(lhsAbs, rhsAbs);
                 }
             }
         }
-        return  result;
+
+        return result;
     }
 
     private FDResult profileCCLocked(int[] lhsRelationIndexes,

@@ -9,19 +9,21 @@ import java.util.BitSet;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-public class Sampler2 {
+public class Sampler {
     @Getter
     private final Relation relation;
 
-    private float efficiencyThreshold = 0.01f;
+    private float samplingThreshold = 0.01f;
     private final float memoryThreshold = 0.8f;
     private final PriorityQueue<AttributeRepresentative2> samplingQueue = new PriorityQueue<>();
+
+    @Getter
     private boolean isInitialSampling = true;
 
     @Getter
     private final NegativeCover negCover;
 
-    public Sampler2(Relation relation) {
+    public Sampler(Relation relation) {
         this.relation = relation;
         this.negCover = new NegativeCover(relation.getNumOfAttributes());
     }
@@ -69,17 +71,17 @@ public class Sampler2 {
             }
 
             if (!samplingQueue.isEmpty()) {
-                efficiencyThreshold = Math.min(0.01f, samplingQueue.peek().getEfficiency() * 0.5f);
+                samplingThreshold = Math.min(0.01f, samplingQueue.peek().getEfficiency() * 0.5f);
             }
 
             isInitialSampling = false;
         } else {
             if (!samplingQueue.isEmpty()) {
-                efficiencyThreshold = Math.min(efficiencyThreshold / 2, samplingQueue.peek().getEfficiency() * 0.9f);
+                samplingThreshold = Math.min(samplingThreshold / 2, samplingQueue.peek().getEfficiency() * 0.9f);
             }
         }
 
-        while (!samplingQueue.isEmpty() && samplingQueue.peek().getEfficiency() >= efficiencyThreshold) {
+        while (!samplingQueue.isEmpty() && samplingQueue.peek().getEfficiency() >= samplingThreshold) {
             AttributeRepresentative2 rep = samplingQueue.poll();
             rep.runNext(compressedRecords, negCover, newNonFds);
 

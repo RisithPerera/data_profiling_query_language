@@ -166,6 +166,42 @@ public class Utility {
         return result;
     }
 
+    public static BitSet[] generateApriori(BitSet remainingAttrs, int size) {
+        int cols = remainingAttrs.cardinality();
+        if (size == 0) return new BitSet[]{new BitSet()};
+        if (size > cols) return new BitSet[0];
+
+        // Map virtual index -> actual attribute index
+        int[] attrMap = new int[cols];
+        int i = 0;
+        for (int attr = remainingAttrs.nextSetBit(0); attr >= 0; attr = remainingAttrs.nextSetBit(attr + 1)) {
+            attrMap[i++] = attr;
+        }
+
+        int count = Utility.binomial(cols, size);
+        BitSet[] result = new BitSet[count];
+
+        BigInteger mask  = BigInteger.ONE.shiftLeft(size).subtract(BigInteger.ONE);
+        BigInteger limit = BigInteger.ONE.shiftLeft(cols);
+
+        int idx = 0;
+        while (mask.compareTo(limit) < 0) {
+            // toBitSet gives virtual positions, remap to actual attributes
+            BitSet virtual = Utility.toBitSet(mask, cols);
+            BitSet combo = new BitSet();
+            for (int bit = virtual.nextSetBit(0); bit >= 0; bit = virtual.nextSetBit(bit + 1)) {
+                combo.set(attrMap[bit]);
+            }
+            result[idx++] = combo;
+
+            BigInteger c = mask.and(mask.negate());
+            BigInteger r = mask.add(c);
+            mask = r.or(r.xor(mask).shiftRight(2).divide(c));
+        }
+
+        return result;
+    }
+
     public static void match(BitSet agree, int[] row1, int[] row2){
         agree.clear();
         for (int col = 0; col < row1.length; col++) {

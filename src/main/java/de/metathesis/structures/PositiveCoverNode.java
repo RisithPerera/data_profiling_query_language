@@ -189,11 +189,11 @@ public class PositiveCoverNode {
     }
 
     private boolean containsFdOrGeneralizationRecursive(BitSet lhs, int rhs, int currentLhsAttr) {
-        if (this.rhsValidatedFds.get(rhs)) {
-            return false;
-        }
+//        if (this.rhsValidatedFds.get(rhs)) {
+//            return false;
+//        }
 
-        if (this.rhsCandidateFds.get(rhs)) {
+        if (this.rhsCandidateFds.get(rhs) || this.rhsValidatedFds.get(rhs)) {
             return true;
         }
 

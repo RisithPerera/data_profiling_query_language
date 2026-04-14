@@ -15,7 +15,7 @@ public class Sampler {
 
     private float samplingThreshold = 0.01f;
     private final float memoryThreshold = 0.8f;
-    private final PriorityQueue<AttributeRepresentative2> samplingQueue = new PriorityQueue<>();
+    private final PriorityQueue<SamplingTask> samplingQueue = new PriorityQueue<>();
 
     @Getter
     private boolean isInitialSampling = true;
@@ -62,7 +62,7 @@ public class Sampler {
 //                    continue;
 //                }
 
-                AttributeRepresentative2 rep = new AttributeRepresentative2(pli, numAttributes);
+                SamplingTask rep = new SamplingTask(pli, numAttributes);
                 rep.runNext(compressedRecords, negCover, newNonFds);
 
                 if (!rep.isExhausted() && rep.getEfficiency() > 0.0f) {
@@ -82,7 +82,7 @@ public class Sampler {
         }
 
         while (!samplingQueue.isEmpty() && samplingQueue.peek().getEfficiency() >= samplingThreshold) {
-            AttributeRepresentative2 rep = samplingQueue.poll();
+            SamplingTask rep = samplingQueue.poll();
             rep.runNext(compressedRecords, negCover, newNonFds);
 
             if (!rep.isExhausted() && rep.getEfficiency() > 0.0f) {

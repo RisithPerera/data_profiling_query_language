@@ -1,7 +1,5 @@
 package de.metathesis.structures;
 
-
-import de.metathesis.Utility;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -10,34 +8,34 @@ import java.util.List;
 
 /**
  * A node in the positive cover prefix tree.
- *
+
  * Tree structure: each node represents one attribute on the path from root.
  * A path root -> A -> B represents the LHS {A, B}.
- *
+
  * rhsAttributes    — propagation marker. If any descendant (or this node)
  *                    has attribute C as a candidate, all ancestors also have
  *                    C set here. Used for fast subtree pruning: if
  *                    rhsAttributes does not contain C, no need to recurse.
- *
+
  * rhsCandidateFds  — actual FD candidates at exactly this node.
  *                    If bit C is set at the node reached by path {A,B},
  *                    then {A,B} -> C is a current candidate.
- *
+
  * rhsValidatedFds  — RHS attributes confirmed valid by a completed
  *                    validation pass at this node's level. Used to prune
  *                    specializations: if {A,B} -> C is here, skip {A,B,X} -> C
  *                    when generating level-3 candidates.
  */
 @Getter
-public class PositiveCoverNode {
+public class FDTreeNode {
 
-    private PositiveCoverNode[] children;
+    private FDTreeNode[] children;
     private final BitSet rhsAttributes;      // propagation marker (union of subtree candidates)
     private final BitSet rhsCandidateFds;    // candidates at exactly this node
     private final BitSet rhsValidatedFds;    // confirmed-valid FDs at this node
     private final int numAttributes;
 
-    public PositiveCoverNode(int numAttributes) {
+    public FDTreeNode(int numAttributes) {
         this.numAttributes = numAttributes;
         this.rhsAttributes = new BitSet(numAttributes);
         this.rhsCandidateFds = new BitSet(numAttributes);
@@ -51,34 +49,17 @@ public class PositiveCoverNode {
         return rhsAttributes.isEmpty();
     }
 
-    /**
-     * After removing or adding candidates at this node, call this on every
-     * ancestor to keep rhsAttributes consistent. Recomputes rhsAttributes
-     * as the union of rhsCandidateFds and all children's rhsAttributes.
-     */
-    public void updateRhsAttributes() {
-        rhsAttributes.clear();
-        rhsAttributes.or(rhsCandidateFds);
-
-        if(children == null) return;
-
-        for (PositiveCoverNode child : children) {
-            if (child != null) {
-                rhsAttributes.or(child.rhsAttributes);
-            }
-        }
-    }
 
     public void addFunctionalDependency(BitSet lhs, int rhs) {
-        PositiveCoverNode currentNode = this;
+        FDTreeNode currentNode = this;
         currentNode.rhsAttributes.set(rhs);
 
         for (int i = lhs.nextSetBit(0); i >= 0; i = lhs.nextSetBit(i + 1)) {
             if (currentNode.children == null) {
-                currentNode.children = new PositiveCoverNode[this.numAttributes];
-                currentNode.children[i] = new PositiveCoverNode(this.numAttributes);
+                currentNode.children = new FDTreeNode[this.numAttributes];
+                currentNode.children[i] = new FDTreeNode(this.numAttributes);
             } else if (currentNode.children[i] == null) {
-                currentNode.children[i] = new PositiveCoverNode(this.numAttributes);
+                currentNode.children[i] = new FDTreeNode(this.numAttributes);
             }
 
             currentNode = currentNode.children[i];
@@ -89,14 +70,14 @@ public class PositiveCoverNode {
 
     // Marks lhs -> rhs as confirmed valid. Sets the bit in rhsValidatedFds at the node for lhs.
     public void markAsValidate(BitSet lhs, BitSet rhs) {
-        PositiveCoverNode current = this;
+        FDTreeNode current = this;
         for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
             if (current.children == null) {
-                current.children = new PositiveCoverNode[this.numAttributes];
+                current.children = new FDTreeNode[this.numAttributes];
             }
 
             if (current.children[attr] == null) {
-                current.children[attr] = new PositiveCoverNode(numAttributes);
+                current.children[attr] = new FDTreeNode(numAttributes);
             }
 
             current = current.children[attr];
@@ -175,7 +156,7 @@ public class PositiveCoverNode {
             return true;
         }
 
-        for (PositiveCoverNode child : this.children) {
+        for (FDTreeNode child : this.children) {
             if ((child != null) && child.getRhsAttributes().get(rhs)) {
                 return false;
             }
@@ -189,10 +170,6 @@ public class PositiveCoverNode {
     }
 
     private boolean containsFdOrGeneralizationRecursive(BitSet lhs, int rhs, int currentLhsAttr) {
-//        if (this.rhsValidatedFds.get(rhs)) {
-//            return false;
-//        }
-
         if (this.rhsCandidateFds.get(rhs) || this.rhsValidatedFds.get(rhs)) {
             return true;
         }
@@ -210,39 +187,6 @@ public class PositiveCoverNode {
         }
 
         return this.containsFdOrGeneralizationRecursive(lhs, rhs, nextLhsAttr);
-    }
-
-    public boolean hasValidatedGeneralization(BitSet lhs, int rhs) {
-        return hasValidatedGeneralizationRecursive(this, lhs, new BitSet(), rhs);
-    }
-
-    private boolean hasValidatedGeneralizationRecursive(PositiveCoverNode node, BitSet targetLhs, BitSet currentLhs, int rhs) {
-
-        if (node == null) return false;
-
-        // Fast prune — if rhs not anywhere in this subtree, skip
-        if (!node.rhsAttributes.get(rhs)) return false;
-
-        // Check if this node has rhs validated and currentLhs ⊆ targetLhs
-        if (node.rhsValidatedFds.get(rhs) && Utility.isSubset(currentLhs, targetLhs)) {
-            return true;
-        }
-
-        // Only recurse into children whose attribute is in targetLhs
-        for (int attr = targetLhs.nextSetBit(0); attr >= 0; attr = targetLhs.nextSetBit(attr + 1)) {
-            if (currentLhs.get(attr)) continue;
-
-            if (node.children == null || node.children[attr] == null) continue;
-
-            currentLhs.set(attr);
-            if (hasValidatedGeneralizationRecursive(node.children[attr], targetLhs, currentLhs, rhs)) {
-                currentLhs.clear(attr);
-                return true;
-            }
-            currentLhs.clear(attr);
-        }
-
-        return false;
     }
 
 

@@ -2,7 +2,7 @@ package de.metathesis;
 
 import de.metathesis.structures.NegativeCover;
 import de.metathesis.structures.PositionListIndex;
-import de.metathesis.structures.PositiveCoverNode;
+import de.metathesis.structures.FDTreeNode;
 import de.metathesis.structures.Relation;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -10,9 +10,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.objects.*;
 import lombok.Getter;
-import lombok.NonNull;
 
-import javax.validation.Validation;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -28,23 +26,17 @@ public class FDValidator {
     private final List<List<ObjectOpenHashSet<BitSet>>> validFDs = new ArrayList<>();
     private final double validationThreshold = 0.01;
 
-    private final PositiveCoverNode root;
-
-    // Tracks the deepest level that has been fully specialized so far.
-    // Starts at 0 (only [] -> all exists). Incremented lazily by
-    // getCandidatesAtLevel when the caller requests a deeper level.
-    private int currentDepth;
+    private final FDTreeNode root;
 
     public FDValidator(Relation relation) {
         this.numAttributes = relation.getNumOfAttributes();
         this.compressed = relation.getCompressedRecords();
         this.plis = relation.getUnaryPLIs();
 
-        this.root = new PositiveCoverNode(numAttributes);
+        this.root = new FDTreeNode(numAttributes);
         //Initialize Add Most General Dependencies
         this.root.getRhsCandidateFds().set(0, numAttributes);
         this.root.getRhsAttributes().set(0, numAttributes);
-        this.currentDepth = 0;
 
         // Initialize validFDs — outer list by rhs attribute, inner list by lhs size
         for (int i = 0; i < numAttributes; i++) {
@@ -65,19 +57,6 @@ public class FDValidator {
     //This method is validating without using positive cover
     public Map<BitSet, List<BitSet>> validateDirectly(ExecutorService executor, int level) throws ExecutionException, InterruptedException {
         Map<BitSet, List<BitSet>> foundFds = new HashMap<>();
-
-//        //Handle level zero implicitly
-//        if(level == 0){
-//            for (int rhsAttribute = 0; rhsAttribute < numAttributes; rhsAttribute++) {
-//                if (plis[rhsAttribute].isConstant()) {
-//                    BitSet rhs = new BitSet(this.numAttributes);
-//                    rhs.set(rhsAttribute);
-//                    foundFds.computeIfAbsent(rhs, k -> new ArrayList<>()).add(new BitSet());
-//                }
-//            }
-//
-//            return foundFds;
-//        }
 
         //Generate all the level candidates
         BitSet[] levelCandidates = Utility.generateApriori(this.numAttributes, level);
@@ -106,7 +85,7 @@ public class FDValidator {
         for (Future<ValidationResult> future : levelFutures) {
             ValidationResult result = future.get();
 
-            // Each set bit in validRhs is a separate valid FD
+            // Each set a bit in validRhs is a separate valid FD
             for (int rhsAttr = result.getValidRhs().nextSetBit(0); rhsAttr >= 0; rhsAttr = result.getValidRhs().nextSetBit(rhsAttr + 1)) {
 
                 synchronized (validFDs.get(rhsAttr).get(level)) {
@@ -199,7 +178,7 @@ public class FDValidator {
     }
 
     @Getter
-    private class ValidationResult {
+    private static class ValidationResult {
         private final BitSet lhs;
         private final BitSet rhs;
         private final BitSet validRhs;
@@ -241,17 +220,6 @@ public class FDValidator {
         for (Map.Entry<BitSet, BitSet> candidate : candidatesTemp.entrySet()) {
             futures.add(executor.submit(new ValidationTask((BitSet) candidate.getKey().clone(), (BitSet) candidate.getValue().clone())));
         }
-
-//        List<CandidateFD> candidates = getCandidatesAtLevel(level);
-//        if (candidates.isEmpty()){
-//            return null;
-//        }
-//
-//        List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
-//
-//        for (CandidateFD candidate : candidates) {
-//            futures.add(executor.submit(new ValidationTask((BitSet) candidate.lhs.clone(), (BitSet) candidate.rhsCandidates.clone())));
-//        }
 
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
         int validFDCount   = 0;
@@ -373,7 +341,7 @@ public class FDValidator {
         return results;
     }
 
-    private void collectValidatedAtDepth(PositiveCoverNode node, BitSet currentLhs, int depth, int targetDepth, Map<BitSet, List<BitSet>> results) {
+    private void collectValidatedAtDepth(FDTreeNode node, BitSet currentLhs, int depth, int targetDepth, Map<BitSet, List<BitSet>> results) {
 
         if (node == null || node.isEmpty()) return;
 
@@ -413,18 +381,16 @@ public class FDValidator {
     protected void specializePositiveCover(BitSet lhs, int rhs) {
         List<BitSet> specLhss = this.root.getFdAndGeneralizations(lhs, rhs);
 
-        if (!specLhss.isEmpty()) { // TODO: May be "while" instead of "if"?
-            for (BitSet specLhs : specLhss) {
-                this.root.removeFunctionalDependency(specLhs, rhs);
+        for (BitSet specLhs : specLhss) {
+            this.root.removeFunctionalDependency(specLhs, rhs);
 
-                for (int attr = this.numAttributes - 1; attr >= 0; attr--) { // TODO: Is iterating backwards a good or bad idea?
-                    if (!lhs.get(attr) && (attr != rhs)) {
-                        specLhs.set(attr);
-                        if (!this.root.containsFdOrGeneralization(specLhs, rhs)) {
-                            this.root.addFunctionalDependency(specLhs, rhs);
-                        }
-                        specLhs.clear(attr);
+            for (int attr = this.numAttributes - 1; attr >= 0; attr--) { // TODO: Is iterating backwards a good or bad idea?
+                if (!lhs.get(attr) && (attr != rhs)) {
+                    specLhs.set(attr);
+                    if (!this.root.containsFdOrGeneralization(specLhs, rhs)) {
+                        this.root.addFunctionalDependency(specLhs, rhs);
                     }
+                    specLhs.clear(attr);
                 }
             }
         }
@@ -439,7 +405,7 @@ public class FDValidator {
         return candidates;
     }
 
-    private void collectAtDepth(PositiveCoverNode node, BitSet currentLhs, BitSet inheritedRhs, int depth, int targetDepth, Map<BitSet, BitSet> candidates) {
+    private void collectAtDepth(FDTreeNode node, BitSet currentLhs, BitSet inheritedRhs, int depth, int targetDepth, Map<BitSet, BitSet> candidates) {
 
         if (depth == targetDepth) {
             // Merge node's own unvalidated candidates with inherited
@@ -463,7 +429,7 @@ public class FDValidator {
         BitSet parentNotValidated = (BitSet) node.getRhsAttributes().clone();
         parentNotValidated.andNot(node.getRhsValidatedFds());
 
-        // Follow existing tree children
+        // Follow existing children
         if (node.getChildren() != null) {
             for (int attr = 0; attr < numAttributes; attr++) {
                 BitSet attrInherited = (BitSet) parentInherited.clone();
@@ -484,31 +450,6 @@ public class FDValidator {
                             specializeNode(lhs, rhs, additionalDepth);
                         }
                     }
-
-                    //if (!parentInherited.isEmpty()) {
-                    //    if (depth + 1 == targetDepth) {
-                    //        // Emit directly — exactly at target depth
-                    //        BitSet lhs = (BitSet) currentLhs.clone();
-                    //        lhs.set(attr);
-                    //        BitSet rhs = (BitSet) parentInherited.clone();
-                    //        rhs.clear(attr);
-                    //        if (!rhs.isEmpty()) {
-                    //            addCandidate(candidates, lhs, rhs);
-                    //        }
-                    //    } else {
-                    //        // Need to go deeper — virtually extend from this missing node
-                    //        BitSet lhs = (BitSet) currentLhs.clone();
-                    //        lhs.set(attr);
-                    //        BitSet rhs = (BitSet) parentInherited.clone();
-                    //        rhs.clear(attr);
-                    //
-                    //        int additionalDepth = targetDepth - depth;
-                    //        Map<BitSet, BitSet> specializedCandidates = specializeNode(lhs, rhs, additionalDepth);
-                    //        for (Map.Entry<BitSet, BitSet> entry : specializedCandidates.entrySet()) {
-                    //            addCandidate(candidates, entry.getKey(), entry.getValue());
-                    //        }
-                    //    }
-                    //}
                 }
             }
         }
@@ -555,7 +496,7 @@ public class FDValidator {
     private ObjectObjectImmutablePair<BitSet, BitSet> checkStatus(BitSet lhs, BitSet rhs) {
         BitSet remaining = (BitSet) rhs.clone();
 
-        PositiveCoverNode current = root;
+        FDTreeNode current = root;
 
         // Narrow by each node's rhsAttributes as we walk down
         remaining.and(current.getRhsAttributes());

@@ -9,7 +9,7 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
 
-public class AttributeRepresentative2 implements Comparable<AttributeRepresentative2> {
+public class SamplingTask implements Comparable<SamplingTask> {
 
     @Getter
     private final int attributeIndex;
@@ -22,7 +22,7 @@ public class AttributeRepresentative2 implements Comparable<AttributeRepresentat
     private int numNewViolations = 0;
     private int numComparisons = 0;
 
-    public AttributeRepresentative2(PositionListIndex pli, int numOfAttributes) {
+    public SamplingTask(PositionListIndex pli, int numOfAttributes) {
         this.attributeIndex = pli.getAttributeSet().getAttributeIndexSet().nextSetBit(0);
         this.clusters = new ArrayList<>(pli.getClusters());
         this.numOfAttributes = numOfAttributes;
@@ -35,7 +35,7 @@ public class AttributeRepresentative2 implements Comparable<AttributeRepresentat
     }
 
     @Override
-    public int compareTo(AttributeRepresentative2 o) {
+    public int compareTo(SamplingTask o) {
         return Float.compare(o.getEfficiency(), this.getEfficiency());
     }
 

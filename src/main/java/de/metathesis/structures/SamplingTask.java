@@ -1,6 +1,6 @@
 package de.metathesis.structures;
 
-import de.metathesis.Utility;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;
 
@@ -13,7 +13,6 @@ public class SamplingTask implements Comparable<SamplingTask> {
 
     @Getter
     private final int attributeIndex;
-    private final int numOfAttributes;
     private final List<IntArrayList> clusters;
     private final BitSet agree;
 
@@ -25,7 +24,6 @@ public class SamplingTask implements Comparable<SamplingTask> {
     public SamplingTask(PositionListIndex pli, int numOfAttributes) {
         this.attributeIndex = pli.getAttributeSet().getAttributeIndexSet().nextSetBit(0);
         this.clusters = new ArrayList<>(pli.getClusters());
-        this.numOfAttributes = numOfAttributes;
         this.agree = new BitSet(numOfAttributes);
     }
 

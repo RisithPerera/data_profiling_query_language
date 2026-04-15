@@ -9,6 +9,8 @@ import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
+import de.metathesis.utils.MemoryUtils;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;

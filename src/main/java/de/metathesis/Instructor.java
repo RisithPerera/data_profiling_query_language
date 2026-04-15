@@ -10,6 +10,7 @@ import de.metathesis.structures.ExecutionNode;
 import de.metathesis.structures.results.FDResult;
 import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.UCCResult;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.*;

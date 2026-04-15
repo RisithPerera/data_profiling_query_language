@@ -1,9 +1,10 @@
 package de.metathesis;
 
+import de.metathesis.structures.FDTreeNode;
 import de.metathesis.structures.NegativeCover;
 import de.metathesis.structures.PositionListIndex;
-import de.metathesis.structures.FDTreeNode;
 import de.metathesis.structures.Relation;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -86,15 +87,15 @@ public class FDValidator {
             ValidationResult result = future.get();
 
             // Each set a bit in validRhs is a separate valid FD
-            for (int rhsAttr = result.getValidRhs().nextSetBit(0); rhsAttr >= 0; rhsAttr = result.getValidRhs().nextSetBit(rhsAttr + 1)) {
+            for (int rhsAttr = result.validRhs().nextSetBit(0); rhsAttr >= 0; rhsAttr = result.validRhs().nextSetBit(rhsAttr + 1)) {
 
                 synchronized (validFDs.get(rhsAttr).get(level)) {
-                    validFDs.get(rhsAttr).get(level).add((BitSet) result.getLhs().clone());
+                    validFDs.get(rhsAttr).get(level).add((BitSet) result.lhs().clone());
                 }
 
                 BitSet rhsBitSet = new BitSet(numAttributes);
                 rhsBitSet.set(rhsAttr);
-                foundFds.computeIfAbsent(rhsBitSet, k -> new ArrayList<>()).add((BitSet) result.getLhs().clone());
+                foundFds.computeIfAbsent(rhsBitSet, k -> new ArrayList<>()).add((BitSet) result.lhs().clone());
             }
         }
 
@@ -177,19 +178,11 @@ public class FDValidator {
         }
     }
 
-    @Getter
-    private static class ValidationResult {
-        private final BitSet lhs;
-        private final BitSet rhs;
-        private final BitSet validRhs;
-        private final Set<IntIntImmutablePair> suggestions;
-
-        public ValidationResult(BitSet lhs, BitSet rhs, BitSet validRhs, Set<IntIntImmutablePair> suggestions) {
-            this.lhs = lhs;
-            this.rhs = rhs;
-            this.validRhs = validRhs;
-            this.suggestions = suggestions;
-        }
+    private record ValidationResult(
+            BitSet lhs,
+            BitSet rhs,
+            BitSet validRhs,
+            Set<IntIntImmutablePair> suggestions) {
     }
 
     private boolean checkMinimality(BitSet lhs, int rhs){
@@ -228,9 +221,9 @@ public class FDValidator {
         for (int i = 0; i < futures.size(); i++) {
             ValidationResult result = futures.get(i).get();
 
-            BitSet lhs      = result.getLhs();
-            BitSet rhs      = result.getRhs();
-            BitSet validRhs = result.getValidRhs();
+            BitSet lhs      = result.lhs();
+            BitSet rhs      = result.rhs();
+            BitSet validRhs = result.validRhs();
             validFDCount += validRhs.cardinality();
 
             // Invalid RHS bits — specialize posCover
@@ -248,7 +241,7 @@ public class FDValidator {
             }
 
             if (!invalidRhs.isEmpty()) {
-                suggestions.addAll(result.getSuggestions());
+                suggestions.addAll(result.suggestions());
 
                 if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
                     // Cancel remaining queued tasks already
@@ -304,7 +297,7 @@ public class FDValidator {
             ValidationTask task = new ValidationTask(lhs, remainingRhs);
             ValidationResult result = task.call();
 
-            BitSet validRhs   = result.getValidRhs();
+            BitSet validRhs   = result.validRhs();
             BitSet invalidRhs = (BitSet) remainingRhs.clone();
             invalidRhs.andNot(validRhs);
 
@@ -324,7 +317,7 @@ public class FDValidator {
                     specializePositiveCover(lhs, attr);
                 }
 
-                suggestions.addAll(result.getSuggestions());
+                suggestions.addAll(result.suggestions());
 
                 if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
                     return suggestions;

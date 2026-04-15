@@ -1,11 +1,14 @@
 package de.metathesis;
 
 import de.metathesis.structures.*;
+import de.metathesis.utils.MemoryUtils;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import lombok.Getter;
 
 import java.util.BitSet;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 
@@ -26,6 +29,10 @@ public class Sampler {
     public Sampler(Relation relation) {
         this.relation = relation;
         this.negCover = new NegativeCover(relation.getNumOfAttributes());
+
+        if(this.relation.getCompressedRecords().length == 0){
+            isInitialSampling = false;
+        }
     }
 
     public NegativeCover run(Set<IntIntImmutablePair> comparisonSuggestions) {
@@ -48,7 +55,6 @@ public class Sampler {
         }
 
         if (isInitialSampling) {
-            System.out.println(relation.getIndex() +":"+relation.getRelationalInput().relationName());
             ClusterComparator comparator = new ClusterComparator(compressedRecords, compressedRecords[0].length - 1, 1);
             for (PositionListIndex pli : relation.getUnaryPLIs()) {
                 for (IntArrayList cluster : pli.getClusters()) {
@@ -58,10 +64,6 @@ public class Sampler {
             }
 
             for (PositionListIndex pli : relation.getUnaryPLIs()) {
-//                if (pli.isUnique() || pli.isConstant()) {
-//                    continue;
-//                }
-
                 SamplingTask rep = new SamplingTask(pli, numAttributes);
                 rep.runNext(compressedRecords, negCover, newNonFds);
 
@@ -83,6 +85,10 @@ public class Sampler {
 
         while (!samplingQueue.isEmpty() && samplingQueue.peek().getEfficiency() >= samplingThreshold) {
             SamplingTask rep = samplingQueue.poll();
+            if(Objects.isNull(rep)){
+                break;
+            }
+
             rep.runNext(compressedRecords, negCover, newNonFds);
 
             if (!rep.isExhausted() && rep.getEfficiency() > 0.0f) {

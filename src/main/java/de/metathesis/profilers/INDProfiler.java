@@ -2,7 +2,7 @@ package de.metathesis.profilers;
 
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.Utility;
+import de.metathesis.utils.Utility;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.requests.INDRequest;
 import de.metathesis.structures.requests.SearchSpace;

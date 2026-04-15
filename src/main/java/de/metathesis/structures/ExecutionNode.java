@@ -2,7 +2,7 @@ package de.metathesis.structures;
 
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.ResultFormatter;
-import de.metathesis.Utility;
+import de.metathesis.utils.Utility;
 import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;

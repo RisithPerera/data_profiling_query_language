@@ -1,4 +1,4 @@
-package de.metathesis;
+package de.metathesis.utils;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;

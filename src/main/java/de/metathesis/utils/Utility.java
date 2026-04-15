@@ -1,4 +1,4 @@
-package de.metathesis;
+package de.metathesis.utils;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -60,74 +60,6 @@ public class Utility {
             if (mask.testBit(i)) bs.set(i);
         }
         return bs;
-    }
-
-    public static boolean addMaximal(List<BitSet> sets, BitSet newSet) {
-        for (BitSet existing : sets) {
-            if (isSubset(newSet, existing)) {
-                return false;
-            }
-        }
-        sets.removeIf(existing -> isSubset(existing, newSet));
-        sets.add((BitSet) newSet.clone());
-        return true;
-    }
-
-    public static void addMinimal(List<BitSet> sets, BitSet newSet) {
-        for (BitSet existing : sets) {
-            if (isSubset(existing, newSet)) {
-                return;
-            }
-        }
-        sets.removeIf(existing -> isSubset(newSet, existing));
-        sets.add((BitSet) newSet.clone());
-    }
-
-//    public static void addMinimalWithSplit(List<BitSet> sets, BitSet newSet) {
-//        for (BitSet existing : sets) {
-//            if (isSubset(existing, newSet)) {
-//                return;
-//            }
-//        }
-//
-//        List<BitSet> remainders = new ArrayList<>();
-//
-//        sets.removeIf(existing -> {
-//            if (isSubset(newSet, existing)) {
-//                BitSet remainder = (BitSet) existing.clone();
-//                remainder.andNot(newSet); // strip out newSet bits gives (C,D)
-//                if (!remainder.isEmpty()) {
-//                    remainders.add(remainder);
-//                }
-//                return true; // remove the original superset
-//            }
-//            return false;
-//        });
-//
-//        sets.add((BitSet) newSet.clone());
-//        sets.addAll(remainders);
-//    }
-
-    public static void addMinimalWithSplit(List<BitSet> sets, BitSet parent, BitSet confirmed) {
-        // Remove the parent candidate
-        sets.remove(parent);
-
-        // Add confirmed minimal
-        addMinimal(sets, confirmed);
-
-        // Add remaining bits as separate candidate
-        BitSet remaining = (BitSet) parent.clone();
-        remaining.andNot(confirmed);
-
-        if (remaining.cardinality() > 0) {
-            addMinimal(sets, remaining);
-        }
-    }
-
-    public static boolean isSubset(BitSet a, BitSet b) {
-        BitSet temp = (BitSet) a.clone();
-        temp.and(b);
-        return temp.equals(a);
     }
 
     public static int binomial(int n, int k) {

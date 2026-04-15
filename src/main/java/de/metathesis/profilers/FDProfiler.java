@@ -1,11 +1,11 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.structures.NegativeCover;
-import de.metathesis.Sampler;
-import de.metathesis.Utility;
 import de.metathesis.FDValidator;
+import de.metathesis.Sampler;
+import de.metathesis.utils.Utility;
 import de.metathesis.structures.AttributeBitSet;
+import de.metathesis.structures.NegativeCover;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.SearchSpace;

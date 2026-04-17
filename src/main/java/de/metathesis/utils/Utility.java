@@ -1,5 +1,7 @@
 package de.metathesis.utils;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -60,6 +62,18 @@ public class Utility {
             if (mask.testBit(i)) bs.set(i);
         }
         return bs;
+    }
+
+    public static IntArrayList buildKey(BitSet remainingLhs, int[] compressedRecord) {
+        IntArrayList key = new IntArrayList();
+        for (int attr = remainingLhs.nextSetBit(0); attr >= 0; attr = remainingLhs.nextSetBit(attr + 1)) {
+            int v = compressedRecord[attr];
+            if (v == -1) {
+                return null;
+            }
+            key.add(v);
+        }
+        return key;
     }
 
     public static int binomial(int n, int k) {

@@ -135,7 +135,7 @@ public class FDValidator {
                 Object2IntMap<IntArrayList> representative = new Object2IntOpenHashMap<>();
 
                 for (int record : cluster) {
-                    IntArrayList key = buildKey(remainingLhs, record, FDValidator.this.compressed);
+                    IntArrayList key = Utility.buildKey(remainingLhs, FDValidator.this.compressed[record]);
                     if (key == null) {
                         continue;
                     }
@@ -163,18 +163,6 @@ public class FDValidator {
             }
 
             return new ValidationResult(lhs, rhs, validRhs, suggestions);
-        }
-
-        private IntArrayList buildKey(BitSet remainingLhs, int rec, int[][] compressedRecords) {
-            IntArrayList key = new IntArrayList();
-            for (int attr = remainingLhs.nextSetBit(0); attr >= 0; attr = remainingLhs.nextSetBit(attr + 1)) {
-                int v = compressedRecords[rec][attr];
-                if (v == -1) {
-                    return null;
-                }
-                key.add(v);
-            }
-            return key;
         }
     }
 
@@ -206,11 +194,11 @@ public class FDValidator {
                                                               int level) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
-        Map<BitSet, BitSet> candidatesTemp = getCandidatesAtDepth(level);
+        Map<BitSet, BitSet> candidates = getCandidatesAtDepth(level);
 
-        List<Future<ValidationResult>> futures = new ArrayList<>(candidatesTemp.size());
+        List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
 
-        for (Map.Entry<BitSet, BitSet> candidate : candidatesTemp.entrySet()) {
+        for (Map.Entry<BitSet, BitSet> candidate : candidates.entrySet()) {
             futures.add(executor.submit(new ValidationTask((BitSet) candidate.getKey().clone(), (BitSet) candidate.getValue().clone())));
         }
 
@@ -335,8 +323,9 @@ public class FDValidator {
     }
 
     private void collectValidatedAtDepth(FDTreeNode node, BitSet currentLhs, int depth, int targetDepth, Map<BitSet, List<BitSet>> results) {
-
-        if (node == null || node.isEmpty()) return;
+        if (node == null || node.isEmpty()){
+            return;
+        }
 
         if (depth == targetDepth) {
             for (int attr = node.getRhsValidatedFds().nextSetBit(0); attr >= 0; attr = node.getRhsValidatedFds().nextSetBit(attr + 1)) {

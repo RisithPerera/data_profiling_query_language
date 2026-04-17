@@ -1,61 +1,5 @@
 [
   {
-    "name": "TEST2",
-    "separator": ",",
-    "quoteChar": "\"",
-    "hasHeader": true,
-    "fileEnding": "csv"
-  },
-  {
-    "name": "TEST3",
-    "separator": ",",
-    "quoteChar": "\"",
-    "hasHeader": true,
-    "fileEnding": "csv"
-  },
-  {
-    "name": "WDC",
-    "separator": ";",
-    "quoteChar": "\"",
-    "hasHeader": true,
-    "fileEnding": "csv"
-  },
-  {
-    "name": "TPCH_12",
-    "separator": ",",
-    "quoteChar": "'",
-    "hasHeader": false,
-    "fileEnding": "csv"
-  },
-  {
-    "name": "Cars",
-    "separator": ",",
-    "quoteChar": "\"",
-    "hasHeader": true,
-    "fileEnding": "csv"
-  },
-  {
-    "name": "Cars2",
-    "separator": ",",
-    "quoteChar": "\"",
-    "hasHeader": true,
-    "fileEnding": "csv"
-  },
-  {
-    "name": "Sakila",
-    "separator": ",",
-    "quoteChar": "\"",
-    "hasHeader": true,
-    "fileEnding": "csv"
-  },
-  {
-    "name": "Small TPCE",
-    "separator": "\t",
-    "quoteChar": "\"",
-    "hasHeader": true,
-    "fileEnding": "csv"
-  },
-  {
     "name": "ACNH",
     "separator": ",",
     "quoteChar": "\"",
@@ -70,9 +14,65 @@
     "fileEnding": "csv"
   },
   {
-    "name": "AdventureWorksTest",
+    "name": "Cars",
+    "separator": ",",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "MusicBrainz",
     "separator": ";",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "Naturkundemuseum",
+    "separator": ",",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "Sakila",
+    "separator": ",",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "Small_TPCE",
+    "separator": "\t",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "TPCH_12",
+    "separator": ",",
     "quoteChar": "'",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "TPCH_425",
+    "separator": ";",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "WDC",
+    "separator": ";",
+    "quoteChar": "\"",
+    "hasHeader": true,
+    "fileEnding": "csv"
+  },
+  {
+    "name": "TEST",
+    "separator": ",",
+    "quoteChar": "\"",
     "hasHeader": true,
     "fileEnding": "csv"
   }

@@ -1,19 +1,26 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.Utility;
+import de.metathesis.FDValidator;
+import de.metathesis.Sampler;
+import de.metathesis.UCCValidator;
+import de.metathesis.utils.Utility;
 import de.metathesis.structures.AttributeBitSet;
+import de.metathesis.structures.NegativeCover;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.requests.UCCRequest;
 import de.metathesis.structures.results.UCCResult;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
@@ -29,7 +36,7 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
     public UCCResult profile(UCCRequest input) throws InputIterationException {
 
         if (input.lhs() instanceof SearchSpace.CC cc) {
-            return profileCC(cc.relations(), cc.level());
+            return profileCCWithSampling(cc.relations(), cc.level());
         }
 
         if (input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs) {
@@ -39,6 +46,39 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
         throw new IllegalArgumentException("Unsupported UCCRequest");
     }
 
+    private Set<BitSet> profile(int relationIndex, int level) {
+        try {
+            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+            UCCValidator validator = this.preprocessor.getUCCValidator(relationIndex);
+
+            Set<IntIntImmutablePair> suggestions = new HashSet<>();
+            do {
+                NegativeCover newNonFds = sampler.run(suggestions);
+                suggestions = validator.validateWithPositiveCover(this.executor, newNonFds, level);
+            } while (suggestions != null);
+
+            return validator.collectResults(level);
+        }catch (ExecutionException | InterruptedException e){
+            throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "at level: " + level, e);
+        }
+    }
+
+    private UCCResult profileCCWithSampling(int[] lhsRelationIndexes, int level) {
+        UCCResult result = new UCCResult();
+
+        for (int relationIndex : lhsRelationIndexes) {
+            Set<BitSet> results = profile(relationIndex, level);
+
+            for (BitSet ucc : results) {
+                AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, ucc);
+                result.add(lhsAbs);
+            }
+        }
+
+        return result;
+    }
+
+    //------------------------------------- OLD Code -------------------------//
     private UCCResult profileCC(int[] lhsRelations, int level) throws InputIterationException {
         UCCResult result = new UCCResult();
         for(int relationIndex : lhsRelations) {

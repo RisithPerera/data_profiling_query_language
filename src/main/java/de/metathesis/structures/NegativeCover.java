@@ -9,7 +9,7 @@ import java.util.List;
 
 public class NegativeCover {
     @Getter
-    private final List<ObjectOpenHashSet<BitSet>> fdLevels = new ArrayList<>();
+    private final List<ObjectOpenHashSet<BitSet>> levels = new ArrayList<>();
 
     @Getter
     private final int numAttributes;
@@ -21,20 +21,20 @@ public class NegativeCover {
     public boolean add(BitSet equalAttrs) {
         int card = equalAttrs.cardinality();
 
-        while (fdLevels.size() <= card){
-            fdLevels.add(new ObjectOpenHashSet<>());
+        while (levels.size() <= card){
+            levels.add(new ObjectOpenHashSet<>());
         }
 
-        return fdLevels.get(card).add((BitSet) equalAttrs.clone());
+        return levels.get(card).add((BitSet) equalAttrs.clone());
     }
 
     public boolean contains(BitSet equalAttrs) {
         int card = equalAttrs.cardinality();
 
-        if (card >= fdLevels.size()){
+        if (card >= levels.size()){
             return false;
         }
 
-        return fdLevels.get(card).contains(equalAttrs);
+        return levels.get(card).contains(equalAttrs);
     }
 }

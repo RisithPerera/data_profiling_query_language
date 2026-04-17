@@ -27,7 +27,8 @@ public final class Preprocessor {
 
     private final Int2ObjectMap<Relation> relationMap = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectMap<Sampler> samplerMap = new Int2ObjectOpenHashMap<>();
-    private final Int2ObjectMap<FDValidator> validatorMap = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<FDValidator> fdValidatorMap = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectMap<UCCValidator> uccValidatorMap = new Int2ObjectOpenHashMap<>();
 
     //This structure cache n-ary PLIs temporary and remove least recently used one.
     private final LinkedHashMap<AttributeBitSet, PositionListIndex> pliCache = new LinkedHashMap<>(16, 0.75f, true) {
@@ -176,8 +177,12 @@ public final class Preprocessor {
         return this.samplerMap.computeIfAbsent(relationIndex, k -> new Sampler(getRelation(k)));
     }
 
-    public FDValidator getValidator(int relationIndex){
-        return this.validatorMap.computeIfAbsent(relationIndex, k -> new FDValidator(getRelation(k)));
+    public FDValidator getFDValidator(int relationIndex){
+        return this.fdValidatorMap.computeIfAbsent(relationIndex, k -> new FDValidator(getRelation(k)));
+    }
+
+    public UCCValidator getUCCValidator(int relationIndex){
+        return this.uccValidatorMap.computeIfAbsent(relationIndex, k -> new UCCValidator(getRelation(k)));
     }
 
     public synchronized PositionListIndex getPLI(AttributeBitSet abs) {

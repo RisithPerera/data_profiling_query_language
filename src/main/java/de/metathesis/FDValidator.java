@@ -358,8 +358,8 @@ public class FDValidator {
 
     //Induces the positive cover from a negative cover (agree-sets).
     public void inductPositiveCover(NegativeCover negCover) {
-        for (int i = negCover.getFdLevels().size() - 1; i >= 0; i--) { //Iterate in reverse order
-            for(BitSet agreeLhs : negCover.getFdLevels().get(i)){
+        for (int i = negCover.getLevels().size() - 1; i >= 0; i--) { //Iterate in reverse order
+            for(BitSet agreeLhs : negCover.getLevels().get(i)){
                 BitSet violatedRhs = (BitSet) agreeLhs.clone();
                 violatedRhs.flip(0, numAttributes);
 

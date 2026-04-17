@@ -52,7 +52,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     private Map<BitSet, List<BitSet>> profile(int relationIndex, int level) {
         try {
             Sampler sampler = this.preprocessor.getSampler(relationIndex);
-            FDValidator validator = this.preprocessor.getValidator(relationIndex);
+            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
 
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
             do {
@@ -92,7 +92,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
         for (int relationIndex : commonRelationIndexes) {
             try {
-                FDValidator validator = this.preprocessor.getValidator(relationIndex);
+                FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
 
                 Map<BitSet, List<BitSet>> results = validator.validateDirectly(this.executor, level);
 
@@ -201,7 +201,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             int relationIndex = entry.getKey();
             List<BitSet> lhsList = entry.getValue();
 
-            FDValidator validator = this.preprocessor.getValidator(relationIndex);
+            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
             Sampler sampler = this.preprocessor.getSampler(relationIndex);
 
             // Build pending pairs: lhs -> current rhs candidates

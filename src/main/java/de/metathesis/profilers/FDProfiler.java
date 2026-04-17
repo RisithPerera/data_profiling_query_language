@@ -56,7 +56,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
             do {
-                NegativeCover newNonFds = sampler.run(suggestions);
+                NegativeCover newNonFds = validator.isInitialValidation() ? sampler.getNegCover() : sampler.run(suggestions);
                 suggestions = validator.validateWithPositiveCover(this.executor, newNonFds, level);
             } while (suggestions != null);
 
@@ -189,17 +189,17 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         Set<Integer> rhsRelationSet = new HashSet<>();
         for (int idx : rhsRelationIndexes) {rhsRelationSet.add(idx);}
 
-        Map<Integer, List<BitSet>> lhsByRelation = new HashMap<>();
+        Map<Integer, Set<BitSet>> lhsByRelation = new HashMap<>();
         for (AttributeBitSet lhsAbs : lhsAttributes) {
             int relIdx = lhsAbs.getRelationIndex();
             if (!rhsRelationSet.contains(relIdx)) continue;
-            lhsByRelation.computeIfAbsent(relIdx, k -> new ArrayList<>()).add(lhsAbs.getAttributeIndexSet());
+            lhsByRelation.computeIfAbsent(relIdx, k -> new ObjectOpenHashSet<>()).add(lhsAbs.getAttributeIndexSet());
         }
 
         // Process each relation independently
-        for (Map.Entry<Integer, List<BitSet>> entry : lhsByRelation.entrySet()) {
+        for (Map.Entry<Integer, Set<BitSet>> entry : lhsByRelation.entrySet()) {
             int relationIndex = entry.getKey();
-            List<BitSet> lhsList = entry.getValue();
+            Set<BitSet> lhsList = entry.getValue();
 
             FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
             Sampler sampler = this.preprocessor.getSampler(relationIndex);
@@ -220,7 +220,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
 
             do {
-                NegativeCover newNonFds = sampler.run(suggestions);
+                NegativeCover newNonFds = validator.isInitialValidation() ? sampler.getNegCover() : sampler.run(suggestions);
                 suggestions = validator.validateLockedCandidates(newNonFds, pendingList, confirmedList);
             } while (suggestions != null);
 
@@ -242,7 +242,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
     private FDResult profileCCLocked(int[] lhsRelationIndexes,
                                     ObjectOpenHashSet<AttributeBitSet> rhsAttributes,
-                                    int level) throws InputIterationException {
+                                    int level) {
         FDResult result = new FDResult();
 
         for (AttributeBitSet rhsAbs : rhsAttributes) {

@@ -175,8 +175,9 @@ public class FDTreeNode {
         }
 
         // Is the dependency already read and we have not yet found a generalization?
-        if (currentLhsAttr < 0)
+        if (currentLhsAttr < 0) {
             return false;
+        }
 
         int nextLhsAttr = lhs.nextSetBit(currentLhsAttr + 1);
 

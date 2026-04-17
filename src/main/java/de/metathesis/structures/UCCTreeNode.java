@@ -2,9 +2,11 @@ package de.metathesis.structures;
 
 import de.metanome.algorithms.hyucc.structures.UCCTreeElementUCCPair;
 import de.metathesis.utils.Utility;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.validation.Validation;
 import java.util.*;
 
 /**
@@ -30,16 +32,18 @@ public class UCCTreeNode {
         this.isCandidateUCC = isCandidateUCC;
     }
 
-    public Set<BitSet> getLevel(int level) {
-        Set<BitSet> result = new HashSet<>();
-        this.getLevelRecursive(level, 0, new BitSet(), result);
-        return result;
+    public Set<BitSet> getLevel(int level, Set<BitSet> results) {
+        Set<BitSet> candidates = new ObjectOpenHashSet<>();
+        this.getLevelRecursive(level, 0, new BitSet(), candidates, results);
+        return candidates;
     }
 
-    private void getLevelRecursive(int level, int currentLevel, BitSet currentUCC, Set<BitSet> result) {
+    private void getLevelRecursive(int level, int currentLevel, BitSet currentUCC, Set<BitSet> candidates, Set<BitSet> results) {
         if (level == currentLevel) {
             if(this.isCandidateUCC && !this.isValidatedUCC){
-                result.add((BitSet) currentUCC.clone());
+                candidates.add((BitSet) currentUCC.clone());
+            }else if (this.isValidatedUCC){
+                results.add((BitSet) currentUCC.clone());
             }
             return;
         }
@@ -51,7 +55,7 @@ public class UCCTreeNode {
                 }
 
                 currentUCC.set(child);
-                this.children[child].getLevelRecursive(level, currentLevel + 1, currentUCC, result);
+                this.children[child].getLevelRecursive(level, currentLevel + 1, currentUCC, candidates, results);
                 currentUCC.clear(child);
             }
         }
@@ -60,7 +64,7 @@ public class UCCTreeNode {
         if (currentLevel < level && this.isCandidateUCC && !this.isValidatedUCC) {
             int additionalDepth = level - currentLevel;
             Set<BitSet>  specializedCandidates = specializeNode(currentUCC, additionalDepth);
-            result.addAll(specializedCandidates);
+            candidates.addAll(specializedCandidates);
         }
     }
 
@@ -169,25 +173,32 @@ public class UCCTreeNode {
         }
     }
 
-    public boolean containsUCCOrGeneralization(BitSet ucc) {
+    public ValidationStatus containsUCCOrGeneralization(BitSet ucc) {
         int nextUCCAttr = ucc.nextSetBit(0);
         return this.containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr);
     }
 
-    private boolean containsUCCOrGeneralizationRecursive(BitSet ucc, int currentUCCAttr) {
+    private ValidationStatus containsUCCOrGeneralizationRecursive(BitSet ucc, int currentUCCAttr) {
+        if (this.isValidatedUCC) {
+            return ValidationStatus.VALID;
+        }
+
         if (this.isCandidateUCC) {
-            return true;
+            return ValidationStatus.POSSIBLE;
         }
 
         if (currentUCCAttr < 0) {
-            return false;
+            return ValidationStatus.INVALID;
         }
 
         int nextUCCAttr = ucc.nextSetBit(currentUCCAttr + 1);
 
-        if ((this.children != null) && (this.children[currentUCCAttr] != null))
-            if (this.children[currentUCCAttr].containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr))
-                return true;
+        if ((this.children != null) && (this.children[currentUCCAttr] != null)) {
+            ValidationStatus result = this.children[currentUCCAttr].containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr);
+            if (result != ValidationStatus.INVALID) {
+                return result;
+            }
+        }
 
         return this.containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr);
     }
@@ -208,6 +219,10 @@ public class UCCTreeNode {
         }
 
         return false;
+    }
+
+    public enum ValidationStatus {
+        VALID, INVALID, POSSIBLE
     }
 
     @Override

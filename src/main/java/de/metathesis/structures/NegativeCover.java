@@ -11,12 +11,7 @@ public class NegativeCover {
     @Getter
     private final List<ObjectOpenHashSet<BitSet>> levels = new ArrayList<>();
 
-    @Getter
-    private final int numAttributes;
-
-    public NegativeCover(int numAttributes) {
-        this.numAttributes = numAttributes;
-    }
+    public NegativeCover() {}
 
     public boolean add(BitSet equalAttrs) {
         int card = equalAttrs.cardinality();

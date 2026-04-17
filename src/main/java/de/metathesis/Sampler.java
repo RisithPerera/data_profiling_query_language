@@ -28,7 +28,7 @@ public class Sampler {
 
     public Sampler(Relation relation) {
         this.relation = relation;
-        this.negCover = new NegativeCover(relation.getNumOfAttributes());
+        this.negCover = new NegativeCover();
 
         if(this.relation.getCompressedRecords().length == 0){
             isInitialSampling = false;
@@ -38,7 +38,7 @@ public class Sampler {
     public NegativeCover run(Set<IntIntImmutablePair> comparisonSuggestions) {
         int numAttributes = relation.getNumOfAttributes();
         int[][] compressedRecords = relation.getCompressedRecords();
-        NegativeCover newNonFds = new NegativeCover(numAttributes);
+        NegativeCover newNonFds = new NegativeCover();
 
         if (!comparisonSuggestions.isEmpty()) {
             BitSet agree = new BitSet(numAttributes);

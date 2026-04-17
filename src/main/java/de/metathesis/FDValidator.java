@@ -27,6 +27,9 @@ public class FDValidator {
     private final List<List<ObjectOpenHashSet<BitSet>>> validFDs = new ArrayList<>();
     private final double validationThreshold = 0.01;
 
+    @Getter
+    private boolean isInitialValidation = true;
+
     private final FDTreeNode root;
 
     public FDValidator(Relation relation) {
@@ -357,6 +360,8 @@ public class FDValidator {
                 }
             }
         }
+
+        this.isInitialValidation = false;
     }
 
     // Specializes the positive cover for the non-FD: agreeSet /-> rhs.
@@ -487,7 +492,9 @@ public class FDValidator {
         confirmed.and(current.getRhsValidatedFds());
         remaining.andNot(confirmed);
 
-        if (remaining.isEmpty()) return new ObjectObjectImmutablePair<>(confirmed, remaining);
+        if (remaining.isEmpty()){
+            return new ObjectObjectImmutablePair<>(confirmed, remaining);
+        }
 
         for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
 
@@ -499,14 +506,18 @@ public class FDValidator {
             current = current.getChildren()[attr];
 
             remaining.and(current.getRhsAttributes());
-            if (remaining.isEmpty()) return new ObjectObjectImmutablePair<>(confirmed, remaining);
+            if (remaining.isEmpty()){
+                return new ObjectObjectImmutablePair<>(confirmed, remaining);
+            }
 
             BitSet newlyConfirmed = (BitSet) remaining.clone();
             newlyConfirmed.and(current.getRhsValidatedFds());
             confirmed.or(newlyConfirmed);
             remaining.andNot(newlyConfirmed);
 
-            if (remaining.isEmpty()) return new ObjectObjectImmutablePair<>(confirmed, remaining);
+            if (remaining.isEmpty()){
+                return new ObjectObjectImmutablePair<>(confirmed, remaining);
+            }
         }
 
         remaining.and(current.getRhsCandidateFds());

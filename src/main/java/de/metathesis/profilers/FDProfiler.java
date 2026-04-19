@@ -19,6 +19,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
@@ -31,158 +32,59 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
-            return profileCCWithSampling(lhs.relations(), rhs.relations(), lhs.level());
+            return profileFreeFree(lhs.relations(), rhs.relations(), lhs.level());
         }
 
         if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
-            return profileCCLocked(lhs.relations(), rhs.attributes(), lhs.level());
+            return profileFreeLock(lhs.relations(), rhs.attributes());
         }
 
         if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs){
-            return profileLockedCC(lhs.attributes(), rhs.relations());
+            return profileLockFree(lhs.attributes(), rhs.relations());
         }
 
         if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs){
-            return profileLocked(lhs.attributes(), rhs.attributes());
+            return profileLockLock(lhs.attributes(), rhs.attributes());
         }
 
         throw new IllegalArgumentException("Unsupported FDRequest");
     }
 
-    private Map<BitSet, List<BitSet>> profile(int relationIndex, int level) {
-        try {
-            Sampler sampler = this.preprocessor.getSampler(relationIndex);
-            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
-
-            Set<IntIntImmutablePair> suggestions = new HashSet<>();
-            do {
-                NegativeCover newNonFds = validator.isInitialValidation() ? sampler.getNegCover() : sampler.run(suggestions);
-                suggestions = validator.validateWithPositiveCover(this.executor, newNonFds, level);
-            } while (suggestions != null);
-
-            return validator.collectResults(level);
-        }catch (ExecutionException | InterruptedException e){
-            throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "at level: " + level, e);
-        }
-    }
-
-    private FDResult profileCCWithSampling(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
-        FDResult result = new FDResult();
-        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
-
-        for (int relationIndex : commonRelationIndexes) {
-            Map<BitSet, List<BitSet>> results = profile(relationIndex, level);
-
-            for (Map.Entry<BitSet, List<BitSet>> entry : results.entrySet()) {
-                AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
-
-                for (BitSet lhs : entry.getValue()) {
-                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
-                    result.add(lhsAbs, rhsAbs);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private FDResult profileCCWithValidation(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
+    //Checked
+    private FDResult profileFreeFree(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
         FDResult result = new FDResult();
         int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
 
         for (int relationIndex : commonRelationIndexes) {
             try {
+                Sampler sampler = this.preprocessor.getSampler(relationIndex);
                 FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
 
-                Map<BitSet, List<BitSet>> results = validator.validateDirectly(this.executor, level);
+                List<ObjectObjectImmutablePair<BitSet, BitSet>> results = new ArrayList<>();
+                Set<IntIntImmutablePair> suggestions = new HashSet<>();
+                do {
+                    NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
+                    suggestions = validator.validateFreeFree(this.executor, newNonFds, level, results);
+                } while (suggestions != null);
 
-                for (Map.Entry<BitSet, List<BitSet>> entry : results.entrySet()) {
-                    AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
+                for(ObjectObjectImmutablePair<BitSet, BitSet> pair : results){
+                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, pair.left());
 
-                    for (BitSet lhs : entry.getValue()) {
-                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
+                    for (int attr = pair.right().nextSetBit(0); attr >= 0; attr = pair.right().nextSetBit(attr + 1)) {
+                        AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, attr);
                         result.add(lhsAbs, rhsAbs);
                     }
                 }
             }catch (ExecutionException | InterruptedException e){
-                throw new RuntimeException(e);
+                throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "at level: " + level, e);
             }
         }
 
         return result;
     }
 
-    //================================================= OLD
-    /*private Map<Integer, List<BitSet>> profile(int relationIndex, int level) {
-
-        Sampler2 sampler = this.preprocessor.getSampler2(relationIndex);
-        Validator validator = this.preprocessor.getValidator(relationIndex);
-
-        List<IntIntImmutablePair> suggestions = new ArrayList<>();
-        do {
-            FDSet newNonFds = sampler.run(suggestions);
-            suggestions = validator.validate(newNonFds, level);
-        } while (suggestions != null);
-
-        return validator.results(level);
-    }
-
-    private FDResult profileCCWithSampling2(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) {
-        FDResult result = new FDResult();
-        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
-
-        for (int relationIndex : commonRelationIndexes) {
-            Map<Integer, List<BitSet>> results = profile(relationIndex, level);
-
-            for(Map.Entry<Integer, List<BitSet>> entry : results.entrySet()){
-                AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
-                for (BitSet lhs : entry.getValue()) {
-                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
-                    result.add(lhsAbs, rhsAbs);
-                }
-            }
-        }
-
-        return result;
-    }*/
-
-    private FDResult profileCC(int[] lhsRelationIndexes, int[] rhsRelationIndexes, int level) throws InputIterationException {
-        FDResult result = new FDResult();
-        int[] commonRelationIndexes = Utility.intersect(lhsRelationIndexes, rhsRelationIndexes);
-        for(int relationIndex : commonRelationIndexes) {
-            Utility.printLog(String.format("P: FD  R:%d L:%d", relationIndex, level), this.executor);
-
-            ObjectOpenHashSet<FDResult.FD> foundFDs = new ObjectOpenHashSet<>(); //this.fdPerRelation.computeIfAbsent(relationIndex, k -> new ObjectOpenHashSet<>());
-
-            AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(relationIndex, level);
-            AttributeBitSet[] initialLevel = this.preprocessor.generateApriori(relationIndex, 1);
-
-            for (AttributeBitSet lhsAbs : currentLevel) {
-                PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-
-                for (AttributeBitSet rhsAbs : initialLevel) {
-                    if(rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
-                        continue;
-                    }
-
-                    PositionListIndex rhsPli = this.preprocessor.getPLI(rhsAbs);
-
-                    if (isContainSubsetOf(foundFDs, lhsAbs, rhsAbs)) {
-                        continue;
-                    }
-
-                    if(isFD(lhsPli, rhsPli)){
-                        foundFDs.add(new FDResult.FD(lhsPli.getAttributeSet(), rhsPli.getAttributeSet()));
-                        result.add(lhsPli.getAttributeSet(), rhsPli.getAttributeSet());
-                    }
-                }
-            }
-        }
-
-        return  result;
-    }
-
-    private FDResult profileLockedCC(ObjectOpenHashSet<AttributeBitSet> lhsAttributes, int[] rhsRelationIndexes) {
+    //Not Check
+    private FDResult profileLockFree(ObjectOpenHashSet<AttributeBitSet> lhsAttributes, int[] rhsRelationIndexes) {
         FDResult result = new FDResult();
 
         // Group lhs by relationIndex, only if that relation is in rhsRelationIndexes
@@ -220,8 +122,8 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
 
             do {
-                NegativeCover newNonFds = validator.isInitialValidation() ? sampler.getNegCover() : sampler.run(suggestions);
-                suggestions = validator.validateLockedCandidates(newNonFds, pendingList, confirmedList);
+                NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
+                suggestions = validator.validateLockFree(newNonFds, pendingList, confirmedList);
             } while (suggestions != null);
 
             // Collect results
@@ -235,6 +137,55 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                     result.add(lhsAbs, rhsAbs);
                 }
             }
+        }
+
+        return result;
+    }
+
+    //Checking
+    private FDResult profileFreeLock(int[] lhsRelationIndexes, ObjectOpenHashSet<AttributeBitSet> rhsAttributes) {
+        FDResult result = new FDResult();
+
+        for (int relationIndex : lhsRelationIndexes) {
+            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
+
+            List<BitSet> rhsCandidateList = rhsAttributes.stream()
+                    .filter(abs -> abs.getRelationIndex() == relationIndex)
+                    .map(AttributeBitSet::getAttributeIndexSet)
+                    .collect(Collectors.toList());
+            try {
+                List<ObjectObjectImmutablePair<BitSet, BitSet>> results = new ArrayList<>();
+                Set<IntIntImmutablePair> suggestions = new HashSet<>();
+
+                do {
+                    NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
+                    suggestions = validator.validateFreeLock(this.executor, newNonFds, rhsCandidateList);
+                } while (suggestions != null);
+
+                for(ObjectObjectImmutablePair<BitSet, BitSet> pair : results){
+                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, pair.left());
+
+                    for (int attr = pair.right().nextSetBit(0); attr >= 0; attr = pair.right().nextSetBit(attr + 1)) {
+                        AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, attr);
+                        result.add(lhsAbs, rhsAbs);
+                    }
+                }
+
+//                Map<BitSet, List<BitSet>> results = validator.collectResults(level);
+//
+//                for (Map.Entry<BitSet, List<BitSet>> entry : results.entrySet()) {
+//                    AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
+//
+//                    for (BitSet lhs : entry.getValue()) {
+//                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
+//                        result.add(lhsAbs, rhsAbs);
+//                    }
+//                }
+            }catch (ExecutionException | InterruptedException e){
+                throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "at level: " + 0, e);
+            }
+
         }
 
         return result;
@@ -276,8 +227,9 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         return  result;
     }
 
-    private FDResult profileLocked(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
-                                         ObjectOpenHashSet<AttributeBitSet> rhsAttributes) throws InputIterationException {
+    //Not Check
+    private FDResult profileLockLock(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
+                                     ObjectOpenHashSet<AttributeBitSet> rhsAttributes) throws InputIterationException {
         FDResult result = new FDResult();
 
         for(AttributeBitSet lhsAbs : lhsAttributes) {

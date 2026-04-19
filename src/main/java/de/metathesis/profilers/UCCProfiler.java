@@ -46,7 +46,7 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
                 Set<BitSet> validatedUCCSet = new ObjectOpenHashSet <>();
                 Set<IntIntImmutablePair> suggestions = new ObjectOpenHashSet <>();
                 do {
-                    NegativeCover newNonFds = sampler.run(suggestions);
+                    NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
                     suggestions = validator.validateWithPositiveCover(this.executor, newNonFds, level, validatedUCCSet);
                 } while (suggestions != null);
 
@@ -86,7 +86,7 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
 
             do {
-                NegativeCover newNonFds = validator.isInitialValidation() ? sampler.getNegCover() : sampler.run(suggestions);
+                NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
                 suggestions = validator.validateLockedCandidates(newNonFds, pendingList, confirmedList);
             } while (suggestions != null);
 

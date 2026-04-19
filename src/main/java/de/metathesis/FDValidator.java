@@ -11,6 +11,8 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.objects.*;
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -19,6 +21,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public class FDValidator {
+    private static final Logger log = LogManager.getLogger(FDValidator.class);
+
     @Getter
     private final int numAttributes;
     private final int[][] compressed;
@@ -191,10 +195,10 @@ public class FDValidator {
         return false;
     }
 
-    // Validate using positive cover induction
-    public Set<IntIntImmutablePair> validateWithPositiveCover(ExecutorService executor,
-                                                              NegativeCover newNegativeCover,
-                                                              int level) throws ExecutionException, InterruptedException {
+    public Set<IntIntImmutablePair> validateFreeFree(ExecutorService executor,
+                                                     NegativeCover newNegativeCover,
+                                                     int level,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> results) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
         Map<BitSet, BitSet> candidates = getCandidatesAtDepth(level);
@@ -206,7 +210,7 @@ public class FDValidator {
         }
 
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
-        int validFDCount   = 0;
+        int totalCandidateCount   = 0;
         int invalidFDCount = 0;
 
         for (int i = 0; i < futures.size(); i++) {
@@ -215,7 +219,7 @@ public class FDValidator {
             BitSet lhs      = result.lhs();
             BitSet rhs      = result.rhs();
             BitSet validRhs = result.validRhs();
-            validFDCount += validRhs.cardinality();
+            totalCandidateCount += rhs.cardinality();
 
             // Invalid RHS bits — specialize posCover
             BitSet invalidRhs = (BitSet) rhs.clone();
@@ -224,6 +228,7 @@ public class FDValidator {
 
             // Valid RHS bits — confirm in posCover and store results
             if (!validRhs.isEmpty()) {
+                results.add(new ObjectObjectImmutablePair<>(lhs, validRhs));
                 this.root.markAsValidate(lhs, validRhs);
             }
 
@@ -233,26 +238,78 @@ public class FDValidator {
 
             if (!invalidRhs.isEmpty()) {
                 suggestions.addAll(result.suggestions());
-
-                if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
-                    // Cancel remaining queued tasks already
-                    System.out.printf("Cancelling Pending Tasks. VC: %d, IC: %d, VE: %.2f\n", validFDCount, invalidFDCount, validFDCount * validationThreshold);
-
-                    for (int j = i + 1; j < futures.size(); j++) {
-                        futures.get(j).cancel(true);
-                    }
-                    return suggestions;
-                }
             }
         }
 
-        // All candidates checked without hitting threshold.
-        return suggestions.isEmpty() ? null : suggestions;
+//        if (invalidFDCount > totalCandidateCount * validationThreshold) {
+//            log.info("Back to Sampling | TC: {}, IC: {}, VE: {}", totalCandidateCount, invalidFDCount, totalCandidateCount * validationThreshold);
+//            return suggestions;
+//        }
+
+        return null;
     }
 
-    public Set<IntIntImmutablePair> validateLockedCandidates(NegativeCover newNegativeCover,
-                                                             List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList,
-                                                             List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) {
+    public Set<IntIntImmutablePair> validateFreeLock(ExecutorService executor,
+                                                     NegativeCover newNegativeCover,
+                                                     List<BitSet> rhsCandidateList) throws ExecutionException, InterruptedException {
+        inductPositiveCover(newNegativeCover);
+
+        //For FDs when lhs side is Free we have to check all levels for Locked Rhs.
+        for(int level = 0; level < numAttributes; level++) {
+            List<ObjectObjectImmutablePair<BitSet, BitSet>> validatedFDs = this.root.getValidatedFDsAtDepth(level);
+
+            Map<BitSet, BitSet> candidates = getCandidatesAtDepth(level);
+
+            List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
+
+            for (Map.Entry<BitSet, BitSet> candidate : candidates.entrySet()) {
+                futures.add(executor.submit(new ValidationTask((BitSet) candidate.getKey().clone(), (BitSet) candidate.getValue().clone())));
+            }
+
+            Set<IntIntImmutablePair> suggestions = new HashSet<>();
+            int totalCandidateCount = 0;
+            int invalidFDCount = 0;
+
+            for (int i = 0; i < futures.size(); i++) {
+                ValidationResult result = futures.get(i).get();
+
+                BitSet lhs = result.lhs();
+                BitSet rhs = result.rhs();
+                BitSet validRhs = result.validRhs();
+                totalCandidateCount += rhs.cardinality();
+
+                // Invalid RHS bits — specialize posCover
+                BitSet invalidRhs = (BitSet) rhs.clone();
+                invalidRhs.andNot(validRhs);
+                invalidFDCount += invalidRhs.cardinality();
+
+                // Valid RHS bits — confirm in posCover and store results
+                if (!validRhs.isEmpty()) {
+                    this.root.markAsValidate(lhs, validRhs);
+                }
+
+                for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
+                    specializePositiveCover(lhs, attr);
+                }
+
+                if (!invalidRhs.isEmpty()) {
+                    suggestions.addAll(result.suggestions());
+                }
+            }
+
+            if (invalidFDCount > totalCandidateCount * validationThreshold) {
+                log.info("Sending Suggestions Back to Sampling. TC: {}, IC: {}, VE: {}",
+                        totalCandidateCount, invalidFDCount, totalCandidateCount * validationThreshold);
+                return suggestions;
+            }
+        }
+
+        return null;
+    }
+
+    public Set<IntIntImmutablePair> validateLockFree(NegativeCover newNegativeCover,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) {
 
         inductPositiveCover(newNegativeCover);
 
@@ -365,7 +422,7 @@ public class FDValidator {
     }
 
     // Specializes the positive cover for the non-FD: agreeSet /-> rhs.
-    protected void specializePositiveCover(BitSet lhs, int rhs) {
+    private void specializePositiveCover(BitSet lhs, int rhs) {
         List<BitSet> specLhss = this.root.getFdAndGeneralizations(lhs, rhs);
 
         for (BitSet specLhs : specLhss) {

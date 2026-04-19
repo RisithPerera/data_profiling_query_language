@@ -34,6 +34,7 @@ public class SamplingTask implements Comparable<SamplingTask> {
 
     @Override
     public int compareTo(SamplingTask o) {
+        if (o == null) return -1;
         return Float.compare(o.getEfficiency(), this.getEfficiency());
     }
 

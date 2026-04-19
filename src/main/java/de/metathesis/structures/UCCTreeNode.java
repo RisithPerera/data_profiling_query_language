@@ -1,12 +1,10 @@
 package de.metathesis.structures;
 
-import de.metanome.algorithms.hyucc.structures.UCCTreeElementUCCPair;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.validation.Validation;
 import java.util.*;
 
 /**
@@ -32,13 +30,13 @@ public class UCCTreeNode {
         this.isCandidateUCC = isCandidateUCC;
     }
 
-    public Set<BitSet> getLevel(int level, Set<BitSet> results) {
+    public Set<BitSet> getCandidatesAtDepth(int level, Set<BitSet> results) {
         Set<BitSet> candidates = new ObjectOpenHashSet<>();
-        this.getLevelRecursive(level, 0, new BitSet(), candidates, results);
+        this.getCandidatesAtDepthRecursive(level, 0, new BitSet(), candidates, results);
         return candidates;
     }
 
-    private void getLevelRecursive(int level, int currentLevel, BitSet currentUCC, Set<BitSet> candidates, Set<BitSet> results) {
+    private void getCandidatesAtDepthRecursive(int level, int currentLevel, BitSet currentUCC, Set<BitSet> candidates, Set<BitSet> results) {
         if (level == currentLevel) {
             if(this.isCandidateUCC && !this.isValidatedUCC){
                 candidates.add((BitSet) currentUCC.clone());
@@ -55,7 +53,7 @@ public class UCCTreeNode {
                 }
 
                 currentUCC.set(child);
-                this.children[child].getLevelRecursive(level, currentLevel + 1, currentUCC, candidates, results);
+                this.children[child].getCandidatesAtDepthRecursive(level, currentLevel + 1, currentUCC, candidates, results);
                 currentUCC.clear(child);
             }
         }
@@ -89,7 +87,7 @@ public class UCCTreeNode {
     }
 
     // Marks lhs -> rhs as confirmed valid. Sets the bit in rhsValidatedFds at the node for lhs.
-    public void markAsValidate(BitSet ucc) {
+    public synchronized void markAsValidate(BitSet ucc) {
         UCCTreeNode current = this;
         for (int attr = ucc.nextSetBit(0); attr >= 0; attr = ucc.nextSetBit(attr + 1)) {
             if (current.children == null) {
@@ -137,7 +135,7 @@ public class UCCTreeNode {
         }
     }
 
-    public void addUniqueColumnCombination(BitSet ucc) {
+    public synchronized void addUniqueColumnCombination(BitSet ucc) {
         UCCTreeNode currentNode = this;
 
         for (int i = ucc.nextSetBit(0); i >= 0; i = ucc.nextSetBit(i + 1)) {
@@ -154,7 +152,7 @@ public class UCCTreeNode {
         currentNode.isCandidateUCC = true;
     }
 
-    public void removeUniqueColumnCombination(BitSet ucc) {
+    public synchronized void removeUniqueColumnCombination(BitSet ucc) {
         int currentUCCAttr = ucc.nextSetBit(0);
         this.removeUniqueColumnCombinationRecursive(ucc, currentUCCAttr);
     }

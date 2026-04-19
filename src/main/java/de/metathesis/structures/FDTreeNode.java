@@ -1,5 +1,6 @@
 package de.metathesis.structures;
 
+import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -49,8 +50,7 @@ public class FDTreeNode {
         return rhsAttributes.isEmpty();
     }
 
-
-    public void addFunctionalDependency(BitSet lhs, int rhs) {
+    public synchronized void addFunctionalDependency(BitSet lhs, int rhs) {
         FDTreeNode currentNode = this;
         currentNode.rhsAttributes.set(rhs);
 
@@ -69,7 +69,7 @@ public class FDTreeNode {
     }
 
     // Marks lhs -> rhs as confirmed valid. Sets the bit in rhsValidatedFds at the node for lhs.
-    public void markAsValidate(BitSet lhs, BitSet rhs) {
+    public synchronized void markAsValidate(BitSet lhs, BitSet rhs) {
         FDTreeNode current = this;
         for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
             if (current.children == null) {
@@ -85,6 +85,44 @@ public class FDTreeNode {
 
         current.getRhsValidatedFds().or(rhs);
         current.getRhsCandidateFds().or(rhs);
+    }
+
+    public List<ObjectObjectImmutablePair<BitSet, BitSet>> getValidatedFDsAtDepth(int targetDepth) {
+        List<ObjectObjectImmutablePair<BitSet, BitSet>> result = new ArrayList<>();
+        BitSet lhs = new BitSet(numAttributes);
+        BitSet accumulatedRhs = new BitSet(numAttributes);
+        getValidatedFDsAtDepthRecursive(this, lhs, accumulatedRhs, 0, targetDepth, result);
+        return result;
+    }
+
+    private void getValidatedFDsAtDepthRecursive(FDTreeNode node, BitSet lhs, BitSet inheritedRhs,
+                                int currentDepth, int targetDepth,
+                                List<ObjectObjectImmutablePair<BitSet, BitSet>> result) {
+
+        if (currentDepth == targetDepth) {
+            // Only RHS confirmed here but NOT inherited from ancestors
+            BitSet minimalRhs = (BitSet) node.rhsValidatedFds.clone();
+            minimalRhs.andNot(inheritedRhs);
+
+            if (!minimalRhs.isEmpty()) {
+                result.add(new ObjectObjectImmutablePair<>((BitSet) lhs.clone(), minimalRhs));
+            }
+            return;
+        }
+
+        if (node.children == null) return;
+
+        // Pass accumulated RHS down but don't add current node's validated FDs yet
+        BitSet newInherited = (BitSet) inheritedRhs.clone();
+        newInherited.or(node.rhsValidatedFds);
+
+        for (int i = 0; i < node.children.length; i++) {
+            if (node.children[i] != null) {
+                lhs.set(i);
+                getValidatedFDsAtDepthRecursive(node.children[i], lhs, newInherited, currentDepth + 1, targetDepth, result);
+                lhs.clear(i);
+            }
+        }
     }
 
     public List<BitSet> getFdAndGeneralizations(BitSet lhs, int rhs) {
@@ -117,7 +155,7 @@ public class FDTreeNode {
         }
     }
 
-    public void removeFunctionalDependency(BitSet lhs, int rhs) {
+    public synchronized void removeFunctionalDependency(BitSet lhs, int rhs) {
         int currentLhsAttr = lhs.nextSetBit(0);
         this.removeFunctionalDependencyRecursive(lhs, rhs, currentLhsAttr);
     }
@@ -189,7 +227,6 @@ public class FDTreeNode {
 
         return this.containsFdOrGeneralizationRecursive(lhs, rhs, nextLhsAttr);
     }
-
 
     @Override
     public String toString() {

@@ -107,7 +107,7 @@ public class UCCValidator {
                                                               int level, Set<BitSet> results) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
-        Set<BitSet> candidates = this.root.getLevel(level, results);
+        Set<BitSet> candidates = this.root.getCandidatesAtDepth(level, results);
 
         List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
 

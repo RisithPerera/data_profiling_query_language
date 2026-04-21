@@ -19,13 +19,13 @@ import java.util.concurrent.ExecutorService;
 public final class ProfilerFactory {
     private final Executor executor;
     private final UCCProfiler uccProfiler;
-    private final INDProfiler indProfiler;
+    private final INDProfiler2 indProfiler;
     private final FDProfiler fdProfiler;
 
     public ProfilerFactory(ExecutorService executor) {
         this.executor = executor;
         this.uccProfiler = new UCCProfiler(executor);
-        this.indProfiler = new INDProfiler(executor);
+        this.indProfiler = new INDProfiler2(executor);
         this.fdProfiler  = new FDProfiler(executor);
     }
 

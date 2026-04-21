@@ -2,6 +2,7 @@ package de.metathesis.structures;
 
 import de.metathesis.Preprocessor;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,11 +18,13 @@ import java.util.List;
  * Date: 2025-12-29
  */
 
-public final class AttributeBitSet{
+public class AttributeBitSet{
     @Getter
     private final int relationIndex;
 
     private final BitSet attributeIndexSet;
+
+    private int[] attributeIndexArray; //For IND to with different permutations
 
     @Getter
     private final int hashCode; //Cashing Hash for performance
@@ -35,14 +38,37 @@ public final class AttributeBitSet{
         this.hashCode = computeHash();
     }
 
+    public AttributeBitSet(int relationIndex, int[] attributeIndexSetArray) {
+        this.relationIndex = relationIndex;
+        this.attributeIndexSet = new BitSet();
+
+        for (int attr : attributeIndexSetArray) {
+            this.attributeIndexSet.set(attr);
+        }
+
+        this.attributeIndexArray = attributeIndexSetArray.clone();
+        this.hashCode = computeHash();
+    }
+
     public AttributeBitSet(int relationIndex, BitSet attributeIndexSet) {
         this.relationIndex = relationIndex;
         this.attributeIndexSet = (BitSet) attributeIndexSet.clone();
+
+        this.attributeIndexArray = new int[attributeIndexSet.cardinality()];
+        int i = 0;
+        for (int c = attributeIndexSet.nextSetBit(0); c >= 0; c = attributeIndexSet.nextSetBit(c + 1)) {
+            attributeIndexArray[i++] = c;
+        }
+
         this.hashCode = computeHash();
     }
 
     public BitSet getAttributeIndexSet() {
         return (BitSet) this.attributeIndexSet.clone();
+    }
+
+    public int[] getAttributeIndexArray() {
+        return attributeIndexArray.clone();
     }
 
     public AttributeBitSet union(AttributeBitSet other) {

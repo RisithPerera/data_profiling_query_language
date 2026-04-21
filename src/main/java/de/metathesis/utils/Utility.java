@@ -34,25 +34,14 @@ public class Utility {
 
     // Helper Methods
     public static int[] intersect(int[] arr1, int[] arr2) {
-        Set<Integer> setA = new HashSet<>();
-        for (int x : arr1){
-            setA.add(x);
-        }
+        BitSet bs = new BitSet();
+        for (int v : arr1) bs.set(v);
 
-        Set<Integer> common = new HashSet<>();
-        for (int x : arr2) {
-            if (setA.contains(x)) {
-                common.add(x);
-            }
-        }
+        BitSet bs2 = new BitSet();
+        for (int v : arr2) bs2.set(v);
 
-        int[] result = new int[common.size()];
-        int i = 0;
-        for (int x : common) {
-            result[i++] = x;
-        }
-
-        return result;
+        bs.and(bs2); // intersection in one operation
+        return bs.stream().toArray();
     }
 
     // Convert BigInteger mask to BitSet
@@ -146,6 +135,38 @@ public class Utility {
         }
 
         return result;
+    }
+
+    public static List<int[]> cartesianProduct(BitSet[] sets) {
+        List<int[]> result = new ArrayList<>();
+        cartesianProductRecursive(sets, 0, new int[sets.length], result);
+        return result;
+    }
+
+    private static void cartesianProductRecursive(BitSet[] sets, int pos, int[] current, List<int[]> result) {
+        if (pos == sets.length) {
+            result.add(current.clone());
+            return;
+        }
+        for (int val = sets[pos].nextSetBit(0); val >= 0; val = sets[pos].nextSetBit(val + 1)) {
+            boolean duplicate = false;
+            for (int i = 0; i < pos; i++) {
+                if (current[i] == val) { duplicate = true; break; }
+            }
+            if (!duplicate) {
+                current[pos] = val;
+                cartesianProductRecursive(sets, pos + 1, current, result);
+            }
+        }
+    }
+
+    public static boolean isDisjoint(int[] a, int[] b) {
+        for (int k : a) {
+            for (int i : b) {
+                if (k == i) return false;
+            }
+        }
+        return true;
     }
 
     public static void match(BitSet agree, int[] row1, int[] row2){

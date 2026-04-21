@@ -11,6 +11,7 @@ import java.util.BitSet;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.concurrent.PriorityBlockingQueue;
 
 public class Sampler {
     @Getter
@@ -18,7 +19,7 @@ public class Sampler {
 
     private float samplingThreshold = 0.01f;
     private final float memoryThreshold = 0.8f;
-    private final PriorityQueue<SamplingTask> samplingQueue = new PriorityQueue<>();
+    private final PriorityBlockingQueue<SamplingTask> samplingQueue = new PriorityBlockingQueue<>();
 
     @Getter
     private boolean isInitialSampling = true;

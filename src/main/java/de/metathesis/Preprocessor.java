@@ -6,6 +6,7 @@ import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
+import de.metathesis.profilers.INDProfiler2;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
@@ -15,20 +16,24 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public final class Preprocessor {
+    private static final Logger log = LogManager.getLogger(Preprocessor.class);
 
     private static final Preprocessor INSTANCE = new Preprocessor();
     private static final double CACHE_MEMORY_THRESHOLD = 0.8;
 
-    private final Int2ObjectMap<Relation> relationMap = new Int2ObjectOpenHashMap<>();
-    private final Int2ObjectMap<Sampler> samplerMap = new Int2ObjectOpenHashMap<>();
-    private final Int2ObjectMap<FDValidator> fdValidatorMap = new Int2ObjectOpenHashMap<>();
-    private final Int2ObjectMap<UCCValidator> uccValidatorMap = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, Relation> relationMap = new ConcurrentHashMap<>();
+    private final Map<Integer, Sampler> samplerMap = new ConcurrentHashMap<>();
+    private final Map<Integer, FDValidator> fdValidatorMap = new ConcurrentHashMap<>();
+    private final Map<Integer, UCCValidator> uccValidatorMap = new ConcurrentHashMap<>();
 
     //This structure cache n-ary PLIs temporary and remove least recently used one.
     private final LinkedHashMap<AttributeBitSet, PositionListIndex> pliCache = new LinkedHashMap<>(16, 0.75f, true) {
@@ -166,11 +171,20 @@ public final class Preprocessor {
 
     public Relation getRelation(int relationIndex) {
         assert this.relationMap.containsKey(relationIndex) : "Relation not available!";
+        Relation relation = this.relationMap.get(relationIndex);
 
-        //TODO: For INDs loading only data is enough. PLI is not needed. Need to tackle it.
-        loadRelationData(relationIndex);
+        if (!relation.isDataLoaded()) {
+            synchronized (relation){
+                if (!relation.isDataLoaded()) {
+                    long time = System.currentTimeMillis();
+                    //TODO: For INDs loading only data is enough. PLI is not needed. Need to tackle it.
+                    loadRelationData(relation);
+                    log.info("Loaded Relation {}: {} in {}ms", relation.getIndex(), relation.getName(), System.currentTimeMillis() - time);
+                }
+            }
+        }
 
-        return this.relationMap.get(relationIndex);
+        return relation;
     }
 
     public Sampler getSampler(int relationIndex){
@@ -187,7 +201,7 @@ public final class Preprocessor {
 
     public synchronized PositionListIndex getPLI(AttributeBitSet abs) {
 
-        loadRelationData(abs.getRelationIndex());
+        loadRelationData(this.relationMap.get(abs.getRelationIndex()));
 
         if (abs.size() == 1) {
             int attrIndex = abs.getAttributeIndexSet().nextSetBit(0);
@@ -220,16 +234,10 @@ public final class Preprocessor {
         return result;
     }
 
-    private void loadRelationData(int relationIndex) {
-        Relation relation = this.relationMap.get(relationIndex);
-
-        if (relation.isDataLoaded()){
-            return; // already loaded
-        }
-
+    private void loadRelationData(Relation relation) {
         int numAttributes = relation.getNumOfAttributes();
 
-        try(RelationalInput relationalInput = this.relationMap.get(relationIndex).getRelationalInput()){
+        try (RelationalInput relationalInput = relation.getRelationalInput()) {
             assert relationalInput != null : "Preprocessor Initialization Failed";
 
             int numOfRecords = 0;
@@ -261,7 +269,7 @@ public final class Preprocessor {
             }
 
             // Build unary PLIs
-            PositionListIndex[] unaryPLIs = buildUnaryPLIs(relationIndex, relationData);
+            PositionListIndex[] unaryPLIs = buildUnaryPLIs(relation.getIndex(), relationData);
 
             // Build compressed records for sampling
             int[][] compressed = buildCompressedRecords(unaryPLIs, numOfRecords);
@@ -381,5 +389,13 @@ public final class Preprocessor {
         }
 
         return compressedRecords;
+    }
+
+    public void clearAllMaps(){
+        relationMap.clear();
+        samplerMap.clear();
+        fdValidatorMap.clear();
+        uccValidatorMap.clear();
+        System.gc();
     }
 }

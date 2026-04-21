@@ -129,13 +129,41 @@ public final class ExecutionNode {
         }
     }
 
+    public String getNodeId() {
+        return this.edge + "_" + this.level;
+    }
+
     public String getPreviousNodeId() {
         return this.edge + "_" + (this.level - 1);
     }
 
     @Override
     public String toString() {
-        return this.edge + "_" + this.level;
+        return getNodeId();
+        //return toJson(0);
+    }
+
+    private String toJson(int indent) {
+        String pad = "  ".repeat(indent);
+        String childPad = "  ".repeat(indent + 1);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(pad).append("{\n");
+        sb.append(childPad).append("\"node\": \"").append(getNodeId()).append("\"");
+
+        if (!children.isEmpty()) {
+            sb.append(",\n");
+            sb.append(childPad).append("\"children\": [\n");
+            for (int i = 0; i < children.size(); i++) {
+                sb.append(children.get(i).toJson(indent + 2));
+                if (i < children.size() - 1) sb.append(",");
+                sb.append("\n");
+            }
+            sb.append(childPad).append("]");
+        }
+
+        sb.append("\n").append(pad).append("}");
+        return sb.toString();
     }
 }
 

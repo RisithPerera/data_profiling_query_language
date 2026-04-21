@@ -39,7 +39,7 @@ public class HolisticProfileStrategy implements Strategy{
         Instructor instructor = new Instructor(this.executor);
 
         try {
-            instructor.runExecution(this.graph.getSetMembershipMap(), this.relationMap);
+            instructor.runExecutionMethod2(this.graph.getSetMembershipMap(), this.relationMap);
 
         } catch (AlgorithmConfigurationException |InputGenerationException e) {
             throw new RuntimeException(e);

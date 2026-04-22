@@ -6,15 +6,11 @@ import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
-import de.metathesis.profilers.INDProfiler2;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
 import de.metathesis.utils.MemoryUtils;
 import de.metathesis.utils.Utility;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -44,12 +40,10 @@ public final class Preprocessor {
     };
 
     private final int inputRowLimit;
-    private final boolean isNullEqualNull;
     private final String nullValue;
 
     private Preprocessor() {
         this.inputRowLimit = InputConfigurationSingleton.get().getFILE_MAX_ROWS();
-        this.isNullEqualNull = InputConfigurationSingleton.get().getFILE_NULL_EQUALS_NULL();
         this.nullValue = InputConfigurationSingleton.get().getFILE_NULL_STRING();
     }
 
@@ -177,7 +171,6 @@ public final class Preprocessor {
             synchronized (relation){
                 if (!relation.isDataLoaded()) {
                     long time = System.currentTimeMillis();
-                    //TODO: For INDs loading only data is enough. PLI is not needed. Need to tackle it.
                     loadRelationData(relation);
                     log.info("Loaded Relation {}: {} in {}ms", relation.getIndex(), relation.getName(), System.currentTimeMillis() - time);
                 }
@@ -268,58 +261,10 @@ public final class Preprocessor {
                 relationData[c] = columns[c].toArray(new String[0]);
             }
 
-            // Build unary PLIs
-            PositionListIndex[] unaryPLIs = buildUnaryPLIs(relation.getIndex(), relationData);
-
-            // Build compressed records for sampling
-            int[][] compressed = buildCompressedRecords(unaryPLIs, numOfRecords);
-
-            //Sorting PLIs Based on Cluster Size
-            rearrangeUnaryPLIs(unaryPLIs, numOfRecords, compressed);
-
-            relation.markLoaded(relationData, unaryPLIs,  compressed);
+            relation.loadData(relationData, numOfRecords);
         }catch (Exception e) {
             throw new RuntimeException("Issue with Relation Loading Process", e);
         }
-    }
-
-    private PositionListIndex[] buildUnaryPLIs(int relationIndex, String[][] columns){
-        int numOfAttributes = columns.length;
-
-        PositionListIndex[] plis = new PositionListIndex[numOfAttributes];
-        for (int columnIndex = 0; columnIndex < numOfAttributes; columnIndex++) {
-            Map<String, IntArrayList> clusterMap = new HashMap<>();
-
-            int rowIndex = 0;
-            for(String value : columns[columnIndex]) {
-                if (Objects.equals(value, this.nullValue) && !this.isNullEqualNull) {
-                    rowIndex++;
-                    continue;
-                }
-                clusterMap.computeIfAbsent(value, k -> new IntArrayList()).add(rowIndex);
-                rowIndex++;
-            }
-
-            List<IntArrayList> clusters = new ArrayList<>();
-            int numUniqueValues = 0;
-            for (IntArrayList cluster : clusterMap.values()) {
-                if (cluster.size() > 1) {
-                    clusters.add(cluster);
-                }else{
-                    numUniqueValues++;
-                }
-            }
-
-            AttributeBitSet attributeBitSet = new AttributeBitSet(relationIndex, columnIndex);
-
-            PositionListIndex pli = new PositionListIndex(attributeBitSet, clusters);
-            pli.setNumUniqueValues(numUniqueValues);
-            pli.setNumOfRecords(columns[0].length);
-
-            plis[columnIndex] = pli;
-        }
-
-        return plis;
     }
 
     private void rearrangeUnaryPLIs(PositionListIndex[] plis, int numOfRecords, int[][] compressed){
@@ -367,28 +312,6 @@ public final class Preprocessor {
 //            }
 //            comparator.incrementActiveKey();
 //        }
-    }
-
-    private static int[][] buildCompressedRecords(PositionListIndex[] plis, int numOfRecords) {
-        // Direct [row][col] matrix
-        int[][] compressedRecords = new int[numOfRecords][plis.length];
-
-        // Fill all with -1 (unique/singleton values)
-        for (int[] row : compressedRecords) {
-            Arrays.fill(row, -1);
-        }
-
-        // For each column's PLI, assign cluster IDs directly into row-col position
-        for (int attr = 0; attr < plis.length; attr++) {
-            List<IntArrayList> clusters = plis[attr].getClusters();
-            for (int clusterId = 0; clusterId < clusters.size(); clusterId++) {
-                for (int recordId : clusters.get(clusterId)) {
-                    compressedRecords[recordId][attr] = clusterId;
-                }
-            }
-        }
-
-        return compressedRecords;
     }
 
     public void clearAllMaps(){

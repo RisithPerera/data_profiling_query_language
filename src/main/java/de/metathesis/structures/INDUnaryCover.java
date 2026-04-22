@@ -4,29 +4,30 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class INDUnaryCover {
     private static final Logger log = LogManager.getLogger(INDUnaryCover.class);
 
     // forward:  unaryINDs.get(lhsRel).get(rhsRel).get(rhsCol) = set of lhsCols
-    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> forward = new HashMap<>();
+    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> forward = new ConcurrentHashMap<>();
 
     // reverse: unaryINDsRev.get(lhsRel).get(rhsRel).get(lhsCol) = set of rhsCols
-    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> reverse = new HashMap<>();
+    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> reverse = new ConcurrentHashMap<>();
 
     // tracks which (lhsRel, rhsRel) pairs have been computed for unary INDs
-    private final Set<Long> computedPairs = new HashSet<>();
+    private final ConcurrentHashMap<Long, Boolean> computedPairs = new ConcurrentHashMap<>();
 
     private void add(int lhsRel, int lhsCol, int rhsRel, int rhsCol) {
         // forward
-        forward.computeIfAbsent(lhsRel, k -> new HashMap<>())
-                .computeIfAbsent(rhsRel, k -> new HashMap<>())
+        forward.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(rhsCol, k -> new BitSet())
                 .set(lhsCol);
 
         // reverse
-        reverse.computeIfAbsent(lhsRel, k -> new HashMap<>())
-                .computeIfAbsent(rhsRel, k -> new HashMap<>())
+        reverse.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(lhsCol, k -> new BitSet())
                 .set(rhsCol);
     }
@@ -69,49 +70,52 @@ public class INDUnaryCover {
         return bindings;
     }
 
-    public void ensureUnaryComputed(Relation lhsRelation, Relation rhsRelation){
+    public void ensureUnaryComputed(Relation lhsRelation, Relation rhsRelation) {
         int lhsRel = lhsRelation.getIndex();
         int rhsRel = rhsRelation.getIndex();
-
         long pairKey = ((long) lhsRel << 32) | rhsRel;
-        if (computedPairs.contains(pairKey)){
-            return;
-        }
+
+        computedPairs.computeIfAbsent(pairKey, k -> {
+            computePair(lhsRelation, rhsRelation);
+            return Boolean.TRUE;
+        });
+    }
+
+    private void computePair(Relation lhsRelation, Relation rhsRelation) {
+        int lhsRel = lhsRelation.getIndex();
+        int rhsRel = rhsRelation.getIndex();
 
         log.info("Computing Unary INDs for Lhs Rel:{}, Rhs Rel: {}", lhsRel, rhsRel);
 
         int lhsNumCols = lhsRelation.getNumOfAttributes();
         int rhsNumCols = rhsRelation.getNumOfAttributes();
 
-        // build inverted index for rhs: value -> set of rhs cols
         Map<String, BitSet> invertedRhs = rhsRelation.getInvertedAttributeValues();
 
-        // for each lhs col, check which rhs cols it is included in
         for (int lc = 0; lc < lhsNumCols; lc++) {
-            String[] lhsVals = lhsRelation.getSortedAttributeSet(lc);
+            String[] lhsVals = lhsRelation.getSortedAttributeSet()[lc];
 
-            // start with all rhs cols as candidates
             BitSet candidates = new BitSet();
             candidates.set(0, rhsNumCols);
 
-            // prune rhs cols that have fewer unique values than lhsCol
+            // prune by size and same col
             for (int rc = candidates.nextSetBit(0); rc >= 0; rc = candidates.nextSetBit(rc + 1)) {
-                // same relation, same column — trivial, skip
                 if (lhsRel == rhsRel && lc == rc) {
                     candidates.clear(rc);
                     continue;
                 }
 
-                if (rhsRelation.getSortedAttributeSet(rc).length < lhsVals.length) {
+                if (rhsRelation.getSortedAttributeSet()[rc].length < lhsVals.length){
                     candidates.clear(rc);
                 }
             }
 
-            for (String v : lhsVals) {
-                if (candidates.isEmpty()){
-                    break;
-                }
+            if (candidates.isEmpty()){
+                continue;
+            }
 
+            for (String v : lhsVals) {
+                if (candidates.isEmpty()) break;
                 BitSet rhsColsWithV = invertedRhs.get(v);
                 if (rhsColsWithV == null || rhsColsWithV.isEmpty()) {
                     candidates.clear();
@@ -120,13 +124,10 @@ public class INDUnaryCover {
                 candidates.and(rhsColsWithV);
             }
 
-            // store results
             for (int rc = candidates.nextSetBit(0); rc >= 0; rc = candidates.nextSetBit(rc + 1)) {
                 add(lhsRel, lc, rhsRel, rc);
             }
         }
-
-        computedPairs.add(pairKey);
     }
 
     @Override

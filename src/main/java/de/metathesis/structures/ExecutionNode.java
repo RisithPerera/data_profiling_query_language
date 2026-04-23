@@ -1,6 +1,7 @@
 package de.metathesis.structures;
 
 import de.metaserve.executor.min.graph.edge.Edge;
+import de.metathesis.Instructor;
 import de.metathesis.ResultFormatter;
 import de.metathesis.utils.Utility;
 import de.metathesis.profilers.ProfilerFactory;
@@ -11,12 +12,16 @@ import de.metathesis.structures.results.Result;
 import de.metathesis.structures.results.UCCResult;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 @Getter
 public final class ExecutionNode {
+    private static final Logger log = LogManager.getLogger(ExecutionNode.class);
+
     private final Edge edge;
     private final int level;
     private final ProfilerFactory factory;
@@ -48,21 +53,22 @@ public final class ExecutionNode {
                     SearchSpace lhsSearchSpace = initializeSearchSpaceFor(this.edge.leftName);
                     SearchSpace rhsSearchSpace = initializeSearchSpaceFor(this.edge.rightName);
 
-                    Utility.printLog(String.format("S: %s", this), this.factory.getExecutor());
+                    log.info(Utility.buildLog(String.format("S: %s", this), this.factory.getExecutor()));
                     return this.factory.run(this.edge, lhsSearchSpace, rhsSearchSpace);
                 });
 
         //Once this node is completed crop it's parent lhs and rhs results.
         this.future.thenAccept(out -> {
             // Result handling belongs here
-            Utility.printLog(String.format("F: %s", this), this.factory.getExecutor());
+            log.info(Utility.buildLog(String.format("F: %s", this), this.factory.getExecutor()));
 
             results = out;
             //showResults(); //Testing Purposes
-            cropParentResults();
+            if(children.isEmpty()){
+                cropParentResults();
+                log.debug("Finished Cropping All Parents: {}", this);
+            }
         });
-
-
     }
 
     private SearchSpace initializeSearchSpaceFor(String variable){
@@ -99,12 +105,14 @@ public final class ExecutionNode {
     }
 
     private void cropParentResults(){
-        for (ExecutionNode parent : this.parents.values()) {
-            if(parent.getEdge().equals(this.edge)){
+        for (Map.Entry<String, ExecutionNode> entry : this.parents.entrySet()) {
+            if(entry.getKey().equals("#")){
+                //this is anchor node parent dependency nothing to crop
                 return;
             }
 
-            System.out.println("Cropping Results Parent: " + parent + " By Child: " + this);
+            ExecutionNode parent = entry.getValue();
+            log.debug("Cropping Results Parent: {} by child: {}", parent, this);
             String parentLeftName = parent.getEdge().leftName;
             String parentRightName = parent.getEdge().rightName;
 
@@ -126,6 +134,8 @@ public final class ExecutionNode {
             if(parentRightName.equals(rightName)) {
                 parent.getResults().cropByRhsSet(this.getResults().asRhsSet());
             }
+
+            parent.cropParentResults();
         }
     }
 

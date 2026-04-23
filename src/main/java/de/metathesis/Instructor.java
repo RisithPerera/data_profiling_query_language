@@ -4,7 +4,6 @@ import de.metanome.algorithm_integration.AlgorithmConfigurationException;
 import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.executor.min.graph.edge.Edge;
-import de.metathesis.profilers.INDProfiler2;
 import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.ExecutionNode;
@@ -112,7 +111,7 @@ public final class Instructor {
             node.execute();
         }
 
-        Utility.printLog("SCHEDULED", this.pool);
+        log.info(Utility.buildLog("SCHEDULED", this.pool));
 
         List<ExecutionNode> leafNodes = executionGraph.values().stream()
                 .filter(n -> n.getChildren().isEmpty())
@@ -123,7 +122,7 @@ public final class Instructor {
                 .map(ExecutionNode::getFuture)
                 .toArray(CompletableFuture[]::new)
         ).join();
-        Utility.printLog("FINISHED", this.pool);
+        log.info(Utility.buildLog("FINISHED", this.pool));
 
         Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
 
@@ -199,7 +198,7 @@ public final class Instructor {
             node.execute();
         }
 
-        Utility.printLog("SCHEDULED", this.pool);
+        log.info(Utility.buildLog("SCHEDULED", this.pool));
 
         List<ExecutionNode> leafNodes = executionGraph.values().stream()
                 .filter(n -> n.getChildren().isEmpty())
@@ -210,7 +209,7 @@ public final class Instructor {
                 .map(ExecutionNode::getFuture)
                 .toArray(CompletableFuture[]::new)
         ).join();
-        Utility.printLog("FINISHED", this.pool);
+        log.info(Utility.buildLog("FINISHED", this.pool));
 
         Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
 

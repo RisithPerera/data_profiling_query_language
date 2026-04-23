@@ -178,7 +178,7 @@ public class AttributeBitSet{
     public String toString() {
         Relation relation = this.preprocessor.getRelation(this.relationIndex);
 
-        String[] columns = this.attributeIndexSet.stream()
+        String[] columns = Arrays.stream(this.attributeIndexArray)
                 .mapToObj(i -> relation.getAttributeNames()[i])
                 .toArray(String[]::new);
 

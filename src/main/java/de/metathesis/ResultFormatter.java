@@ -57,10 +57,9 @@ public class ResultFormatter {
 
         ColumnIdentifier[] cdList = new ColumnIdentifier[abs.size()];
 
-        BitSet bs = abs.getAttributeIndexSet();
         int outIdx = 0;
 
-        for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
+        for (int i : abs.getAttributeIndexArray()) {
             cdList[outIdx++] = new ColumnIdentifier(relName, cols[i]);
         }
 

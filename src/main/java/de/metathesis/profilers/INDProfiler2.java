@@ -18,8 +18,6 @@ import java.util.concurrent.ExecutorService;
 public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
     private static final Logger log = LogManager.getLogger(INDProfiler2.class);
 
-    private final INDUnaryCover unaryCover = new INDUnaryCover();
-
     public INDProfiler2(ExecutorService executor) {
         super(executor);
     }
@@ -47,8 +45,8 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
     }
 
     private INDResult profileFreeFree(int[] lhsRelations, int[] rhsRelations, int level) {
-
         INDResult result = new INDResult();
+        if(level == 0) return result;
 
         for (int lhsRel : lhsRelations) {
             Relation lhsRelation = preprocessor.getRelation(lhsRel);
@@ -60,10 +58,10 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
                 Relation rhsRelation = preprocessor.getRelation(rhsRel);
 
                 // compute unary INDs for this pair if not already done
-                unaryCover.ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 // flatten unary bindings for this pair into (lhsCol, rhsCol) pairs
-                List<int[]> unaryBindings = unaryCover.getBindings(lhsRel, rhsRel);
+                List<int[]> unaryBindings = this.preprocessor.getIndUnaryCover().getBindings(lhsRel, rhsRel);
 
                 if (level == 1) {
                     for (int[] binding : unaryBindings) {
@@ -85,6 +83,7 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
         return result;
     }
 
+    //Checked
     private INDResult profileFreeLock(int[] lhsRelations, ObjectOpenHashSet<AttributeBitSet> rhsAttrs) {
         INDResult result = new INDResult();
 
@@ -99,10 +98,10 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
                 if (lhsRel == rhsRel && rhsCols.length > lhsRelation.getNumOfAttributes() / 2) continue;
 
                 // ensure unary INDs computed for this pair
-                unaryCover.ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 if (rhsCols.length == 1) {
-                    BitSet lhsCols = unaryCover.getLhsCols(lhsRel, rhsRel, rhsCols[0]);
+                    BitSet lhsCols = this.preprocessor.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[0]);
                     for (int attr = lhsCols.nextSetBit(0); attr >= 0; attr = lhsCols.nextSetBit(attr + 1)) {
                         result.add(new AttributeBitSet(lhsRel, attr), new AttributeBitSet(rhsRel, rhsCols));
                     }
@@ -112,9 +111,9 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
                 // for each rhs position, get valid lhs cols from unary INDs
                 BitSet[] validLhsPerPosition = new BitSet[rhsCols.length];
                 for (int pos = 0; pos < rhsCols.length; pos++) {
-                    validLhsPerPosition[pos] = unaryCover.getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
+                    validLhsPerPosition[pos] = this.preprocessor.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
                     if (validLhsPerPosition[pos].isEmpty()) {
-                        continue outer; // fast exit
+                        continue outer;
                     }
                 }
 
@@ -134,6 +133,7 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
         return result;
     }
 
+    //Checked
     private INDResult profileLockFree(ObjectOpenHashSet<AttributeBitSet> lhsAttrs, int[] rhsRelations){
         INDResult result = new INDResult();
 
@@ -148,10 +148,10 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
                 if (lhsRel == rhsRel && lhsCols.length > lhsRelation.getNumOfAttributes() / 2) continue;
 
                 // ensure unary INDs computed for this pair
-                unaryCover.ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 if(lhsCols.length == 1){
-                    BitSet rhsCols = this.unaryCover.getRhsCols(lhsRel, lhsCols[0], rhsRel);
+                    BitSet rhsCols = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, lhsCols[0], rhsRel);
                     for (int attr = rhsCols.nextSetBit(0); attr >= 0; attr = rhsCols.nextSetBit(attr + 1)) {
                         result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, attr));
                     }
@@ -159,12 +159,11 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
                 }
 
                 // for each lhs position, get valid rhs cols from unary INDs
-                // unaryINDs keyed by rhsCol -> lhsCols, so need reverse lookup here
                 BitSet[] validRhsPerPosition = new BitSet[lhsCols.length];
                 for (int pos = 0; pos < lhsCols.length; pos++) {
-                    validRhsPerPosition[pos] = this.unaryCover.getRhsCols(lhsRel, lhsCols[pos], rhsRel);
+                    validRhsPerPosition[pos] = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, lhsCols[pos], rhsRel);
                     if (validRhsPerPosition[pos].isEmpty()){
-                        continue outer; // fast exit
+                        continue outer;
                     }
                 }
 
@@ -209,10 +208,10 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
                 Relation rhsRelation = preprocessor.getRelation(rhsRel);
 
                 // unary gate — LHS is locked so no permutation, check position by position
-                unaryCover.ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 for (int pos = 0; pos < arity; pos++) {
-                    if (!unaryCover.contains(lhsRel, lhsCols[pos], rhsRel, rhsCols[pos])) {
+                    if (!this.preprocessor.getIndUnaryCover().contains(lhsRel, lhsCols[pos], rhsRel, rhsCols[pos])) {
                         continue outer;
                     }
                 }
@@ -228,123 +227,6 @@ public class INDProfiler2 extends AbstractProfiler<INDRequest, INDResult> {
             }
         }
         return result;
-    }
-
-    private void findLHSForRHS(int[] rhsCols, int rhsRel, int lhsRel, INDResult result){
-
-        int arity = rhsCols.length;
-
-        // for each rhs position, get valid lhs cols from unary INDs
-        BitSet[] validLhsPerPosition = new BitSet[arity];
-        for (int pos = 0; pos < arity; pos++) {
-            validLhsPerPosition[pos] = this.unaryCover.getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
-            if (validLhsPerPosition[pos].isEmpty()) return; // fast exit
-        }
-
-        Relation lhsRelation = preprocessor.getRelation(lhsRel);
-        Relation rhsRelation = preprocessor.getRelation(rhsRel);
-
-        long time = System.currentTimeMillis();
-        String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
-        log.info("Time for buildTuples R:{}, rhsCols: {} time: {}ms", rhsRelation.getIndex(), rhsCols, (System.currentTimeMillis() - time)); //TODO: Here Arity Size1: Needs to Check
-
-        combineLHS(validLhsPerPosition, new int[arity], 0, rhsCols, rhsRel, lhsRel, lhsRelation, rhsTuples, result);
-    }
-
-    private void combineLHS(BitSet[] validPerPos, int[] current, int pos, int[] rhsCols, int rhsRel, int lhsRel,
-                            Relation lhsRelation, String[] rhsTuples, INDResult result) {
-
-        if (pos == current.length) {
-            String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), current);
-            if (isIncluded(lhsTuples, rhsTuples)) {
-                result.add(
-                        new AttributeBitSet(lhsRel, current.clone()),
-                        new AttributeBitSet(rhsRel, rhsCols)
-                );
-            }
-            return;
-        }
-
-        // iterate BitSet instead of IntOpenHashSet
-        for (int lhsCol = validPerPos[pos].nextSetBit(0);
-             lhsCol >= 0;
-             lhsCol = validPerPos[pos].nextSetBit(lhsCol + 1)) {
-
-            boolean duplicate = false;
-            for (int i = 0; i < pos; i++) {
-                if (current[i] == lhsCol) { duplicate = true; break; }
-            }
-            if (duplicate) continue;
-
-            if (lhsRel == rhsRel) {
-                boolean inRhs = false;
-                for (int rc : rhsCols) {
-                    if (rc == lhsCol) { inRhs = true; break; }
-                }
-                if (inRhs) continue;
-            }
-
-            current[pos] = lhsCol;
-            combineLHS(validPerPos, current, pos + 1, rhsCols, rhsRel, lhsRel, lhsRelation, rhsTuples, result);
-        }
-    }
-
-    private void findRHSForLHS(int[] lhsCols, int lhsRel, int rhsRel, INDResult result){
-
-        int arity = lhsCols.length;
-
-        // for each lhs position, get valid rhs cols from unary INDs
-        // unaryINDs keyed by rhsCol -> lhsCols, so need reverse lookup here
-        BitSet[] validRhsPerPosition = new BitSet[arity];
-        for (int pos = 0; pos < arity; pos++) {
-            validRhsPerPosition[pos] = this.unaryCover.getRhsCols(lhsRel, lhsCols[pos], rhsRel);
-            if (validRhsPerPosition[pos].isEmpty()) return; // fast exit
-        }
-
-        Relation lhsRelation = preprocessor.getRelation(lhsRel);
-        Relation rhsRelation = preprocessor.getRelation(rhsRel);
-        String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
-
-        combineRHS(validRhsPerPosition, new int[arity], 0, lhsCols, lhsRel, rhsRel, rhsRelation, lhsTuples, result);
-    }
-
-    private void combineRHS(BitSet[] validPerPos, int[] current, int pos,
-                            int[] lhsCols, int lhsRel, int rhsRel,
-                            Relation rhsRelation, String[] lhsTuples, INDResult result) {
-
-        if (pos == current.length) {
-            String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), current);
-            if (isIncluded(lhsTuples, rhsTuples)) {
-                result.add(
-                        new AttributeBitSet(lhsRel, lhsCols),
-                        new AttributeBitSet(rhsRel, current.clone())
-                );
-            }
-            return;
-        }
-
-        for (int rhsCol = validPerPos[pos].nextSetBit(0);
-             rhsCol >= 0;
-             rhsCol = validPerPos[pos].nextSetBit(rhsCol + 1)) {
-
-            boolean duplicate = false;
-            for (int i = 0; i < pos; i++) {
-                if (current[i] == rhsCol) { duplicate = true; break; }
-            }
-
-            if (duplicate) continue;
-
-            if (lhsRel == rhsRel) {
-                boolean inLhs = false;
-                for (int lc : lhsCols) {
-                    if (lc == rhsCol) { inLhs = true; break; }
-                }
-                if (inLhs) continue;
-            }
-
-            current[pos] = rhsCol;
-            combineRHS(validPerPos, current, pos + 1, lhsCols, lhsRel, rhsRel, rhsRelation, lhsTuples, result);
-        }
     }
 
     private void combineBindings(List<int[]> bindings, int level, int start,

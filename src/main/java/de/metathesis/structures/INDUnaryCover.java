@@ -85,7 +85,7 @@ public class INDUnaryCover {
         int lhsRel = lhsRelation.getIndex();
         int rhsRel = rhsRelation.getIndex();
 
-        log.info("Computing Unary INDs for Lhs Rel:{}, Rhs Rel: {}", lhsRel, rhsRel);
+        log.debug("Computing Unary INDs for Lhs Rel:{}, Rhs Rel: {}", lhsRel, rhsRel);
 
         int lhsNumCols = lhsRelation.getNumOfAttributes();
         int rhsNumCols = rhsRelation.getNumOfAttributes();

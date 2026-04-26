@@ -7,11 +7,13 @@ import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.structures.AttributeBitSet;
+import de.metathesis.structures.INDUnaryCover;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
 import de.metathesis.utils.MemoryUtils;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import lombok.Getter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,6 +32,9 @@ public final class Preprocessor {
     private final Map<Integer, Sampler> samplerMap = new ConcurrentHashMap<>();
     private final Map<Integer, FDValidator> fdValidatorMap = new ConcurrentHashMap<>();
     private final Map<Integer, UCCValidator> uccValidatorMap = new ConcurrentHashMap<>();
+
+    @Getter
+    private final INDUnaryCover indUnaryCover = new INDUnaryCover();
 
     //This structure cache n-ary PLIs temporary and remove least recently used one.
     private final LinkedHashMap<AttributeBitSet, PositionListIndex> pliCache = new LinkedHashMap<>(16, 0.75f, true) {
@@ -245,7 +250,8 @@ public final class Preprocessor {
                 List<String> record = relationalInput.next();
 
                 for (int c = 0; c < numAttributes; c++) {
-                    String value =  record.get(c);
+                    String value = record.get(c);
+                    //columns[c].add((value == null || value.isEmpty() ? this.nullValue : value).intern());
                     columns[c].add(value == null || value.isEmpty() ? this.nullValue : value);
                 }
 

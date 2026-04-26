@@ -24,7 +24,7 @@ public class AttributeBitSet{
 
     private final BitSet attributeIndexSet;
 
-    private int[] attributeIndexArray; //For IND to with different permutations
+    private final int[] attributeIndexArray; //For IND to with different permutations
 
     @Getter
     private final int hashCode; //Cashing Hash for performance
@@ -35,6 +35,8 @@ public class AttributeBitSet{
         this.relationIndex = relationIndex;
         this.attributeIndexSet = new BitSet();
         this.attributeIndexSet.set(columnIndex);
+        this.attributeIndexArray = new int[1];
+        this.attributeIndexArray[0] = columnIndex;
         this.hashCode = computeHash();
     }
 

@@ -64,6 +64,12 @@ public class Sampler {
                 comparator.incrementActiveKey();
             }
 
+            if(relation.isAllColumnUnique()){
+                BitSet emptyAgreeSet = new BitSet();
+                negCover.add(emptyAgreeSet);
+                newNonFds.add(emptyAgreeSet);
+            }
+
             for (PositionListIndex pli : relation.getUnaryPLIs()) {
                 SamplingTask rep = new SamplingTask(pli, numAttributes);
                 rep.runNext(compressedRecords, negCover, newNonFds);

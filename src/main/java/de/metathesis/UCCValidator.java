@@ -144,7 +144,7 @@ public class UCCValidator {
             }
         }
 
-        // All candidates checked without hitting threshold.
+        // All remaining checked without hitting threshold.
         return suggestions.isEmpty() ? null : suggestions;
     }
 

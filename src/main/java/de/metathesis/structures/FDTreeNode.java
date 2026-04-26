@@ -3,9 +3,7 @@ package de.metathesis.structures;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import lombok.Getter;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.List;
+import java.util.*;
 
 /**
  * A node in the positive cover prefix tree.
@@ -83,8 +81,12 @@ public class FDTreeNode {
             current = current.children[attr];
         }
 
-        current.getRhsValidatedFds().or(rhs);
-        current.getRhsCandidateFds().or(rhs);
+        // Only mark bits that are actually owned by this node
+        BitSet toMark = (BitSet) rhs.clone();
+        toMark.and(current.rhsAttributes);
+
+        current.rhsValidatedFds.or(toMark);
+        current.rhsCandidateFds.or(toMark);
     }
 
     public List<ObjectObjectImmutablePair<BitSet, BitSet>> getValidatedFDsAtDepth(int targetDepth) {
@@ -112,7 +114,7 @@ public class FDTreeNode {
 
         if (node.children == null) return;
 
-        // Pass accumulated RHS down but don't add current node's validated FDs yet
+        // Pass accumulated RHS down but don't add current node's confirmed FDs yet
         BitSet newInherited = (BitSet) inheritedRhs.clone();
         newInherited.or(node.rhsValidatedFds);
 
@@ -123,6 +125,141 @@ public class FDTreeNode {
                 lhs.clear(i);
             }
         }
+    }
+
+    public record RhsSearchResult(BitSet lhs, BitSet confirmed, BitSet remaining) {}
+
+    public List<RhsSearchResult> findAllLhsForRhs(BitSet targetRhs) {
+        // collect minimal lhs paths
+        Map<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>> perBitPaths = new LinkedHashMap<>();
+        for (int bit = targetRhs.nextSetBit(0); bit >= 0; bit = targetRhs.nextSetBit(bit + 1)) {
+            List<ObjectObjectImmutablePair<BitSet, Boolean>> paths = new ArrayList<>();
+            collectLhsForSingleRhs(this, new BitSet(numAttributes), bit, targetRhs, paths);
+            if (paths.isEmpty()) return Collections.emptyList();
+            perBitPaths.put(bit, paths);
+        }
+
+        // initialize result with first bit
+        Iterator<Map.Entry<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>>> it = perBitPaths.entrySet().iterator();
+        Map.Entry<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>> first = it.next();
+        int firstBit = first.getKey();
+
+        List<RhsSearchResult> result = new ArrayList<>();
+        for (ObjectObjectImmutablePair<BitSet, Boolean> p : first.getValue()) {
+            BitSet confirmed = new BitSet(numAttributes);
+            BitSet remaining = new BitSet(numAttributes);
+            if (p.right()) confirmed.set(firstBit);
+            else remaining.set(firstBit);
+            result.add(new RhsSearchResult((BitSet) p.left().clone(), confirmed, remaining));
+        }
+
+        // iteratively merge with each subsequent bit
+        while (it.hasNext()) {
+            Map.Entry<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>> entry = it.next();
+            int bit = entry.getKey();
+            List<RhsSearchResult> merged = new ArrayList<>();
+
+            for (RhsSearchResult current : result) {
+                for (ObjectObjectImmutablePair<BitSet, Boolean> next : entry.getValue()) {
+                    BitSet mergedLhs = (BitSet) current.lhs().clone();
+                    mergedLhs.or(next.left());
+
+                    if (isSuperset(mergedLhs, merged)) continue;
+
+                    BitSet mergedConfirmed = (BitSet) current.confirmed().clone();
+                    BitSet mergedRemaining = (BitSet) current.remaining().clone();
+                    if (next.right()) mergedConfirmed.set(bit);
+                    else mergedRemaining.set(bit);
+
+                    merged.add(new RhsSearchResult(mergedLhs, mergedConfirmed, mergedRemaining));
+                }
+            }
+
+            result = minimize(merged);
+        }
+
+        return result;
+    }
+
+    private void collectLhsForSingleRhs(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, List<ObjectObjectImmutablePair<BitSet, Boolean>> result) {
+        // this path has no relevance to rhsBit
+        if (!node.rhsAttributes.get(rhsBit)) return;
+
+        if (node.rhsCandidateFds.get(rhsBit) || node.rhsValidatedFds.get(rhsBit)) {
+            boolean isConfirmed = node.rhsValidatedFds.get(rhsBit);
+            result.add(new ObjectObjectImmutablePair<>((BitSet) currentLhs.clone(), isConfirmed));
+            return; // Once found rhsBit avoid go further on this path to keep only minimal
+        }
+
+        if (node.children == null) return;
+
+        for (int i = 0; i < node.children.length; i++) {
+            //skip paths containing targetRhs bits because lhs path should not contain given target rhs
+            if (!targetRhs.get(i) && node.children[i] != null) {
+                currentLhs.set(i);
+                collectLhsForSingleRhs(node.children[i], currentLhs, rhsBit, targetRhs, result);
+                currentLhs.clear(i);
+            }
+        }
+    }
+
+    private boolean isSuperset(BitSet lhs, List<RhsSearchResult> list) {
+        for (RhsSearchResult r : list) {
+            BitSet copy = (BitSet) r.lhs().clone();
+            copy.andNot(lhs);
+            if (copy.isEmpty()) return true;
+        }
+        return false;
+    }
+
+    private List<RhsSearchResult> minimize(List<RhsSearchResult> list) {
+        List<RhsSearchResult> minimal = new ArrayList<>();
+        for (RhsSearchResult candidate : list) {
+            if (!isSuperset(candidate.lhs(), minimal)) {
+                minimal.removeIf(r -> {
+                    BitSet copy = (BitSet) candidate.lhs().clone();
+                    copy.andNot(r.lhs());
+                    return copy.isEmpty();
+                });
+                minimal.add(candidate);
+            }
+        }
+        return minimal;
+    }
+
+    public ObjectObjectImmutablePair<BitSet, BitSet> searchByLhs(BitSet lhs, BitSet rhs) {
+        BitSet confirmed = new BitSet(numAttributes);
+        BitSet possible = new BitSet(numAttributes);
+
+        for (int rhsBit = rhs.nextSetBit(0); rhsBit >= 0; rhsBit = rhs.nextSetBit(rhsBit + 1)) {
+
+            // Check exact path + all generalizations for this rhs bit
+            List<BitSet> generalizations = getFdAndGeneralizations(lhs, rhsBit);
+
+            for(BitSet genLhs : generalizations){
+                // Check if any of these are validated or just candidates
+                boolean isValidated = isValidatedAt(genLhs, rhsBit);
+
+                if (isValidated) {
+                    confirmed.set(rhsBit);
+                } else {
+                    possible.set(rhsBit);
+                }
+            }
+        }
+
+        return new ObjectObjectImmutablePair<>(confirmed, possible);
+    }
+
+    private boolean isValidatedAt(BitSet lhs, int rhs) {
+        FDTreeNode node = this;
+        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
+            if (node.children == null || node.children[attr] == null){
+                return false;
+            }
+            node = node.children[attr];
+        }
+        return node.rhsValidatedFds.get(rhs);
     }
 
     public List<BitSet> getFdAndGeneralizations(BitSet lhs, int rhs) {

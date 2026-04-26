@@ -66,12 +66,12 @@ public class FDValidator {
     public Map<BitSet, List<BitSet>> validateDirectly(ExecutorService executor, int level) throws ExecutionException, InterruptedException {
         Map<BitSet, List<BitSet>> foundFds = new HashMap<>();
 
-        //Generate all the level candidates
+        //Generate all the level remaining
         BitSet[] levelCandidates = Utility.generateApriori(this.numAttributes, level);
         List<Future<ValidationResult>> levelFutures = new ArrayList<>();
 
         for (BitSet lhs : levelCandidates) {
-            // Start with all non-LHS attributes as RHS candidates
+            // Start with all non-LHS attributes as RHS remaining
             BitSet rhs = new BitSet(numAttributes);
             rhs.set(0, numAttributes);
             rhs.andNot(lhs); // remove LHS attributes
@@ -251,7 +251,8 @@ public class FDValidator {
 
     public Set<IntIntImmutablePair> validateFreeLock(ExecutorService executor,
                                                      NegativeCover newNegativeCover,
-                                                     List<BitSet> rhsCandidateList) throws ExecutionException, InterruptedException {
+                                                     Set<BitSet> rhsCandidateList,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
         //For FDs when lhs side is Free we have to check all levels for Locked Rhs.
@@ -307,6 +308,72 @@ public class FDValidator {
         return null;
     }
 
+    public Set<IntIntImmutablePair> validateFreeLock2(ExecutorService executor,
+                                                     NegativeCover newNegativeCover,
+                                                     Set<BitSet> rhsCandidateList,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) throws ExecutionException, InterruptedException {
+        inductPositiveCover(newNegativeCover);
+
+        Set<IntIntImmutablePair> suggestions = new HashSet<>();
+        int validFDCount   = 0;
+        int invalidFDCount = 0;
+
+        Iterator<BitSet> iterator = rhsCandidateList.iterator();
+
+        while (iterator.hasNext()) {
+            BitSet rhsCandidate = iterator.next();
+            List<FDTreeNode.RhsSearchResult> candidates = this.root.findAllLhsForRhs(rhsCandidate);
+
+            for(FDTreeNode.RhsSearchResult candidate : candidates){
+                BitSet lhsCandidate = candidate.lhs();
+                BitSet confirmedRhs = candidate.confirmed();
+                BitSet remainingRhs = candidate.remaining();
+
+                if(rhsCandidate.equals(confirmedRhs)){
+                    confirmList.add(new ObjectObjectImmutablePair<>(lhsCandidate, rhsCandidate));
+                    continue;
+                }
+
+                // Validate remaining bits directly
+                ValidationTask task = new ValidationTask(lhsCandidate, remainingRhs);
+                ValidationResult result = task.call();
+
+                BitSet validRhs   = result.validRhs();
+                BitSet invalidRhs = (BitSet) remainingRhs.clone();
+                invalidRhs.andNot(validRhs);
+
+                validFDCount   += validRhs.cardinality();
+                invalidFDCount += invalidRhs.cardinality();
+
+                if (!validRhs.isEmpty()) {
+                    this.root.markAsValidate(lhsCandidate, validRhs);
+                    confirmedRhs.or(validRhs);
+
+                    if(rhsCandidate.equals(confirmedRhs)){
+                        confirmList.add(new ObjectObjectImmutablePair<>(lhsCandidate, rhsCandidate));
+                        continue;
+                    }
+                }
+
+                if (!invalidRhs.isEmpty()) {
+                    for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
+                        specializePositiveCover(lhsCandidate, attr);
+                    }
+
+                    suggestions.addAll(result.suggestions());
+                }
+            }
+
+            iterator.remove();
+
+            if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
+                return suggestions;
+            }
+        }
+
+        return null;
+    }
+
     public Set<IntIntImmutablePair> validateLockFree(NegativeCover newNegativeCover,
                                                      List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList,
                                                      List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) {
@@ -325,7 +392,7 @@ public class FDValidator {
             BitSet rhs = candidate.right();
 
             // Check posCover status first
-            ObjectObjectImmutablePair<BitSet, BitSet> status = checkStatus(lhs, rhs);
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.searchByLhs(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
 
@@ -452,7 +519,7 @@ public class FDValidator {
     private void collectAtDepth(FDTreeNode node, BitSet currentLhs, BitSet inheritedRhs, int depth, int targetDepth, Map<BitSet, BitSet> candidates) {
 
         if (depth == targetDepth) {
-            // Merge node's own unvalidated candidates with inherited
+            // Merge node's own unvalidated remaining with inherited
             BitSet rhs = (BitSet) node.getRhsCandidateFds().clone();
             rhs.andNot(node.getRhsValidatedFds());
             rhs.or(inheritedRhs);
@@ -465,7 +532,7 @@ public class FDValidator {
         }
 
         // Compute inherited RHS for children:
-        // current node's unvalidated candidates pass down
+        // current node's unvalidated remaining pass down
         BitSet parentInherited = (BitSet) node.getRhsCandidateFds().clone();
         parentInherited.andNot(node.getRhsValidatedFds());
         parentInherited.or(inheritedRhs);
@@ -531,54 +598,6 @@ public class FDValidator {
         }
 
         return result;
-    }
-
-    /**
-     * Returns null if any rhs bit is missing from rhsAttributes along the path — not valid.
-     * Returns a BitSet of rhs bits confirmed via rhsValidatedFds along the path.
-     */
-    private ObjectObjectImmutablePair<BitSet, BitSet> checkStatus(BitSet lhs, BitSet rhs) {
-        BitSet remaining = (BitSet) rhs.clone();
-
-        FDTreeNode current = root;
-
-        // Narrow by each node's rhsAttributes as we walk down
-        remaining.and(current.getRhsAttributes());
-
-        BitSet confirmed = (BitSet) remaining.clone();
-        confirmed.and(current.getRhsValidatedFds());
-        remaining.andNot(confirmed);
-
-        if (remaining.isEmpty()){
-            return new ObjectObjectImmutablePair<>(confirmed, remaining);
-        }
-
-        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
-
-            if (current.getChildren() == null || current.getChildren()[attr] == null) {
-                remaining.and(current.getRhsCandidateFds());
-                return new ObjectObjectImmutablePair<>(confirmed, remaining);
-            }
-
-            current = current.getChildren()[attr];
-
-            remaining.and(current.getRhsAttributes());
-            if (remaining.isEmpty()){
-                return new ObjectObjectImmutablePair<>(confirmed, remaining);
-            }
-
-            BitSet newlyConfirmed = (BitSet) remaining.clone();
-            newlyConfirmed.and(current.getRhsValidatedFds());
-            confirmed.or(newlyConfirmed);
-            remaining.andNot(newlyConfirmed);
-
-            if (remaining.isEmpty()){
-                return new ObjectObjectImmutablePair<>(confirmed, remaining);
-            }
-        }
-
-        remaining.and(current.getRhsCandidateFds());
-        return new ObjectObjectImmutablePair<>(confirmed, remaining);
     }
 
     private void addCandidate(Map<BitSet, BitSet> map, BitSet lhs, BitSet rhs) {

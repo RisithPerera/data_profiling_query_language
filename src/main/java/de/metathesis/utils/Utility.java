@@ -189,13 +189,11 @@ public class Utility {
         return filtered.stream().mapToInt(Integer::intValue).toArray();
     }
 
-    public static void printLog(String tag, Executor pool){
-        // 1. Define your executor
+    public static String buildLog(String tag, Executor pool) {
         ThreadPoolExecutor threadPool = (ThreadPoolExecutor) pool;
 
-        // 2. Later in your code, or in a background "Monitor" thread:
-        System.out.printf(
-                "[%-15s] [%2d/%d] Active: %d, Completed: %d, Queue: %d%n",
+        return String.format(
+                "[%-15s] [%2d/%d] Active: %d, Completed: %d, Queue: %d",
                 tag,
                 threadPool.getPoolSize(),
                 threadPool.getMaximumPoolSize(),

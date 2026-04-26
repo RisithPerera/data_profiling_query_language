@@ -7,6 +7,7 @@ import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.ExecutionNode;
+import de.metathesis.structures.ResultTable;
 import de.metathesis.structures.results.FDResult;
 import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.UCCResult;
@@ -211,11 +212,27 @@ public final class Instructor {
         ).join();
         log.info(Utility.buildLog("FINISHED", this.pool));
 
-        Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
+        List<ResultTable> schema = this.resultFormatter.createResultSchema(executionGraph);
 
-        for(Edge edge : orderedEdges){
-            edge.setResults(results.get(edge));
+        if(schema.size() > 1) {
+            ResultTable joinedTable = this.resultFormatter.join(schema.getFirst(), schema.getLast());
+            System.out.println(joinedTable.size());
+            System.out.println(joinedTable);
+        }else{
+            schema.getFirst().toFile("b1_holl.txt");
+            //System.out.println(schema.getFirst());
         }
+
+        System.out.println("---------------------------------------------------------------------");
+        for(ResultTable table : schema){
+            System.out.println("Table: " + table.getColumnNames() +" Size: "+ table.size());
+        }
+
+//        Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
+//
+//        for(Edge edge : orderedEdges){
+//            edge.setResults(results.get(edge));
+//        }
     }
 
     private List<Edge> getEdgeOrder(Map<Edge, Graph.SetMembership> setMembershipMap) {

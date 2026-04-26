@@ -15,9 +15,8 @@ public final class FDResult implements Result<FDResult.FD>{
     public void add(AttributeBitSet lhsBitSet, AttributeBitSet rhsBitSet) {
         assert (lhsBitSet.getRelationIndex() == rhsBitSet.getRelationIndex());
 
-        int index = lhs.indexOf(lhsBitSet);
-        if (index >= 0) {
-            if (rhs.get(index).equals(rhsBitSet)) {
+        for (int i = 0; i < lhs.size(); i++) {
+            if (lhs.get(i).equals(lhsBitSet) && rhs.get(i).equals(rhsBitSet)) {
                 return; // exact pair already exists
             }
         }

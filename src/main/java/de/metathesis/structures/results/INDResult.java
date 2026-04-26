@@ -15,9 +15,8 @@ public final class INDResult implements Result<INDResult.IND>{
     public void add(AttributeBitSet lhsBitSet, AttributeBitSet rhsBitSet) {
         assert (lhsBitSet.size() == rhsBitSet.size());
 
-        int index = lhs.indexOf(lhsBitSet);
-        if (index >= 0) {
-            if (rhs.get(index).equals(rhsBitSet)) {
+        for (int i = 0; i < lhs.size(); i++) {
+            if (lhs.get(i).equals(lhsBitSet) && rhs.get(i).equals(rhsBitSet)) {
                 return; // exact pair already exists
             }
         }

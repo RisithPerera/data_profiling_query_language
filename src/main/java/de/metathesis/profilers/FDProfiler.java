@@ -20,7 +20,6 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
@@ -177,7 +176,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
                 do {
                     NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
-                    suggestions = validator.validateFreeLock2(this.executor, newNonFds, rhsCandidateList, confirmedFDList);
+                    suggestions = validator.validateFreeLock(this.executor, newNonFds, rhsCandidateList, confirmedFDList);
                 } while (suggestions != null);
 
                 for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {
@@ -185,17 +184,6 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                     AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, confirmedPair.right());
                     result.add(lhsAbs, rhsAbs);
                 }
-
-//                Map<BitSet, List<BitSet>> results = validator.collectResults(level);
-//
-//                for (Map.Entry<BitSet, List<BitSet>> entry : results.entrySet()) {
-//                    AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, entry.getKey());
-//
-//                    for (BitSet lhs : entry.getValue()) {
-//                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhs);
-//                        result.add(lhsAbs, rhsAbs);
-//                    }
-//                }
             }catch (ExecutionException | InterruptedException e){
                 throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "at level: " + 0, e);
             }
@@ -203,42 +191,6 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         }
 
         return result;
-    }
-
-    private FDResult profileCCLocked(int[] lhsRelationIndexes,
-                                    ObjectOpenHashSet<AttributeBitSet> rhsAttributes,
-                                    int level) {
-        FDResult result = new FDResult();
-
-        for (AttributeBitSet rhsAbs : rhsAttributes) {
-            PositionListIndex rhsPli = this.preprocessor.getPLI(rhsAbs);
-
-            for(int lhsRelationIndex : lhsRelationIndexes) {
-                if(lhsRelationIndex != rhsAbs.getRelationIndex()){ //Relation Matching
-                    continue;
-                }
-
-                AttributeBitSet[] currentLevel = this.preprocessor.generateApriori(lhsRelationIndex, level);
-
-                for (AttributeBitSet lhsAbs : currentLevel) {
-                    if(lhsAbs.equals(rhsAbs) || rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
-                        continue;
-                    }
-
-                    PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-                    if(lhsPli.isUnique()){
-                        //TODO:Avoiding unique LHS, Needs to discuss this team
-                        continue;
-                    }
-
-                    if(isFD(lhsPli, rhsPli)){
-                        result.add(lhsPli.getAttributeSet(), rhsPli.getAttributeSet());
-                    }
-                }
-            }
-        }
-
-        return  result;
     }
 
     //Not Check
@@ -280,25 +232,6 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
         //If the rhsPli does not split any partitions of the lhsPli, the FD is valid!
         return lhsPli.getClusters().equals(intersectedPli.getClusters());
-    }
-
-    private boolean isContainSubsetOf(ObjectOpenHashSet<FDResult.FD> absSet, AttributeBitSet lhsAbs, AttributeBitSet rhsAbs){
-        for(FDResult.FD fd : absSet){
-            if(fd.rhs.equals(rhsAbs) && fd.lhs.isSubsetOf(lhsAbs)){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String toAttrNames(BitSet indices, String[] headers) {
-        if (indices.isEmpty()) return "[]";
-
-        StringBuilder sb = new StringBuilder("[");
-        indices.stream().forEach(i -> sb.append(headers[i]).append(","));
-        sb.deleteCharAt(sb.length() - 1);
-        sb.append("]");
-        return sb.toString();
     }
 }
 

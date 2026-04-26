@@ -32,7 +32,6 @@ public final class Preprocessor {
     private final Map<Integer, Sampler> samplerMap = new ConcurrentHashMap<>();
     private final Map<Integer, FDValidator> fdValidatorMap = new ConcurrentHashMap<>();
     private final Map<Integer, UCCValidator> uccValidatorMap = new ConcurrentHashMap<>();
-
     @Getter
     private final INDUnaryCover indUnaryCover = new INDUnaryCover();
 
@@ -130,39 +129,6 @@ public final class Preprocessor {
             BigInteger c = mask.and(mask.negate());
             BigInteger r = mask.add(c);
             mask = r.or(r.xor(mask).shiftRight(2).divide(c));
-        }
-
-        return result;
-    }
-
-    public List<BitSet> produceSubSets(BitSet superSet, int level) {
-        int[] bits = superSet.stream().toArray();
-        int n = bits.length;
-
-        if (level > n) throw new IllegalArgumentException(
-                "Level " + level + " exceeds superSet size " + n
-        );
-
-        if (level == n) return List.of((BitSet) superSet.clone());
-
-        List<BitSet> result = new ArrayList<>();
-
-        int mask = (1 << level) - 1;
-        int limit = (1 << n);
-
-        while (mask < limit) {
-            BitSet subset = new BitSet();
-            for (int i = 0; i < n; i++) {
-                if ((mask & (1 << i)) != 0) {
-                    subset.set(bits[i]); // map back to actual bit positions
-                }
-            }
-            result.add(subset);
-
-            // Gosper's hack
-            int c = mask & (-mask);
-            int r = mask + c;
-            mask = (((r ^ mask) >> 2) / c) | r;
         }
 
         return result;

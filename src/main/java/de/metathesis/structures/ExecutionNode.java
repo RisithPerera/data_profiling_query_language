@@ -1,15 +1,10 @@
 package de.metathesis.structures;
 
 import de.metaserve.executor.min.graph.edge.Edge;
-import de.metathesis.Instructor;
-import de.metathesis.ResultFormatter;
-import de.metathesis.utils.Utility;
 import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.structures.requests.SearchSpace;
-import de.metathesis.structures.results.FDResult;
-import de.metathesis.structures.results.INDResult;
 import de.metathesis.structures.results.Result;
-import de.metathesis.structures.results.UCCResult;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
 import org.apache.logging.log4j.LogManager;
@@ -89,21 +84,6 @@ public final class ExecutionNode {
         }
     }
 
-    private void showResults(){
-        List<de.metanome.algorithm_integration.results.Result> resultList = new ArrayList<>();
-
-        for(Object x:  this.getResults()) {
-            if(x instanceof UCCResult.UCC ucc){
-                resultList.add(ResultFormatter.getInstance().formatUCC(ucc));
-            }else if(x instanceof INDResult.IND ind){
-                resultList.add(ResultFormatter.getInstance().formatIND(ind));
-            }else if(x instanceof FDResult.FD fd){
-                resultList.add(ResultFormatter.getInstance().formatFD(fd));
-            }
-        }
-        System.out.println(resultList);
-    }
-
     private void cropParentResults(){
         for (Map.Entry<String, ExecutionNode> entry : this.parents.entrySet()) {
             if(entry.getKey().equals("#")){
@@ -150,7 +130,6 @@ public final class ExecutionNode {
     @Override
     public String toString() {
         return getNodeId();
-        //return toJson(0);
     }
 
     private String toJson(int indent) {

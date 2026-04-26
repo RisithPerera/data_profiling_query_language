@@ -238,30 +238,4 @@ public class UCCValidator {
             }
         }
     }
-
-//    private ValidationStatus checkStatus(BitSet candidate) {
-//        UCCTreeNode current = this.root;
-//
-//        for (int attr = candidate.nextSetBit(0); attr >= 0; attr = candidate.nextSetBit(attr + 1)) {
-//            if(current.isValidatedUCC()){
-//                return ValidationStatus.VALID;
-//            }
-//
-//            if(current.isCandidateUCC()){
-//                return ValidationStatus.POSSIBLE;
-//            }
-//
-//            if (current.getChildren() == null || current.getChildren()[attr] == null) {
-//                return ValidationStatus.INVALID;
-//            }
-//
-//            current = current.getChildren()[attr];
-//        }
-//
-//        // check the terminal node
-//        if (current.isValidatedUCC()) return ValidationStatus.VALID;
-//        if (current.isCandidateUCC()) return ValidationStatus.POSSIBLE;
-//
-//        return ValidationStatus.INVALID;
-//    }
 }

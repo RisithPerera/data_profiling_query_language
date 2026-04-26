@@ -89,11 +89,6 @@ public class PositionListIndex {
         return res;
     }
 
-    public boolean isEqualClusters(PositionListIndex other) {
-        if (other == null) return false;
-        return this.clusters.equals(other.clusters);
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

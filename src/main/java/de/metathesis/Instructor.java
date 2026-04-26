@@ -125,10 +125,20 @@ public final class Instructor {
         ).join();
         log.info(Utility.buildLog("FINISHED", this.pool));
 
-        Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
+        List<ResultTable> schema = this.resultFormatter.createResultSchema(executionGraph);
 
-        for(Edge edge : orderedEdges){
-            edge.setResults(results.get(edge));
+        if(schema.size() > 1) {
+            ResultTable joinedTable = this.resultFormatter.join(schema.getFirst(), schema.getLast());
+            System.out.println(joinedTable.size());
+            System.out.println(joinedTable);
+        }else{
+            schema.getFirst().toFile("b1_holl.txt");
+            //System.out.println(schema.getFirst());
+        }
+
+        System.out.println("---------------------------------------------------------------------");
+        for(ResultTable table : schema){
+            System.out.println("Table: " + table.getColumnNames() +" Size: "+ table.size());
         }
     }
 
@@ -227,12 +237,6 @@ public final class Instructor {
         for(ResultTable table : schema){
             System.out.println("Table: " + table.getColumnNames() +" Size: "+ table.size());
         }
-
-//        Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = collectResults(executionGraph);
-//
-//        for(Edge edge : orderedEdges){
-//            edge.setResults(results.get(edge));
-//        }
     }
 
     private List<Edge> getEdgeOrder(Map<Edge, Graph.SetMembership> setMembershipMap) {
@@ -282,82 +286,6 @@ public final class Instructor {
         }
 
         throw new RuntimeException("This query does not support at the moment! Query doesnt have a minimal dependency [U,F,I-]");
-    }
-
-    private Map<Edge, List<de.metanome.algorithm_integration.results.Result>> collectResults(Map<String, ExecutionNode> executionGraph) {
-        Map<Edge, List<de.metanome.algorithm_integration.results.Result>> results = new HashMap<>();
-
-        if (executionGraph == null) return results;
-
-        for (ExecutionNode node : executionGraph.values()) {
-            if (!results.containsKey(node.getEdge())) {
-                results.put(node.getEdge(), new ArrayList<>());
-            }
-
-            if(node.getResults().isEmpty()){
-                continue;
-            }
-
-            for(Object x:  node.getResults()) {
-                if(x instanceof UCCResult.UCC ucc){
-                    results.get(node.getEdge()).add(this.resultFormatter.formatUCC(ucc));
-                }else if(x instanceof INDResult.IND ind){
-                    results.get(node.getEdge()).add(this.resultFormatter.formatIND(ind));
-                }else if(x instanceof FDResult.FD fd){
-                    results.get(node.getEdge()).add(this.resultFormatter.formatFD(fd));
-                }
-            }
-        }
-
-        return results;
-    }
-
-    private void printGraph(Map<String, ExecutionNode> executionGraph){
-        for (ExecutionNode node : executionGraph.values()) {
-            System.out.println(node.toString());
-            System.out.println("\tParents: ");
-            for (ExecutionNode parent : node.getParents().values()) {
-                System.out.println("\t\t"+parent.toString());
-            }
-            System.out.println("\tChildren: ");
-            for (ExecutionNode child : node.getChildren()) {
-                System.out.println("\t\t"+child.toString());
-            }
-            System.out.println();
-        }
-    }
-
-    private void collectResultsFromLeaf(ExecutionNode node, Map<String, ObjectOpenHashSet<AttributeBitSet>> accumulated) {
-        if(node.getResults().isEmpty()){
-            return;
-        }
-
-        if(node.getParents().isEmpty()){
-            return;
-        }
-
-        if(!accumulated.containsKey(node.getEdge().leftName) && !accumulated.containsKey(node.getEdge().rightName)){
-            accumulated.put(node.getEdge().leftName, node.getResults().asLhsSet());
-            accumulated.put(node.getEdge().rightName, node.getResults().asRhsSet());
-        }
-
-        if(accumulated.containsKey(node.getEdge().leftName) && !accumulated.containsKey(node.getEdge().rightName)){
-            ObjectOpenHashSet<AttributeBitSet> newVariable =  new ObjectOpenHashSet<>();
-            for(AttributeBitSet abs: accumulated.get(node.getEdge().leftName)){
-                for(AttributeBitSet xx: node.getResults().lhs()){
-                    if(abs.equals(xx)){
-                        System.out.println(abs);
-                    }
-                }
-
-            }
-            accumulated.put(node.getEdge().rightName, newVariable);
-        }
-
-
-        for (ExecutionNode grandParent : node.getParents().values()) {
-            collectResultsFromLeaf(grandParent, accumulated);
-        }
     }
 
     public void shutdownAndAwaitTermination() {

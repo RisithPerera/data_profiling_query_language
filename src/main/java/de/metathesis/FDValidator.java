@@ -46,7 +46,6 @@ public class FDValidator {
         this.root.getRhsAttributes().set(0, numAttributes);
     }
 
-
     private class ValidationTask implements Callable<ValidationResult> {
         private final BitSet lhs;
         private final BitSet rhs;
@@ -115,8 +114,8 @@ public class FDValidator {
             BitSet lhs,
             BitSet rhs,
             BitSet validRhs,
-            Set<IntIntImmutablePair> suggestions) {
-    }
+            Set<IntIntImmutablePair> suggestions
+    ) {}
 
     public Set<IntIntImmutablePair> validateFreeFree(ExecutorService executor,
                                                      NegativeCover newNegativeCover,
@@ -172,8 +171,7 @@ public class FDValidator {
         return null;
     }
 
-    public Set<IntIntImmutablePair> validateFreeLock(ExecutorService executor,
-                                                     NegativeCover newNegativeCover,
+    public Set<IntIntImmutablePair> validateFreeLock(NegativeCover newNegativeCover,
                                                      Set<BitSet> rhsCandidateList,
                                                      List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
@@ -255,7 +253,6 @@ public class FDValidator {
             BitSet lhs = candidate.left();
             BitSet rhs = candidate.right();
 
-            // Check posCover status first
             ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.searchByLhs(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
@@ -307,8 +304,79 @@ public class FDValidator {
         return (pendingList.isEmpty() && suggestions.isEmpty()) ? null : suggestions;
     }
 
+    public Set<IntIntImmutablePair> validateLockLock(NegativeCover newNegativeCover,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) {
+
+        inductPositiveCover(newNegativeCover);
+
+        Set<IntIntImmutablePair> suggestions = new HashSet<>();
+        int validFDCount   = 0;
+        int invalidFDCount = 0;
+
+        Iterator<ObjectObjectImmutablePair<BitSet, BitSet>> iterator = pendingList.iterator();
+
+        while (iterator.hasNext()) {
+            ObjectObjectImmutablePair<BitSet, BitSet> candidate = iterator.next();
+            BitSet lhs = candidate.left();
+            BitSet rhs = candidate.right();
+
+            // Check posCover status first
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.searchByLhs(lhs, rhs);
+            BitSet confirmedRhs = status.left();
+            BitSet remainingRhs = status.right();
+
+            if (rhs.cardinality() > confirmedRhs.cardinality() + remainingRhs.cardinality()) {
+                //total bits in confirmed and remaining is less than given rhs attribute
+                iterator.remove();
+                continue;
+            }
+
+            if(rhs.equals(confirmedRhs)){
+                confirmList.add(new ObjectObjectImmutablePair<>(lhs, rhs));
+                iterator.remove();
+                continue;
+            }
+
+            // Validate remaining bits directly
+            ValidationTask task = new ValidationTask(lhs, remainingRhs);
+            ValidationResult result = task.call();
+
+            BitSet validRhs   = result.validRhs();
+            BitSet invalidRhs = (BitSet) remainingRhs.clone();
+            invalidRhs.andNot(validRhs);
+
+            validFDCount   += validRhs.cardinality();
+            invalidFDCount += invalidRhs.cardinality();
+
+            if (!validRhs.isEmpty()) {
+                this.root.markAsValidate(lhs, validRhs);
+                confirmedRhs.or(validRhs);
+                if(rhs.equals(confirmedRhs)){
+                    confirmList.add(new ObjectObjectImmutablePair<>(lhs, rhs));
+                }
+            }
+
+            iterator.remove();
+
+            if (!invalidRhs.isEmpty()) {
+                for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
+                    specializePositiveCover(lhs, attr);
+                }
+
+                suggestions.addAll(result.suggestions());
+
+                if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
+                    return suggestions;
+                }
+            }
+        }
+
+        return (pendingList.isEmpty() && suggestions.isEmpty()) ? null : suggestions;
+    }
+
     //Induces the positive cover from a negative cover (agree-sets).
-    public void inductPositiveCover(NegativeCover negCover) {
+    private void inductPositiveCover(NegativeCover negCover) {
         for (int i = negCover.getLevels().size() - 1; i >= 0; i--) { //Iterate in reverse order
             for(BitSet agreeLhs : negCover.getLevels().get(i)){
                 BitSet violatedRhs = (BitSet) agreeLhs.clone();

@@ -3,15 +3,12 @@ package de.metathesis.profilers;
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.FDValidator;
 import de.metathesis.Sampler;
-import de.metathesis.utils.Utility;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.NegativeCover;
-import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.requests.FDRequest;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.results.FDResult;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
@@ -22,8 +19,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
-
-    private final Int2ObjectMap<Map<Integer, List<BitSet>>> confirmedPosCover = new Int2ObjectOpenHashMap<>();
 
     public FDProfiler(ExecutorService executor) {
         super(executor);
@@ -144,7 +139,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         return result;
     }
 
-    //Checking
+    //Checked
     private FDResult profileFreeLock(int[] lhsRelationIndexes, ObjectOpenHashSet<AttributeBitSet> rhsAttributes) {
         FDResult result = new FDResult();
 
@@ -176,7 +171,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
                 do {
                     NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
-                    suggestions = validator.validateFreeLock(this.executor, newNonFds, rhsCandidateList, confirmedFDList);
+                    suggestions = validator.validateFreeLock(newNonFds, rhsCandidateList, confirmedFDList);
                 } while (suggestions != null);
 
                 for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {
@@ -194,44 +189,46 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
     }
 
     //Not Check
-    private FDResult profileLockLock(ObjectOpenHashSet<AttributeBitSet> lhsAttributes,
-                                     ObjectOpenHashSet<AttributeBitSet> rhsAttributes) throws InputIterationException {
+    private FDResult profileLockLock(ObjectOpenHashSet<AttributeBitSet> lhsAttributes, ObjectOpenHashSet<AttributeBitSet> rhsAttributes) {
         FDResult result = new FDResult();
 
-        for(AttributeBitSet lhsAbs : lhsAttributes) {
-            PositionListIndex lhsPli = this.preprocessor.getPLI(lhsAbs);
-            if(lhsPli.isUnique()){
-                //TODO:Avoiding unique LHS, Needs to discuss this team
-                continue;
+        if(lhsAttributes.isEmpty() || rhsAttributes.isEmpty()) return result;
+
+        // Process each relation independently
+        for (AttributeBitSet lhs : lhsAttributes) {
+            int relationIndex = lhs.getRelationIndex();
+
+            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
+            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+
+            // Build pending pairs: lhs -> to all rhs remaining at once
+            List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList = new ArrayList<>();
+            for (AttributeBitSet rhs : rhsAttributes) {
+                if(rhs.getRelationIndex() == relationIndex && !lhs.getAttributeIndexSet().intersects(rhs.getAttributeIndexSet())){
+                    pendingList.add(new ObjectObjectImmutablePair<>(lhs.getAttributeIndexSet(), rhs.getAttributeIndexSet()));
+                }
             }
 
-            for (AttributeBitSet rhsAbs : rhsAttributes) {
-                if(lhsAbs.getRelationIndex() != rhsAbs.getRelationIndex()){ //Relation Matching
-                    continue;
-                }
+            // Track confirmed valid rhs per lhs across rounds
+            List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmedFDList = new ArrayList<>();
 
-                if(lhsAbs.equals(rhsAbs) || rhsAbs.isSubsetOf(lhsAbs)){ //for triviality pruning
-                    continue;
-                }
+            Set<IntIntImmutablePair> suggestions = new HashSet<>();
 
-                PositionListIndex rhsPli = this.preprocessor.getPLI(rhsAbs);
+            do {
+                NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
+                suggestions = validator.validateLockLock(newNonFds, pendingList, confirmedFDList);
+            } while (suggestions != null);
 
-                if(isFD(lhsPli, rhsPli)){
-                    result.add(lhsPli.getAttributeSet(), rhsPli.getAttributeSet());
-                }
+            // Collect results
+            for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {
+                AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, confirmedPair.left());
+                AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, confirmedPair.right());
 
+                result.add(lhsAbs, rhsAbs);
             }
         }
 
         return result;
-    }
-
-    private boolean isFD(PositionListIndex lhsPli, PositionListIndex rhsPli){
-        AttributeBitSet abs = lhsPli.getAttributeSet().union(rhsPli.getAttributeSet());
-        PositionListIndex intersectedPli = this.preprocessor.getPLI(abs);
-
-        //If the rhsPli does not split any partitions of the lhsPli, the FD is valid!
-        return lhsPli.getClusters().equals(intersectedPli.getClusters());
     }
 }
 

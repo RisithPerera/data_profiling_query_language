@@ -26,19 +26,19 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
     @Override
     public FDResult profile(FDRequest input) throws InputIterationException {
-        if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
+        if(input.lhs() instanceof SearchSpace.Free lhs && input.rhs() instanceof SearchSpace.Free rhs) {
             return profileFreeFree(lhs.relations(), rhs.relations(), lhs.level());
         }
 
-        if(input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs){
+        if(input.lhs() instanceof SearchSpace.Free lhs && input.rhs() instanceof SearchSpace.Lock rhs){
             return profileFreeLock(lhs.relations(), rhs.attributes());
         }
 
-        if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs){
+        if(input.lhs() instanceof SearchSpace.Lock lhs && input.rhs() instanceof SearchSpace.Free rhs){
             return profileLockFree(lhs.attributes(), rhs.relations());
         }
 
-        if(input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs){
+        if(input.lhs() instanceof SearchSpace.Lock lhs && input.rhs() instanceof SearchSpace.Lock rhs){
             return profileLockLock(lhs.attributes(), rhs.attributes());
         }
 

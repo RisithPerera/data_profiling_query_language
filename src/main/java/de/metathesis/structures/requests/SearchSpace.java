@@ -7,8 +7,8 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  * Represents a closed set of valid search space variants.
  * <p>
  * Sealing guarantees that a search space is either:
- *  - CC: defined by relations and a level (unlocked, generated space), or
- *  - Locked: defined by a fixed set of attribute combinations.
+ *  - Free: defined by relations and a specific level (unlocked, generated space), or
+ *  - Lock: defined by a fixed set of attribute combinations.
  * <p>
  * This removes illegal state combinations, eliminates boolean flags and null checks,
  * and enables exhaustive handling via pattern matching at compile time.
@@ -17,9 +17,9 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
  * Date: 2025-12-31
  */
 
-public sealed interface SearchSpace permits SearchSpace.CC, SearchSpace.Locked {
+public sealed interface SearchSpace permits SearchSpace.Free, SearchSpace.Lock {
 
-    record CC(int[] relations, int level) implements SearchSpace {}
+    record Free(int[] relations, int level) implements SearchSpace {}
 
-    record Locked(ObjectOpenHashSet<AttributeBitSet> attributes) implements SearchSpace {}
+    record Lock(ObjectOpenHashSet<AttributeBitSet> attributes) implements SearchSpace {}
 }

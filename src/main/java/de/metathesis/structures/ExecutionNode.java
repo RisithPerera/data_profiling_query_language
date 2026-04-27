@@ -78,9 +78,9 @@ public final class ExecutionNode {
 
             //If isLockedWithLhs True then take lhs attributeSet list otherwise get rhs attributeSet list
             ObjectOpenHashSet<AttributeBitSet> lhsLockedSpace = isLockedWithLhs ? nodeResults.asLhsSet() : nodeResults.asRhsSet();
-            return new SearchSpace.Locked(lhsLockedSpace);
+            return new SearchSpace.Lock(lhsLockedSpace);
         }else{
-            return new SearchSpace.CC(this.relationMap.get(variable), this.level);
+            return new SearchSpace.Free(this.relationMap.get(variable), this.level);
         }
     }
 

@@ -50,7 +50,7 @@ public class BinaryDependencyTest {
             System.out.println("#Candidates: " + query.getMetaData().getNumberOfCandidates());
             System.out.println("#Rows: " + resultSize);
         });
-        Preprocessor.getInstance().clearAllMaps();
+        Preprocessor.getInstance().clear();
     }
 
     @Test

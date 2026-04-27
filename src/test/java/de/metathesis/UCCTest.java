@@ -1,7 +1,5 @@
 package de.metathesis;
 
-import de.metanome.algorithm_integration.AlgorithmConfigurationException;
-import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metaserve.util.exceptions.TablesDiscoveryException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
@@ -9,6 +7,7 @@ import de.metathesis.profilers.UCCProfiler;
 import de.metathesis.structures.requests.SearchSpace;
 import de.metathesis.structures.requests.UCCRequest;
 import de.metathesis.structures.results.UCCResult;
+import de.metathesis.utils.Utility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,7 +53,7 @@ public class UCCTest {
             //Filter Relations based on the column size and level
             final int[] lhsRelationIndexes = Utility.filterByLevel(relationIndexMap.get("X"), relationSizesMap.get("X"), level);
 
-            SearchSpace lhs = new SearchSpace.CC(lhsRelationIndexes, level);
+            SearchSpace lhs = new SearchSpace.Free(lhsRelationIndexes, level);
             UCCResult result = uccProfiler.profile(new UCCRequest(lhs));
 
             System.out.println("--------- Level: " + level + " Result Size: " + result.size());

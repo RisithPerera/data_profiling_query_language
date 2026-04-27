@@ -24,19 +24,19 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
     @Override
     public INDResult profile(INDRequest input) throws InputIterationException {
 
-        if (input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.CC rhs) {
+        if (input.lhs() instanceof SearchSpace.Free lhs && input.rhs() instanceof SearchSpace.Free rhs) {
             return profileFreeFree(lhs.relations(), rhs.relations(), lhs.level());
         }
 
-        if (input.lhs() instanceof SearchSpace.CC lhs && input.rhs() instanceof SearchSpace.Locked rhs) {
+        if (input.lhs() instanceof SearchSpace.Free lhs && input.rhs() instanceof SearchSpace.Lock rhs) {
             return profileFreeLock(lhs.relations(), rhs.attributes());
         }
 
-        if (input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.CC rhs) {
+        if (input.lhs() instanceof SearchSpace.Lock lhs && input.rhs() instanceof SearchSpace.Free rhs) {
             return profileLockFree(lhs.attributes(), rhs.relations());
         }
 
-        if (input.lhs() instanceof SearchSpace.Locked lhs && input.rhs() instanceof SearchSpace.Locked rhs) {
+        if (input.lhs() instanceof SearchSpace.Lock lhs && input.rhs() instanceof SearchSpace.Lock rhs) {
             return profileLockLock(lhs.attributes(), rhs.attributes());
         }
 
@@ -184,6 +184,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         return result;
     }
 
+    //Not Check
     private INDResult profileLockLock(ObjectOpenHashSet<AttributeBitSet> lhsAttrs, ObjectOpenHashSet<AttributeBitSet> rhsAttrs) {
 
         INDResult result = new INDResult();
@@ -227,6 +228,8 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         }
         return result;
     }
+
+    /* ------------------- Utility Methods ------------------- */
 
     private void combineBindings(List<int[]> bindings, int level, int start,
                                  int[] lhsCols, int[] rhsCols, int pos,
@@ -287,11 +290,6 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
             combineBindings(bindings, level, i + 1, lhsCols, rhsCols, pos + 1, lhsRel, rhsRel, lhsRelation, rhsRelation, result);
         }
     }
-
-    // Calculate all unary INDs between given two tables
-
-
-    /* ------------------- Utility Methods ------------------- */
 
     // build tuples for an ordered int[] of cols (not BitSet — preserves permutation order)
     private String[] buildTuples(String[][] columns, int[] orderedCols) {

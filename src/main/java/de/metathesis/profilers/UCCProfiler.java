@@ -24,18 +24,18 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
     @Override
     public UCCResult profile(UCCRequest input) throws InputIterationException {
 
-        if (input.lhs() instanceof SearchSpace.CC cc) {
-            return profileCC(cc.relations(), cc.level());
+        if (input.lhs() instanceof SearchSpace.Free free) {
+            return profileFree(free.relations(), free.level());
         }
 
-        if (input.lhs() instanceof SearchSpace.Locked lhs) {
+        if (input.lhs() instanceof SearchSpace.Lock lhs) {
             return profileLock(lhs.attributes());
         }
 
         throw new IllegalArgumentException("Unsupported UCCRequest");
     }
 
-    private UCCResult profileCC(int[] lhsRelationIndexes, int level) {
+    private UCCResult profileFree(int[] lhsRelationIndexes, int level) {
         UCCResult result = new UCCResult();
 
         for (int relationIndex : lhsRelationIndexes) {

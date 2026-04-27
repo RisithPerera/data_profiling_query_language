@@ -5,14 +5,9 @@ import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.profilers.ProfilerFactory;
-import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.ExecutionNode;
 import de.metathesis.structures.ResultTable;
-import de.metathesis.structures.results.FDResult;
-import de.metathesis.structures.results.INDResult;
-import de.metathesis.structures.results.UCCResult;
 import de.metathesis.utils.Utility;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

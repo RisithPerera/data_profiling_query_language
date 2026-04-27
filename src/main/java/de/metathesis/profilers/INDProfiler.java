@@ -1,11 +1,12 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metathesis.profilers.requests.INDRequest;
+import de.metathesis.profilers.requests.SearchSpace;
+import de.metathesis.profilers.results.INDResult;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.Relation;
-import de.metathesis.structures.requests.INDRequest;
-import de.metathesis.structures.requests.SearchSpace;
-import de.metathesis.structures.results.INDResult;
+
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.apache.logging.log4j.LogManager;

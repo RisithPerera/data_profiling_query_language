@@ -2,8 +2,8 @@ package de.metathesis.structures;
 
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metathesis.profilers.ProfilerFactory;
-import de.metathesis.structures.requests.SearchSpace;
-import de.metathesis.structures.results.Result;
+import de.metathesis.profilers.requests.SearchSpace;
+import de.metathesis.profilers.results.Result;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;

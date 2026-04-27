@@ -1,5 +1,6 @@
-package de.metathesis;
+package de.metathesis.profilers.sampling;
 
+import de.metathesis.profilers.structures.NegativeCover;
 import de.metathesis.structures.*;
 import de.metathesis.utils.MemoryUtils;
 import de.metathesis.utils.Utility;

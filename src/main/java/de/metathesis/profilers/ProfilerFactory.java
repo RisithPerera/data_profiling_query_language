@@ -4,11 +4,11 @@ import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
-import de.metathesis.structures.requests.FDRequest;
-import de.metathesis.structures.requests.INDRequest;
-import de.metathesis.structures.requests.SearchSpace;
-import de.metathesis.structures.requests.UCCRequest;
-import de.metathesis.structures.results.Result;
+import de.metathesis.profilers.requests.FDRequest;
+import de.metathesis.profilers.requests.INDRequest;
+import de.metathesis.profilers.requests.SearchSpace;
+import de.metathesis.profilers.requests.UCCRequest;
+import de.metathesis.profilers.results.Result;
 import lombok.Getter;
 
 import java.util.concurrent.CompletableFuture;

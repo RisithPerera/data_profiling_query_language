@@ -1,22 +1,17 @@
 package de.metathesis;
 
-import de.metanome.algorithm_integration.ColumnCombination;
-import de.metanome.algorithm_integration.ColumnIdentifier;
-import de.metanome.algorithm_integration.ColumnPermutation;
-import de.metanome.algorithm_integration.results.InclusionDependency;
-import de.metanome.algorithm_integration.results.MultivaluedDependency;
-import de.metanome.algorithm_integration.results.UniqueColumnCombination;
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
+import de.metathesis.profilers.results.FDResult;
+import de.metathesis.profilers.results.INDResult;
+import de.metathesis.profilers.results.Result;
+import de.metathesis.profilers.results.UCCResult;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.ExecutionNode;
 import de.metathesis.structures.ResultTable;
-import de.metathesis.structures.results.FDResult;
-import de.metathesis.structures.results.INDResult;
-import de.metathesis.structures.results.Result;
-import de.metathesis.structures.results.UCCResult;
+
 
 import java.util.*;
 

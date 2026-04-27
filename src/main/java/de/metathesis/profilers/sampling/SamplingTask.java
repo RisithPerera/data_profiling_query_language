@@ -1,5 +1,7 @@
-package de.metathesis.structures;
+package de.metathesis.profilers.sampling;
 
+import de.metathesis.profilers.structures.NegativeCover;
+import de.metathesis.structures.PositionListIndex;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;

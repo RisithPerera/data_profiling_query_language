@@ -1,7 +1,7 @@
-package de.metathesis;
+package de.metathesis.profilers.validators;
 
-import de.metathesis.structures.FDTreeNode;
-import de.metathesis.structures.NegativeCover;
+import de.metathesis.profilers.structures.FDTreeNode;
+import de.metathesis.profilers.structures.NegativeCover;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
 import de.metathesis.utils.Utility;

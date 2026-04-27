@@ -1,4 +1,4 @@
-package de.metathesis.structures.requests;
+package de.metathesis.profilers.requests;
 
 public interface Request {
     SearchSpace lhs();

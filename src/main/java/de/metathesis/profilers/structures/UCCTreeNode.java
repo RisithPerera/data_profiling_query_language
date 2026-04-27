@@ -1,4 +1,4 @@
-package de.metathesis.structures;
+package de.metathesis.profilers.structures;
 
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;

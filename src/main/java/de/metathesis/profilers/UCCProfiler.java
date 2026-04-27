@@ -1,13 +1,13 @@
 package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
-import de.metathesis.Sampler;
-import de.metathesis.UCCValidator;
+import de.metathesis.profilers.requests.SearchSpace;
+import de.metathesis.profilers.requests.UCCRequest;
+import de.metathesis.profilers.results.UCCResult;
+import de.metathesis.profilers.sampling.Sampler;
+import de.metathesis.profilers.validators.UCCValidator;
 import de.metathesis.structures.AttributeBitSet;
-import de.metathesis.structures.NegativeCover;
-import de.metathesis.structures.requests.SearchSpace;
-import de.metathesis.structures.requests.UCCRequest;
-import de.metathesis.structures.results.UCCResult;
+import de.metathesis.profilers.structures.NegativeCover;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 

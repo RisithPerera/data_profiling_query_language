@@ -1,4 +1,4 @@
-package de.metathesis.structures.requests;
+package de.metathesis.profilers.requests;
 
 import de.metathesis.structures.AttributeBitSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;

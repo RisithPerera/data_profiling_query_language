@@ -1,5 +1,6 @@
-package de.metathesis.structures;
+package de.metathesis.profilers.structures;
 
+import de.metathesis.structures.Relation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

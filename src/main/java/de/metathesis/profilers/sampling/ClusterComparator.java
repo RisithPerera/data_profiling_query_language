@@ -1,4 +1,4 @@
-package de.metathesis.structures;
+package de.metathesis.profilers.sampling;
 
 import java.util.Comparator;
 

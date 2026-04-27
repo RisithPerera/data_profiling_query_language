@@ -2,8 +2,9 @@ package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.Preprocessor;
-import de.metathesis.structures.requests.Request;
-import de.metathesis.structures.results.Result;
+
+import de.metathesis.profilers.requests.Request;
+import de.metathesis.profilers.results.Result;
 import lombok.Getter;
 
 import java.util.concurrent.CompletableFuture;

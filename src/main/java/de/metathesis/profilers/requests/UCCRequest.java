@@ -1,4 +1,4 @@
-package de.metathesis.structures.requests;
+package de.metathesis.profilers.requests;
 
 public final class UCCRequest implements Request{
     private final SearchSpace lhs;

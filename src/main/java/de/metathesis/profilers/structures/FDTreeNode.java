@@ -1,4 +1,4 @@
-package de.metathesis.structures;
+package de.metathesis.profilers.structures;
 
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import lombok.Getter;

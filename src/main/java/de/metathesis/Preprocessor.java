@@ -6,27 +6,21 @@ import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metanome.algorithm_integration.input.RelationalInput;
 import de.metanome.algorithm_integration.input.RelationalInputGenerator;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
-import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.INDUnaryCover;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
-import de.metathesis.utils.MemoryUtils;
-import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
 
 public final class Preprocessor {
     private static final Logger log = LogManager.getLogger(Preprocessor.class);
 
     private static final Preprocessor INSTANCE = new Preprocessor();
-    private static final double CACHE_MEMORY_THRESHOLD = 0.8;
 
     private final Map<Integer, Relation> relationMap = new ConcurrentHashMap<>();
     private final Map<Integer, Sampler> samplerMap = new ConcurrentHashMap<>();
@@ -34,14 +28,6 @@ public final class Preprocessor {
     private final Map<Integer, UCCValidator> uccValidatorMap = new ConcurrentHashMap<>();
     @Getter
     private final INDUnaryCover indUnaryCover = new INDUnaryCover();
-
-    //This structure cache n-ary PLIs temporary and remove least recently used one.
-    private final LinkedHashMap<AttributeBitSet, PositionListIndex> pliCache = new LinkedHashMap<>(16, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<AttributeBitSet, PositionListIndex> eldest) {
-            return MemoryUtils.systemMemoryUsage() > CACHE_MEMORY_THRESHOLD;
-        }
-    };
 
     private final int inputRowLimit;
     private final String nullValue;
@@ -102,38 +88,6 @@ public final class Preprocessor {
         return relationSizesMap;
     }
 
-    public AttributeBitSet[] generateApriori(int relationIndex, int level) {
-        int cols = this.relationMap.get(relationIndex).getNumOfAttributes();
-
-        if (level < 0 ||  level > cols) {
-            throw new IllegalArgumentException("Level " + level + " must be between column boundary (0:" + cols + ") of relation:" + relationIndex);
-        }
-
-        if(level == 0) {
-            return new AttributeBitSet[]{new AttributeBitSet(relationIndex, new BitSet())};
-        }
-
-        int count = Utility.binomial(cols, level);
-        AttributeBitSet[] result = new AttributeBitSet[count];
-
-        BigInteger mask = BigInteger.ONE.shiftLeft(level).subtract(BigInteger.ONE);  // first combination
-        BigInteger limit = BigInteger.ONE.shiftLeft(cols);
-
-        int idx = 0;
-        while (mask.compareTo(limit) < 0) {
-            BitSet bitSet = Utility.toBitSet(mask, cols);
-
-            result[idx++] = new AttributeBitSet(relationIndex, bitSet);
-
-            // Gosper's hack for BigInteger
-            BigInteger c = mask.and(mask.negate());
-            BigInteger r = mask.add(c);
-            mask = r.or(r.xor(mask).shiftRight(2).divide(c));
-        }
-
-        return result;
-    }
-
     public Relation getRelation(int relationIndex) {
         assert this.relationMap.containsKey(relationIndex) : "Relation not available!";
         Relation relation = this.relationMap.get(relationIndex);
@@ -161,41 +115,6 @@ public final class Preprocessor {
 
     public UCCValidator getUCCValidator(int relationIndex){
         return this.uccValidatorMap.computeIfAbsent(relationIndex, k -> new UCCValidator(getRelation(k)));
-    }
-
-    public synchronized PositionListIndex getPLI(AttributeBitSet abs) {
-
-        loadRelationData(this.relationMap.get(abs.getRelationIndex()));
-
-        if (abs.size() == 1) {
-            int attrIndex = abs.getAttributeIndexSet().nextSetBit(0);
-            return this.relationMap.get(abs.getRelationIndex()).getUnaryPLIs()[attrIndex];
-        }
-
-        // Check LRU cache first
-        PositionListIndex cached = pliCache.get(abs);
-        if (cached != null) return cached;
-
-        Relation relation = this.relationMap.get(abs.getRelationIndex());
-
-        // Compute by intersecting unary PLIs
-        PositionListIndex result = null;
-        PositionListIndex[] unary = relation.getUnaryPLIs();
-
-        for (int index : abs.getAttributeIndexSet().stream().toArray()) {
-            if (result == null) {
-                result = unary[index];
-            } else {
-                result = result.intersect(unary[index]);
-            }
-        }
-
-        // Cache only if memory allows
-        if (MemoryUtils.systemMemoryUsage() < CACHE_MEMORY_THRESHOLD) {
-            pliCache.put(abs, result);
-        }
-
-        return result;
     }
 
     private void loadRelationData(Relation relation) {
@@ -286,11 +205,12 @@ public final class Preprocessor {
 //        }
     }
 
-    public void clearAllMaps(){
+    public void clear(){
         relationMap.clear();
         samplerMap.clear();
         fdValidatorMap.clear();
         uccValidatorMap.clear();
+        indUnaryCover.clear();
         System.gc();
     }
 }

@@ -130,6 +130,12 @@ public class INDUnaryCover {
         }
     }
 
+    public void clear(){
+        this.forward.clear();
+        this.reverse.clear();
+        this.computedPairs.clear();
+    }
+
     @Override
     public String toString() {
         return toJson();

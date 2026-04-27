@@ -41,13 +41,6 @@ public class FDTreeNode {
         this.rhsValidatedFds = new BitSet(numAttributes);
     }
 
-    /**
-     * Returns true if this node has no candidates anywhere in its subtree.
-     */
-    public boolean isEmpty() {
-        return rhsAttributes.isEmpty();
-    }
-
     public synchronized void addFunctionalDependency(BitSet lhs, int rhs) {
         FDTreeNode currentNode = this;
         currentNode.rhsAttributes.set(rhs);
@@ -87,44 +80,6 @@ public class FDTreeNode {
 
         current.rhsValidatedFds.or(toMark);
         current.rhsCandidateFds.or(toMark);
-    }
-
-    public List<ObjectObjectImmutablePair<BitSet, BitSet>> getValidatedFDsAtDepth(int targetDepth) {
-        List<ObjectObjectImmutablePair<BitSet, BitSet>> result = new ArrayList<>();
-        BitSet lhs = new BitSet(numAttributes);
-        BitSet accumulatedRhs = new BitSet(numAttributes);
-        getValidatedFDsAtDepthRecursive(this, lhs, accumulatedRhs, 0, targetDepth, result);
-        return result;
-    }
-
-    private void getValidatedFDsAtDepthRecursive(FDTreeNode node, BitSet lhs, BitSet inheritedRhs,
-                                int currentDepth, int targetDepth,
-                                List<ObjectObjectImmutablePair<BitSet, BitSet>> result) {
-
-        if (currentDepth == targetDepth) {
-            // Only RHS confirmed here but NOT inherited from ancestors
-            BitSet minimalRhs = (BitSet) node.rhsValidatedFds.clone();
-            minimalRhs.andNot(inheritedRhs);
-
-            if (!minimalRhs.isEmpty()) {
-                result.add(new ObjectObjectImmutablePair<>((BitSet) lhs.clone(), minimalRhs));
-            }
-            return;
-        }
-
-        if (node.children == null) return;
-
-        // Pass accumulated RHS down but don't add current node's confirmed FDs yet
-        BitSet newInherited = (BitSet) inheritedRhs.clone();
-        newInherited.or(node.rhsValidatedFds);
-
-        for (int i = 0; i < node.children.length; i++) {
-            if (node.children[i] != null) {
-                lhs.set(i);
-                getValidatedFDsAtDepthRecursive(node.children[i], lhs, newInherited, currentDepth + 1, targetDepth, result);
-                lhs.clear(i);
-            }
-        }
     }
 
     public record RhsSearchResult(BitSet lhs, BitSet confirmed, BitSet remaining) {}

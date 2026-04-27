@@ -39,32 +39,6 @@ public class PositionListIndex {
         return clusters.size();
     }
 
-    public PositionListIndex intersect(PositionListIndex other) {
-        List<IntArrayList> intersectClusters = new ArrayList<>();
-
-        for (IntArrayList list1 : this.clusters) {
-            for (IntArrayList list2 : other.clusters) {
-
-                // Compute intersection of list1 and list2
-                IntArrayList common = intersectCluster(list1, list2);
-
-                if (common.size() > 1) {
-                    intersectClusters.add(common);
-                }
-            }
-        }
-
-        // Step 1: Sort clusters within each PLI by size
-        intersectClusters.sort((c1, c2) -> {
-            int cmp = c2.size() - c1.size();
-            if (cmp != 0) return cmp;
-            // tie-break: first element (clusters are internally sorted)
-            return Integer.compare(c1.getInt(0), c2.getInt(0));
-        });
-
-        return new PositionListIndex(this.attributeSet.union(other.attributeSet), intersectClusters);
-    }
-
     private IntArrayList intersectCluster(IntArrayList list1, IntArrayList list2) {
         IntArrayList res = new IntArrayList();
 

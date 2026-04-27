@@ -11,14 +11,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 This class is for regular helper method. Later will be refactored the code accordingly.
  */
 public class Utility {
-    public static long compositeKey(int a, int b) {
-        return ((long) a << 32) | (b & 0xffffffffL);
-    }
-
-    public static long compositeKey(int a, int b, int c) {
-        return ((long) a << 42) | ((long) b << 21) | (long) c;
-    }
-
     public static int max(Collection<int[]> arr) {
         return arr.stream()
                 .mapToInt(Utility::max)
@@ -73,32 +65,6 @@ public class Utility {
             res = res * (n - i + 1) / i;
         }
         return (int) res;
-    }
-
-    public static BitSet[] generateApriori(int cols, int level) {
-        if(level == 0) {
-            return new BitSet[]{new BitSet()};
-        }
-
-        int count = Utility.binomial(cols, level);
-        BitSet[] result = new BitSet[count];
-
-        BigInteger mask = BigInteger.ONE.shiftLeft(level).subtract(BigInteger.ONE);  // first combination
-        BigInteger limit = BigInteger.ONE.shiftLeft(cols);
-
-        int idx = 0;
-        while (mask.compareTo(limit) < 0) {
-            BitSet bitSet = Utility.toBitSet(mask, cols);
-
-            result[idx++] = bitSet;
-
-            // Gosper's hack for BigInteger
-            BigInteger c = mask.and(mask.negate());
-            BigInteger r = mask.add(c);
-            mask = r.or(r.xor(mask).shiftRight(2).divide(c));
-        }
-
-        return result;
     }
 
     public static BitSet[] generateApriori(BitSet remainingAttrs, int size) {

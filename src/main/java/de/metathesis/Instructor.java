@@ -227,10 +227,10 @@ public final class Instructor {
         if(schema.size() > 1) {
             ResultTable joinedTable = this.resultFormatter.join(schema.getFirst(), schema.getLast());
             System.out.println(joinedTable.size());
-            System.out.println(joinedTable);
+            //System.out.println(joinedTable);
         }else{
-            schema.getFirst().toFile("b1_holl.txt");
-            //System.out.println(schema.getFirst());
+            //schema.getFirst().toFile("b1_holl.txt");
+            System.out.println(schema.getFirst().size());
         }
 
         System.out.println("---------------------------------------------------------------------");

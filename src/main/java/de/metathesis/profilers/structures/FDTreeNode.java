@@ -41,7 +41,31 @@ public class FDTreeNode {
         this.rhsValidatedFds = new BitSet(numAttributes);
     }
 
-    public synchronized void addFunctionalDependency(BitSet lhs, int rhs) {
+    public record FDSearchResult(BitSet lhs, BitSet confirmed, BitSet remaining) {}
+
+    public BitSet specializePositiveCover(BitSet lhs, int rhsAttr) {
+        List<BitSet> generalLhsList = this.getFdAndGeneralizations(lhs, rhsAttr);
+        BitSet specialized = new BitSet();
+
+        for (BitSet generalLhs : generalLhsList) {
+            this.removeFunctionalDependency(generalLhs, rhsAttr);
+
+            for (int attr = this.numAttributes - 1; attr >= 0; attr--) { // TODO: Is iterating backwards a good or bad idea?
+                if (!lhs.get(attr) && (attr != rhsAttr)) {
+                    generalLhs.set(attr);
+                    if (!this.containsFdOrGeneralization(generalLhs, rhsAttr)) {
+                        this.addFunctionalDependency(generalLhs, rhsAttr);
+                        specialized.set(attr);
+                    }
+                    generalLhs.clear(attr);
+                }
+            }
+        }
+
+        return specialized;
+    }
+
+    private synchronized void addFunctionalDependency(BitSet lhs, int rhs) {
         FDTreeNode currentNode = this;
         currentNode.rhsAttributes.set(rhs);
 
@@ -82,68 +106,22 @@ public class FDTreeNode {
         current.rhsCandidateFds.or(toMark);
     }
 
-    public record RhsSearchResult(BitSet lhs, BitSet confirmed, BitSet remaining) {}
-
-    public List<RhsSearchResult> findAllLhsForRhs(BitSet targetRhs) {
-        // collect minimal lhs paths
-        Map<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>> perBitPaths = new LinkedHashMap<>();
-        for (int bit = targetRhs.nextSetBit(0); bit >= 0; bit = targetRhs.nextSetBit(bit + 1)) {
-            List<ObjectObjectImmutablePair<BitSet, Boolean>> paths = new ArrayList<>();
-            collectLhsForSingleRhs(this, new BitSet(numAttributes), bit, targetRhs, paths);
-            if (paths.isEmpty()) return Collections.emptyList();
-            perBitPaths.put(bit, paths);
-        }
-
-        // initialize result with first bit
-        Iterator<Map.Entry<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>>> it = perBitPaths.entrySet().iterator();
-        Map.Entry<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>> first = it.next();
-        int firstBit = first.getKey();
-
-        List<RhsSearchResult> result = new ArrayList<>();
-        for (ObjectObjectImmutablePair<BitSet, Boolean> p : first.getValue()) {
-            BitSet confirmed = new BitSet(numAttributes);
-            BitSet remaining = new BitSet(numAttributes);
-            if (p.right()) confirmed.set(firstBit);
-            else remaining.set(firstBit);
-            result.add(new RhsSearchResult((BitSet) p.left().clone(), confirmed, remaining));
-        }
-
-        // iteratively merge with each subsequent bit
-        while (it.hasNext()) {
-            Map.Entry<Integer, List<ObjectObjectImmutablePair<BitSet, Boolean>>> entry = it.next();
-            int bit = entry.getKey();
-            List<RhsSearchResult> merged = new ArrayList<>();
-
-            for (RhsSearchResult current : result) {
-                for (ObjectObjectImmutablePair<BitSet, Boolean> next : entry.getValue()) {
-                    BitSet mergedLhs = (BitSet) current.lhs().clone();
-                    mergedLhs.or(next.left());
-
-                    if (isSuperset(mergedLhs, merged)) continue;
-
-                    BitSet mergedConfirmed = (BitSet) current.confirmed().clone();
-                    BitSet mergedRemaining = (BitSet) current.remaining().clone();
-                    if (next.right()) mergedConfirmed.set(bit);
-                    else mergedRemaining.set(bit);
-
-                    merged.add(new RhsSearchResult(mergedLhs, mergedConfirmed, mergedRemaining));
-                }
-            }
-
-            result = minimize(merged);
-        }
-
-        return result;
+    public LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> getLhsPathsForRhsNew(BitSet targetRhs, int rhsBit) {
+        // Collect minimal lhs paths for each target rhs bit
+        LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> paths = new LinkedHashSet<>();
+        getLhsPathsForRhsNewRecursive(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
+        return paths;
     }
 
-    private void collectLhsForSingleRhs(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, List<ObjectObjectImmutablePair<BitSet, Boolean>> result) {
+    private void getLhsPathsForRhsNewRecursive(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> result) {
         // this path has no relevance to rhsBit
         if (!node.rhsAttributes.get(rhsBit)) return;
 
         if (node.rhsCandidateFds.get(rhsBit) || node.rhsValidatedFds.get(rhsBit)) {
-            boolean isConfirmed = node.rhsValidatedFds.get(rhsBit);
-            result.add(new ObjectObjectImmutablePair<>((BitSet) currentLhs.clone(), isConfirmed));
-            return; // Once found rhsBit avoid go further on this path to keep only minimal
+            boolean isValidated = node.rhsValidatedFds.get(rhsBit);
+
+            result.add(new ObjectObjectImmutablePair<>((BitSet) currentLhs.clone(), isValidated));
+            return;
         }
 
         if (node.children == null) return;
@@ -152,34 +130,53 @@ public class FDTreeNode {
             //skip paths containing targetRhs bits because lhs path should not contain given target rhs
             if (!targetRhs.get(i) && node.children[i] != null) {
                 currentLhs.set(i);
-                collectLhsForSingleRhs(node.children[i], currentLhs, rhsBit, targetRhs, result);
+                getLhsPathsForRhsNewRecursive(node.children[i], currentLhs, rhsBit, targetRhs, result);
                 currentLhs.clear(i);
             }
         }
     }
 
-    private boolean isSuperset(BitSet lhs, List<RhsSearchResult> list) {
-        for (RhsSearchResult r : list) {
-            BitSet copy = (BitSet) r.lhs().clone();
-            copy.andNot(lhs);
-            if (copy.isEmpty()) return true;
+    public Map<Integer, List<FDSearchResult>> getLhsPathsForRhs(BitSet targetRhs) {
+        // Collect minimal lhs paths for each target rhs bit
+        Map<Integer, List<FDSearchResult>> perBitPaths = new LinkedHashMap<>();
+        for (int rhsBit = targetRhs.nextSetBit(0); rhsBit >= 0; rhsBit = targetRhs.nextSetBit(rhsBit + 1)) {
+            List<FDSearchResult> paths = new ArrayList<>();
+            getLhsPathsForSingleRhs(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
+            if (paths.isEmpty()){
+                return new HashMap<>(); //Return early if at least one target rhs doesnt have any Lhs path
+            }
+            perBitPaths.put(rhsBit, paths);
         }
-        return false;
+
+        return perBitPaths;
     }
 
-    private List<RhsSearchResult> minimize(List<RhsSearchResult> list) {
-        List<RhsSearchResult> minimal = new ArrayList<>();
-        for (RhsSearchResult candidate : list) {
-            if (!isSuperset(candidate.lhs(), minimal)) {
-                minimal.removeIf(r -> {
-                    BitSet copy = (BitSet) candidate.lhs().clone();
-                    copy.andNot(r.lhs());
-                    return copy.isEmpty();
-                });
-                minimal.add(candidate);
+    private void getLhsPathsForSingleRhs(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, List<FDSearchResult> result) {
+        // this path has no relevance to rhsBit
+        if (!node.rhsAttributes.get(rhsBit)) return;
+
+        if (node.rhsCandidateFds.get(rhsBit) || node.rhsValidatedFds.get(rhsBit)) {
+            BitSet confirmed = new BitSet();
+            BitSet remaining = new BitSet();
+            if (node.rhsValidatedFds.get(rhsBit)){
+                confirmed.set(rhsBit);
+            } else {
+                remaining.set(rhsBit);
+            }
+            result.add(new FDSearchResult((BitSet) currentLhs.clone(), confirmed, remaining));
+            return;
+        }
+
+        if (node.children == null) return;
+
+        for (int i = 0; i < node.children.length; i++) {
+            //skip paths containing targetRhs bits because lhs path should not contain given target rhs
+            if (!targetRhs.get(i) && node.children[i] != null) {
+                currentLhs.set(i);
+                getLhsPathsForSingleRhs(node.children[i], currentLhs, rhsBit, targetRhs, result);
+                currentLhs.clear(i);
             }
         }
-        return minimal;
     }
 
     public ObjectObjectImmutablePair<BitSet, BitSet> searchByLhs(BitSet lhs, BitSet rhs) {
@@ -247,7 +244,7 @@ public class FDTreeNode {
         }
     }
 
-    public synchronized void removeFunctionalDependency(BitSet lhs, int rhs) {
+    private synchronized void removeFunctionalDependency(BitSet lhs, int rhs) {
         int currentLhsAttr = lhs.nextSetBit(0);
         this.removeFunctionalDependencyRecursive(lhs, rhs, currentLhsAttr);
     }

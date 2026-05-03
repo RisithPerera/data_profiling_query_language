@@ -172,7 +172,7 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
                 do {
                     NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
-                    suggestions = validator.validateFreeLock(newNonFds, rhsCandidateList, confirmedFDList);
+                    suggestions = validator.validateFreeLockNew(newNonFds, rhsCandidateList, confirmedFDList);
                 } while (suggestions != null);
 
                 for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {

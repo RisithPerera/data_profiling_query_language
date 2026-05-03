@@ -32,10 +32,7 @@ public class ResultTable {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Result Size: ").append(this.rows.size()).append("\n");
-        sb.append("-".repeat(50)).append("\n");
-        return sb + toCsv();
+        return toCsv();
     }
 
     public void toFile(String path) {

@@ -28,34 +28,9 @@ public class ResultFormatter {
         return INSTANCE;
     }
 
-    public List<ResultTable> createResultSchema(Map<String, ExecutionNode> executionGraph) {
+    public List<ResultTable> createResultSchema(Map<Edge, Result<?>> resultsByEdge) {
         List<ResultTable> schema = new ArrayList<>();
         Set<String> coveredVariables = new HashSet<>();
-
-        Map<Edge, Result<?>> resultsByEdge = new LinkedHashMap<>();
-
-        for (ExecutionNode node : executionGraph.values()) {
-            Edge edge = node.getEdge();
-
-            resultsByEdge.computeIfAbsent(edge, k -> {
-                if (k instanceof FDEdge) return new FDResult();
-                if (k instanceof INDEdge) return new INDResult();
-                if (k instanceof UCCEdge) return new UCCResult();
-                throw new IllegalStateException("Unknown edge type: " + k);
-            });
-
-            Result<?> result = resultsByEdge.get(edge);
-
-            for (Object x : node.getResults()) {
-                if (x instanceof FDResult.FD fd && result instanceof FDResult fdResult) {
-                    fdResult.add(fd.lhs, fd.rhs); // dedup handled inside
-                } else if (x instanceof INDResult.IND ind && result instanceof INDResult indResult) {
-                    indResult.add(ind.lhs, ind.rhs);
-                } else if (x instanceof UCCResult.UCC ucc && result instanceof UCCResult uccResult) {
-                    uccResult.add(ucc.lhs);
-                }
-            }
-        }
 
         // Create schema for binary dependencies like IND and FD
         for (Map.Entry<Edge, Result<?>> entry : resultsByEdge.entrySet()) {
@@ -138,7 +113,7 @@ public class ResultFormatter {
         }
 
         ResultTable result = new ResultTable(newColumns);
-        Set<List<List<String>>> seen = new LinkedHashSet<>(); // dedup
+        Set<List<List<String>>> seen = new LinkedHashSet<>();
 
         if (sharedColumn == null) {
             for (List<List<String>> lRow : left.getRows()) {

@@ -4,7 +4,14 @@ import de.metanome.algorithm_integration.AlgorithmConfigurationException;
 import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.executor.min.graph.edge.Edge;
+import de.metaserve.executor.min.graph.edge.FDEdge;
+import de.metaserve.executor.min.graph.edge.INDEdge;
+import de.metaserve.executor.min.graph.edge.UCCEdge;
 import de.metathesis.profilers.ProfilerFactory;
+import de.metathesis.profilers.results.FDResult;
+import de.metathesis.profilers.results.INDResult;
+import de.metathesis.profilers.results.Result;
+import de.metathesis.profilers.results.UCCResult;
 import de.metathesis.structures.ExecutionNode;
 import de.metathesis.structures.ResultTable;
 import de.metathesis.utils.Utility;
@@ -22,16 +29,14 @@ public final class Instructor {
     private final ExecutorService pool;
     private final Preprocessor preprocessor;
     private final ProfilerFactory profilerFactory;
-    private final ResultFormatter resultFormatter;
 
     public Instructor(ExecutorService pool) {
         this.pool = pool;
         this.preprocessor = Preprocessor.getInstance();
         this.profilerFactory = new ProfilerFactory(pool);
-        this.resultFormatter = ResultFormatter.getInstance();
     }
 
-    public void runExecutionMethod1(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
+    public Map<Edge, Result<?>> runExecutionMethod1(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
         Map<String, int[]> relationIndexMap = this.preprocessor.initializeSearchSpace(relationMap);
         Map<String, int[]> relationSizesMap = this.preprocessor.getAttributeSizesOf(relationIndexMap);
 
@@ -120,24 +125,10 @@ public final class Instructor {
         ).join();
         log.info(Utility.buildLog("FINISHED", this.pool));
 
-        List<ResultTable> schema = this.resultFormatter.createResultSchema(executionGraph);
-
-        if(schema.size() > 1) {
-            ResultTable joinedTable = this.resultFormatter.join(schema.getFirst(), schema.getLast());
-            System.out.println(joinedTable.size());
-            System.out.println(joinedTable);
-        }else{
-            schema.getFirst().toFile("b1_holl.txt");
-            //System.out.println(schema.getFirst());
-        }
-
-        System.out.println("---------------------------------------------------------------------");
-        for(ResultTable table : schema){
-            System.out.println("Table: " + table.getColumnNames() +" Size: "+ table.size());
-        }
+        return collectResults(executionGraph);
     }
 
-    public void runExecutionMethod2(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
+    public Map<Edge, Result<?>> runExecutionMethod2(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
         Map<String, int[]> relationIndexMap = this.preprocessor.initializeSearchSpace(relationMap);
         Map<String, int[]> relationSizesMap = this.preprocessor.getAttributeSizesOf(relationIndexMap);
 
@@ -147,7 +138,7 @@ public final class Instructor {
         int globalMaxLevel = Utility.max(relationSizesMap.values());
 
         Map<String, ExecutionNode> executionGraph = new LinkedHashMap<>(); //All Graph Nodes
-        //globalMaxLevel = 1;
+        //globalMaxLevel = 2;
         for (int level = 0; level <= globalMaxLevel; level++) {
             // Maps last Execution Node (Edge) used by the variable
             Map<String, ExecutionNode> firstNodeByVariable = new HashMap<>();
@@ -217,34 +208,34 @@ public final class Instructor {
         ).join();
         log.info(Utility.buildLog("FINISHED", this.pool));
 
-        List<ResultTable> schema = this.resultFormatter.createResultSchema(executionGraph);
-
-        if(schema.size() > 1) {
-            ResultTable joinedTable = this.resultFormatter.join(schema.getFirst(), schema.getLast());
-            System.out.println(joinedTable.size());
-            //System.out.println(joinedTable);
-        }else{
-            //schema.getFirst().toFile("b1_holl.txt");
-            System.out.println(schema.getFirst().size());
-        }
-
-        System.out.println("---------------------------------------------------------------------");
-        for(ResultTable table : schema){
-            System.out.println("Table: " + table.getColumnNames() +" Size: "+ table.size());
-        }
+        return collectResults(executionGraph);
     }
 
     private List<Edge> getEdgeOrder(Map<Edge, Graph.SetMembership> setMembershipMap) {
-        Edge anchor = findAnchorEdge(setMembershipMap);
-        List<Edge> remaining = new ArrayList<>(setMembershipMap.keySet());
-        remaining.remove(anchor);
-
         List<Edge> ordered = new ArrayList<>();
-        ordered.add(anchor);
+        List<Edge> remaining = new ArrayList<>(setMembershipMap.keySet());
 
+        // Add all U first, then all F, then all I_MINUS
+        for (Graph.SetMembership target : List.of(Graph.SetMembership.U, Graph.SetMembership.F, Graph.SetMembership.I_MINUS)) {
+            for (Iterator<Edge> it = remaining.iterator(); it.hasNext(); ) {
+                Edge edge = it.next();
+                if (target.equals(setMembershipMap.get(edge))) {
+                    ordered.add(edge);
+                    it.remove();
+                }
+            }
+        }
+
+        if(ordered.isEmpty()){
+            throw new RuntimeException("This query does not support at the moment! Query doesnt have a minimal dependency [U,F,I-]");
+        }
+
+        // BFS expansion from all seen variables so far
         Set<String> seenVariables = new HashSet<>();
-        seenVariables.add(anchor.leftName);
-        seenVariables.add(anchor.rightName);
+        for (Edge edge : ordered) {
+            seenVariables.add(edge.leftName);
+            seenVariables.add(edge.rightName);
+        }
 
         while (!remaining.isEmpty()) {
             boolean found = false;
@@ -261,26 +252,39 @@ public final class Instructor {
                 }
             }
 
-            if (!found) break; // disconnected edges - nothing more reachable
+            if (!found) break;
         }
 
         return ordered;
     }
 
-    private Edge findAnchorEdge(Map<Edge, Graph.SetMembership> map) {
-        for (Map.Entry<Edge, Graph.SetMembership> e : map.entrySet()) {
-            if (Graph.SetMembership.U.equals(e.getValue())) return e.getKey();
+    private Map<Edge, Result<?>> collectResults(Map<String, ExecutionNode> executionGraph){
+        Map<Edge, Result<?>> resultsByEdge = new LinkedHashMap<>();
+
+        for (ExecutionNode node : executionGraph.values()) {
+            Edge edge = node.getEdge();
+
+            resultsByEdge.computeIfAbsent(edge, k -> {
+                if (k instanceof FDEdge) return new FDResult();
+                if (k instanceof INDEdge) return new INDResult();
+                if (k instanceof UCCEdge) return new UCCResult();
+                throw new IllegalStateException("Unknown edge type: " + k);
+            });
+
+            Result<?> result = resultsByEdge.get(edge);
+
+            for (Object x : node.getResults()) {
+                if (x instanceof FDResult.FD fd && result instanceof FDResult fdResult) {
+                    fdResult.add(fd.lhs, fd.rhs); // dedup handled inside
+                } else if (x instanceof INDResult.IND ind && result instanceof INDResult indResult) {
+                    indResult.add(ind.lhs, ind.rhs);
+                } else if (x instanceof UCCResult.UCC ucc && result instanceof UCCResult uccResult) {
+                    uccResult.add(ucc.lhs);
+                }
+            }
         }
 
-        for (Map.Entry<Edge, Graph.SetMembership> e : map.entrySet()) {
-            if (Graph.SetMembership.F.equals(e.getValue())) return e.getKey();
-        }
-
-        for (Map.Entry<Edge, Graph.SetMembership> e : map.entrySet()) {
-            if (Graph.SetMembership.I_MINUS.equals(e.getValue())) return e.getKey();
-        }
-
-        throw new RuntimeException("This query does not support at the moment! Query doesnt have a minimal dependency [U,F,I-]");
+        return resultsByEdge;
     }
 
     public void shutdownAndAwaitTermination() {

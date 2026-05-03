@@ -8,7 +8,7 @@ import java.util.BitSet;
 
 /**
  * Immutable representation of a set of integer indices using a BitSet.
- * Suitable for modeling column combinations (e.g., [2,3,6,8]) in lattice-based algorithms.
+ * Also keep separate array for keeping the original order for INDs.
  * Cached hash code for fast hash-based lookups and comparisons.
  * <p>
  * Author: Risith Perera
@@ -18,14 +18,13 @@ public class AttributeBitSet{
     @Getter
     private final int relationIndex;
 
-    private final BitSet attributeIndexSet;
+    //TODO: May be use only array????
+    private final BitSet attributeIndexSet;  //For set operations and equality check
 
-    private final int[] attributeIndexArray; //For IND to with different permutations
+    private final int[] attributeIndexArray; //To preserve the order
 
     @Getter
     private final int hashCode; //Cashing Hash for performance
-
-    private final Preprocessor preprocessor = Preprocessor.getInstance(); //This is temporary
 
     public AttributeBitSet(int relationIndex, int columnIndex) {
         this.relationIndex = relationIndex;
@@ -95,10 +94,10 @@ public class AttributeBitSet{
         return hashCode;
     }
 
-    //This is temporary for testing purposes
+    //TODO: This is temporary for testing purposes. Remove this!
     @Override
     public String toString() {
-        Relation relation = this.preprocessor.getRelation(this.relationIndex);
+        Relation relation = Preprocessor.getInstance().getRelation(this.relationIndex);
 
         String[] columns = Arrays.stream(this.attributeIndexArray)
                 .mapToObj(i -> relation.getAttributeNames()[i])
@@ -107,7 +106,8 @@ public class AttributeBitSet{
         return "(" + relation.getName() + ":" + Arrays.toString(columns) + ")";
     }
 
+    //TODO: Use original one
     public String toStringOriginal() {
-        return "(" + this.relationIndex + ":" + attributeIndexSet.toString() + ")";
+        return "(" + this.relationIndex + ":" + Arrays.toString(attributeIndexArray) + ")";
     }
 }

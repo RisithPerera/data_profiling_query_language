@@ -13,7 +13,7 @@ public class NegativeCover {
 
     public NegativeCover() {}
 
-    public boolean add(BitSet equalAttrs) {
+    public synchronized boolean add(BitSet equalAttrs) {
         int card = equalAttrs.cardinality();
 
         while (levels.size() <= card){
@@ -23,7 +23,7 @@ public class NegativeCover {
         return levels.get(card).add((BitSet) equalAttrs.clone());
     }
 
-    public boolean contains(BitSet equalAttrs) {
+    public synchronized boolean contains(BitSet equalAttrs) {
         int card = equalAttrs.cardinality();
 
         if (card >= levels.size()){

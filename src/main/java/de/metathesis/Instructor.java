@@ -13,7 +13,7 @@ import de.metathesis.profilers.results.INDResult;
 import de.metathesis.profilers.results.Result;
 import de.metathesis.profilers.results.UCCResult;
 import de.metathesis.structures.ExecutionNode;
-import de.metathesis.structures.ResultTable;
+
 import de.metathesis.utils.Utility;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

@@ -20,7 +20,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 
 public class FDValidator {
     private static final Logger log = LogManager.getLogger(FDValidator.class);
@@ -191,6 +190,7 @@ public class FDValidator {
 
             for (int rhsAttr = rhsCandidate.nextSetBit(0); rhsAttr >= 0; rhsAttr = rhsCandidate.nextSetBit(rhsAttr + 1)) {
                 LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> lhsCandidates = this.root.getLhsPathsForRhsNew(rhsCandidate, rhsAttr);
+                log.info("Rhs: {} Found lhs candidates: {}", rhsAttr, lhsCandidates.size());
 
                 BitSet rhsBit = new BitSet();
                 rhsBit.set(rhsAttr);
@@ -216,6 +216,7 @@ public class FDValidator {
                     } else {
                         BitSet specialized = this.root.specializePositiveCover(lhsCandidate, rhsAttr);
                         specialized.andNot(rhsCandidate);
+                        log.info("Rhs: {} Invalid Lhs: {} Specialized: {}", rhsAttr, lhsCandidate, specialized);
 
                         for (int attr = specialized.nextSetBit(0); attr >= 0; attr = specialized.nextSetBit(attr + 1)) {
                             BitSet newLhs = (BitSet) lhsCandidate.clone();
@@ -237,6 +238,15 @@ public class FDValidator {
                 minimalLhsPerBit.put(rhsAttr, confirmedLhsForBit);
             }
 
+            log.info("All Rhs validated lhs find is done! {}", rhsCandidateValid);
+//            for (Map.Entry<Integer, List<BitSet>> entry : minimalLhsPerBit.entrySet()) {
+//                Integer key = entry.getKey();
+//                int size = entry.getValue() != null ? entry.getValue().size() : 0;
+//
+//                System.out.println("Key: " + key + ", List size: " + size);
+//            }
+//            System.out.println("-------------------------------------------------------");
+
             if (rhsCandidateValid) {
                 //Create the final result using iterative merging
                 List<BitSet> result = null;
@@ -254,108 +264,6 @@ public class FDValidator {
                     for (BitSet mergedLhs : result) {
                         confirmList.add(new ObjectObjectImmutablePair<>(mergedLhs, rhsCandidate));
                     }
-                }
-            }
-
-            rhsCandidateIterator.remove();
-
-            if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
-                return suggestions;
-            }
-        }
-
-        return null;
-    }
-
-    public Set<IntIntImmutablePair> validateFreeLock(NegativeCover newNegativeCover,
-                                                     Set<BitSet> rhsCandidateList,
-                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) throws ExecutionException, InterruptedException {
-        inductPositiveCover(newNegativeCover);
-
-        Set<IntIntImmutablePair> suggestions = new HashSet<>();
-        int validFDCount   = 0;
-        int invalidFDCount = 0;
-
-        Iterator<BitSet> rhsCandidateIterator = rhsCandidateList.iterator();
-        //LinkedHashSet<FDTreeNode.FDSearchResult> specializedCandidates = new LinkedHashSet<>();
-
-        while (rhsCandidateIterator.hasNext()) {
-            BitSet rhsCandidate = rhsCandidateIterator.next();
-
-            Map<Integer, List<FDTreeNode.FDSearchResult>> candidatesForSingleRhs = this.root.getLhsPathsForRhs(rhsCandidate);
-            LinkedHashSet<FDTreeNode.FDSearchResult> candidates = mergeLhsPaths(candidatesForSingleRhs);
-
-            while (!candidates.isEmpty() ) {
-                FDTreeNode.FDSearchResult candidate = candidates.removeFirst();
-
-                BitSet lhsCandidate = candidate.lhs();
-                BitSet confirmedRhs = candidate.confirmed();
-                BitSet remainingRhs = candidate.remaining();
-
-                if (rhsCandidate.equals(confirmedRhs)) {
-                    confirmList.add(new ObjectObjectImmutablePair<>(lhsCandidate, rhsCandidate));
-                    continue;
-                }
-
-                // Validate remaining bits directly
-                ValidationTask task = new ValidationTask(lhsCandidate, remainingRhs);
-                ValidationResult result = task.call();
-
-                BitSet validRhs = result.validRhs();
-                BitSet invalidRhs = (BitSet) remainingRhs.clone();
-                invalidRhs.andNot(validRhs);
-
-                validFDCount += validRhs.cardinality();
-                invalidFDCount += invalidRhs.cardinality();
-
-                confirmedRhs.or(validRhs);
-
-                if (!validRhs.isEmpty()) {
-                    this.root.markAsValidate(lhsCandidate, validRhs);
-
-                    if (rhsCandidate.equals(confirmedRhs)) {
-                        System.out.println("Added: " + lhsCandidate + " | confirmed=" + confirmedRhs + " | remain=" + invalidRhs);
-                        confirmList.add(new ObjectObjectImmutablePair<>(lhsCandidate, rhsCandidate));
-                        continue;
-                    }
-                }
-
-                if (!invalidRhs.isEmpty()) {
-                    Map<Integer, BitSet> specializedBitMap = new HashMap<>();
-
-                    for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
-                        BitSet specialized = this.root.specializePositiveCover(lhsCandidate, attr);
-                        specialized.andNot(rhsCandidate);
-                        specializedBitMap.put(attr, specialized);
-                    }
-
-                    System.out.println("Not Added: " + lhsCandidate + " | " + specializedBitMap + " | confirmed=" + confirmedRhs + " | invalid=" + invalidRhs);
-
-                    Set<BitSet> specLhsCandidates = inferSpecializedLhsCandidates((BitSet) lhsCandidate.clone(), specializedBitMap);
-                    for(BitSet specLhsCandidate : specLhsCandidates){
-                        candidates.add(new FDTreeNode.FDSearchResult(specLhsCandidate, (BitSet) confirmedRhs.clone(), (BitSet) invalidRhs.clone()));
-                    }
-
-                    /*for(BitSet specLhsCandidate : specLhsCandidates){
-                        // Check if any already confirmed LHS is a subset of specLhsCandidate
-                        boolean dominated = confirmList.stream()
-                                .anyMatch(c -> {
-                                    if (!c.second().equals(rhsCandidate)) return false;
-                                    BitSet copy = (BitSet) c.first().clone();
-                                    copy.andNot(specLhsCandidate);
-                                    return copy.isEmpty();
-                                });
-
-                        if (!dominated) {
-                            specializedCandidates.add(new FDTreeNode.FDSearchResult(
-                                    specLhsCandidate,
-                                    (BitSet) confirmedRhs.clone(),
-                                    (BitSet) invalidRhs.clone()
-                            ));
-                        }
-                    }*/
-
-                    suggestions.addAll(result.suggestions());
                 }
             }
 
@@ -623,296 +531,6 @@ public class FDValidator {
         });
     }
 
-    private LinkedHashSet<FDTreeNode.FDSearchResult> mergeLhsPaths(Map<Integer, List<FDTreeNode.FDSearchResult>> perBitPaths){
-        Iterator<Map.Entry<Integer, List<FDTreeNode.FDSearchResult>>> it = perBitPaths.entrySet().iterator();
-        Map.Entry<Integer, List<FDTreeNode.FDSearchResult>> first = it.next();
-
-        List<Set<FDTreeNode.FDSearchResult>> result = new ArrayList<>();
-
-        if(first.getValue().isEmpty()){
-            return new LinkedHashSet<>();
-        }
-
-        for (FDTreeNode.FDSearchResult r : first.getValue()) {
-            addMinimal(result, r); // initialize from first bit
-        }
-
-        while (it.hasNext()) {
-            Map.Entry<Integer, List<FDTreeNode.FDSearchResult>> entry = it.next();
-            List<Set<FDTreeNode.FDSearchResult>> merged = new ArrayList<>();
-
-            for (Set<FDTreeNode.FDSearchResult> bucket : result) {
-                if (bucket == null || bucket.isEmpty()){
-                    continue;
-                }
-
-                for (FDTreeNode.FDSearchResult current : bucket) {
-                    if(entry.getValue().isEmpty()){
-                        return new LinkedHashSet<>();
-                    }
-
-                    for (FDTreeNode.FDSearchResult next : entry.getValue()) {
-                        BitSet mergedLhs = (BitSet) current.lhs().clone();
-                        mergedLhs.or(next.lhs());
-
-                        BitSet mergedConfirmed = (BitSet) current.confirmed().clone();
-                        mergedConfirmed.or(next.confirmed());
-
-                        BitSet mergedRemaining = (BitSet) current.remaining().clone();
-                        mergedRemaining.or(next.remaining());
-                        mergedRemaining.andNot(mergedConfirmed);
-
-                        addMinimal(merged, new FDTreeNode.FDSearchResult(mergedLhs, mergedConfirmed, mergedRemaining));
-                    }
-                }
-            }
-
-            result = merged;
-        }
-
-        return result.stream()
-                .filter(s -> s != null && !s.isEmpty())
-                .flatMap(Set::stream)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-    }
-
-    private void addMinimal(List<Set<FDTreeNode.FDSearchResult>> result, FDTreeNode.FDSearchResult candidate) {
-        int candidateCard = candidate.lhs().cardinality();
-
-        // Check any subset already available
-        for (int i = 0; i < candidateCard && i < result.size(); i++) {
-            for (FDTreeNode.FDSearchResult r : result.get(i)) {
-                BitSet copy = (BitSet) r.lhs().clone();
-                copy.andNot(candidate.lhs());
-                if (copy.isEmpty()) return;
-            }
-        }
-
-        // Check same candidate is available
-        if (candidateCard < result.size()) {
-            for (FDTreeNode.FDSearchResult r : result.get(candidateCard)) {
-                BitSet copy = (BitSet) r.lhs().clone();
-                copy.andNot(candidate.lhs());
-                if (copy.isEmpty()) return;
-            }
-        }
-
-        // Remove supersets available
-        for (int i = candidateCard + 1; i < result.size(); i++) {
-            result.get(i).removeIf(r -> {
-                BitSet copy = (BitSet) candidate.lhs().clone();
-                copy.andNot(r.lhs());
-                return copy.isEmpty();
-            });
-        }
-
-        // Add at correct index
-        while (result.size() <= candidateCard) {
-            result.add(new ObjectOpenHashSet<>());
-        }
-
-        result.get(candidateCard).add(candidate);
-    }
-
-    public Set<BitSet> inferSpecializedLhsCandidates(BitSet generalLhsCandidate, Map<Integer, BitSet> specializedBitMap) {
-        Set<BitSet> candidates = new LinkedHashSet<>();
-        if (specializedBitMap.values().stream().allMatch(BitSet::isEmpty)) return candidates;
-
-        BitSet totalSpecBits = new BitSet();
-        specializedBitMap.values().forEach(totalSpecBits::or);
-
-        for(Map.Entry<Integer, BitSet> entry : specializedBitMap.entrySet()){
-            int rhsAttr = entry.getKey();
-            BitSet specialized = entry.getValue();
-
-            BitSet missingSpecBits = (BitSet) totalSpecBits.clone();
-            missingSpecBits.andNot(specialized);
-
-            if(missingSpecBits.isEmpty()) continue;
-
-            for (int uncommonLhsBit = missingSpecBits.nextSetBit(0); uncommonLhsBit >= 0; uncommonLhsBit = missingSpecBits.nextSetBit(uncommonLhsBit + 1)) {
-                generalLhsCandidate.set(uncommonLhsBit);
-                if (this.root.containsFdOrGeneralization(generalLhsCandidate, rhsAttr)) {
-                    specializedBitMap.get(rhsAttr).set(uncommonLhsBit);
-                }
-                generalLhsCandidate.clear(uncommonLhsBit);
-            }
-        }
-
-        Iterator<BitSet> iterator = specializedBitMap.values().iterator();
-        BitSet common = (BitSet) iterator.next().clone();
-        while (iterator.hasNext()) {
-            common.and(iterator.next());
-        }
-
-        for (int commonLhsBit = common.nextSetBit(0); commonLhsBit >= 0; commonLhsBit = common.nextSetBit(commonLhsBit + 1)) {
-            BitSet lhsCandidate = (BitSet) generalLhsCandidate.clone();
-            lhsCandidate.set(commonLhsBit);
-
-            System.out.println("New Common: " + lhsCandidate);
-            candidates.add(lhsCandidate);
-        }
-
-        return candidates;
-    }
-
-    public LinkedHashSet<FDTreeNode.FDSearchResult> inferSpecializedLhsCandidatesOld(BitSet generalLhsCandidate, BitSet confirmedRhs, BitSet invalidRhs, Map<Integer, BitSet> specializedBitMap) {
-        LinkedHashSet<FDTreeNode.FDSearchResult> candidates = new LinkedHashSet<>();
-        if (specializedBitMap.values().stream().allMatch(BitSet::isEmpty)) return candidates;
-
-        BitSet totalSpecBits = new BitSet();
-        specializedBitMap.values().forEach(totalSpecBits::or);
-
-        for(Map.Entry<Integer, BitSet> entry : specializedBitMap.entrySet()){
-            int rhsAttr = entry.getKey();
-            BitSet specialized = entry.getValue();
-
-            BitSet missingSpecBits = (BitSet) totalSpecBits.clone();
-            missingSpecBits.andNot(specialized);
-
-            if(missingSpecBits.isEmpty()) continue;
-
-            for (int uncommonLhsBit = missingSpecBits.nextSetBit(0); uncommonLhsBit >= 0; uncommonLhsBit = missingSpecBits.nextSetBit(uncommonLhsBit + 1)) {
-                generalLhsCandidate.set(uncommonLhsBit);
-                if (this.root.containsFdOrGeneralization(generalLhsCandidate, rhsAttr)) {
-                    specializedBitMap.get(rhsAttr).set(uncommonLhsBit);
-                }
-                generalLhsCandidate.clear(uncommonLhsBit);
-            }
-        }
-
-        Iterator<BitSet> iterator = specializedBitMap.values().iterator();
-        BitSet common = (BitSet) iterator.next().clone();
-        while (iterator.hasNext()) {
-            common.and(iterator.next());
-        }
-
-        // Remove common bits from all sets
-        for(BitSet bs : specializedBitMap.values()){
-            bs.andNot(common);
-        }
-
-        for (int commonLhsBit = common.nextSetBit(0); commonLhsBit >= 0; commonLhsBit = common.nextSetBit(commonLhsBit + 1)) {
-            BitSet lhsCandidate = (BitSet) generalLhsCandidate.clone();
-            lhsCandidate.set(commonLhsBit);
-
-            System.out.println("New Common: " + lhsCandidate + " | confirmed=" + confirmedRhs + " | remain=" + invalidRhs);
-            candidates.add(new FDTreeNode.FDSearchResult(lhsCandidate, confirmedRhs, invalidRhs));
-        }
-
-        if (specializedBitMap.values().stream().allMatch(BitSet::isEmpty)) return candidates;
-
-        // Extract common bits, add as candidates, remove from all sets
-        //extractCommonCandidates(generalLhsCandidate, confirmedRhs, invalidRhs, specializedBitMap, candidates);
-
-        //if (specializedBitMap.values().stream().allMatch(BitSet::isEmpty)) return candidates;
-        // Cross-generalization — snapshot keys to avoid issues
-//        List<Integer> rhsAttrs = new ArrayList<>(specializedBitMap.keySet());
-//        for (int rhsAttr1 : rhsAttrs) {
-//            BitSet specializedBitSet = (BitSet) specializedBitMap.get(rhsAttr1).clone(); // snapshot to avoid mutation issues
-//            for (int rhsAttr2 : rhsAttrs) {
-//                if (rhsAttr1 == rhsAttr2) continue;
-//                for (int uncommonLhsBit = specializedBitSet.nextSetBit(0); uncommonLhsBit >= 0; uncommonLhsBit = specializedBitSet.nextSetBit(uncommonLhsBit + 1)) {
-//                    generalLhsCandidate.set(uncommonLhsBit);
-//                    if (this.root.containsFdOrGeneralization(generalLhsCandidate, rhsAttr2)) {
-//                        specializedBitMap.get(rhsAttr2).set(uncommonLhsBit);
-//                    }
-//                    generalLhsCandidate.clear(uncommonLhsBit);
-//                }
-//            }
-//        }
-
-//        if(!specializedBitMap.isEmpty()) {
-//            // Second round — find new common bits after cross-generalization
-//            extractCommonCandidates(generalLhsCandidate, confirmedRhs, invalidRhs, specializedBitMap, candidates);
-//
-//            if (specializedBitMap.values().stream().allMatch(BitSet::isEmpty)) return candidates;
-//
-//            if(specializedBitMap.isEmpty()) {
-//                return candidates;
-//            }else{
-//                // Cross product of remaining uncommon bits
-//                extractCrossProductCandidates(generalLhsCandidate, confirmedRhs, invalidRhs, specializedBitMap, candidates);
-//            }
-//        }
-
-        return candidates;
-    }
-
-    private void extractCommonCandidates(
-            BitSet generalLhsCandidate, BitSet confirmedRhs, BitSet invalidRhs,
-            Map<Integer, BitSet> specializedBitMap,
-            LinkedHashSet<FDTreeNode.FDSearchResult> candidates) {
-
-        Iterator<BitSet> iterator = specializedBitMap.values().iterator();
-        BitSet common = (BitSet) iterator.next().clone();
-        while (iterator.hasNext()) {
-            common.and(iterator.next());
-        }
-
-        if (common.isEmpty()) return;
-
-        for (int commonLhsBit = common.nextSetBit(0); commonLhsBit >= 0; commonLhsBit = common.nextSetBit(commonLhsBit + 1)) {
-            BitSet lhsCandidate = (BitSet) generalLhsCandidate.clone();
-            lhsCandidate.set(commonLhsBit);
-            BitSet rhsCandidateTemp = new BitSet();
-            rhsCandidateTemp.set(0);
-            rhsCandidateTemp.set(3);
-            BitSet forbidden = (BitSet) confirmedRhs.clone();
-            forbidden.or(invalidRhs);
-            if(rhsCandidateTemp.equals(forbidden) && !specializedBitMap.isEmpty()){
-                System.out.println("New: " + lhsCandidate + " | confirmed=" + confirmedRhs + " | remain=" + invalidRhs);
-            }
-            candidates.add(new FDTreeNode.FDSearchResult(lhsCandidate, confirmedRhs, invalidRhs));
-        }
-
-        // Remove common bits from all sets
-        for(BitSet bs : specializedBitMap.values()){
-            bs.andNot(common);
-        }
-    }
-
-    private void extractCrossProductCandidates(
-            BitSet generalLhsCandidate, BitSet confirmedRhs, BitSet invalidRhs,
-            Map<Integer, BitSet> specializedBitMap,
-            LinkedHashSet<FDTreeNode.FDSearchResult> candidates) {
-
-        // Start with a single empty extension, grow by OR-ing each rhs attr's options
-        List<BitSet> extensions = new ArrayList<>();
-        extensions.add(new BitSet());
-
-        for (BitSet options : specializedBitMap.values()) {
-            if (options.isEmpty()) return;
-            List<BitSet> newExtensions = new ArrayList<>();
-            for (BitSet existing : extensions) {
-                for (int bit = options.nextSetBit(0); bit >= 0; bit = options.nextSetBit(bit + 1)) {
-                    BitSet extended = (BitSet) existing.clone();
-                    extended.set(bit);
-                    newExtensions.add(extended);
-                }
-            }
-            extensions = newExtensions;
-        }
-
-        for (BitSet extension : extensions) {
-            if (extension.isEmpty()) continue;
-            BitSet lhsCandidate = (BitSet) generalLhsCandidate.clone();
-            lhsCandidate.or(extension);
-
-            BitSet rhsCandidateTemp = new BitSet();
-            rhsCandidateTemp.set(0);
-            rhsCandidateTemp.set(3);
-            BitSet forbidden = (BitSet) confirmedRhs.clone();
-            forbidden.or(invalidRhs);
-            if(rhsCandidateTemp.equals(forbidden) && !specializedBitMap.isEmpty()){
-                System.out.println("New Crossed: " + lhsCandidate + " | confirmed=" + confirmedRhs + " | remain=" + invalidRhs);
-            }
-
-            candidates.add(new FDTreeNode.FDSearchResult(lhsCandidate, confirmedRhs, invalidRhs));
-        }
-    }
-
-
     public static List<BitSet> minimalCrossProduct(List<BitSet> list1, List<BitSet> list2) {
         Comparator<BitSet> comparator = (a, b) -> {
             int sizeCmp = Integer.compare(a.cardinality(), b.cardinality());
@@ -934,14 +552,14 @@ public class FDValidator {
             for (BitSet bs2 : list2) {
                 BitSet union = (BitSet) bs1.clone();
                 union.or(bs2);
-                addMinimal2(result, union);
+                addMinimal(result, union);
             }
         }
 
         return result;
     }
 
-    private static void addMinimal2(List<BitSet> result, BitSet candidate) {
+    private static void addMinimal(List<BitSet> result, BitSet candidate) {
         for (BitSet existing : result) {
             if (isSubset(existing, candidate)) return; // candidate is superset, skip
         }

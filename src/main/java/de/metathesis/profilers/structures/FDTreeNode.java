@@ -1,9 +1,13 @@
 package de.metathesis.profilers.structures;
 
+import de.metathesis.profilers.validators.FDValidator;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A node in the positive cover prefix tree.
@@ -27,90 +31,122 @@ import java.util.*;
  */
 @Getter
 public class FDTreeNode {
+    private static final Logger log = LogManager.getLogger(FDValidator.class);
 
     private FDTreeNode[] children;
     private final BitSet rhsAttributes;      // propagation marker (union of subtree candidates)
     private final BitSet rhsCandidateFds;    // candidates at exactly this node
     private final BitSet rhsValidatedFds;    // confirmed-valid FDs at this node
     private final int numAttributes;
+    private final ReentrantReadWriteLock access;
 
     public FDTreeNode(int numAttributes) {
+        this(numAttributes, new ReentrantReadWriteLock()); //For the parent node
+    }
+
+    public FDTreeNode(int numAttributes, ReentrantReadWriteLock lock) {
         this.numAttributes = numAttributes;
         this.rhsAttributes = new BitSet(numAttributes);
         this.rhsCandidateFds = new BitSet(numAttributes);
         this.rhsValidatedFds = new BitSet(numAttributes);
+        this.access = lock;
     }
 
     public record FDSearchResult(BitSet lhs, BitSet confirmed, BitSet remaining) {}
 
     public BitSet specializePositiveCover(BitSet lhs, int rhsAttr) {
-        List<BitSet> generalLhsList = this.getFdAndGeneralizations(lhs, rhsAttr);
-        BitSet specialized = new BitSet();
+        access.writeLock().lock();
+        log.debug("SpecializePositiveCover GET writeLock");
+        try {
+            List<BitSet> generalLhsList = this.getFdAndGeneralizations(lhs, rhsAttr);
+            BitSet specialized = new BitSet();
 
-        for (BitSet generalLhs : generalLhsList) {
-            this.removeFunctionalDependency(generalLhs, rhsAttr);
+            for (BitSet generalLhs : generalLhsList) {
+                this.removeFunctionalDependency(generalLhs, rhsAttr);
 
-            for (int attr = this.numAttributes - 1; attr >= 0; attr--) { // TODO: Is iterating backwards a good or bad idea?
-                if (!lhs.get(attr) && (attr != rhsAttr)) {
-                    generalLhs.set(attr);
-                    if (!this.containsFdOrGeneralization(generalLhs, rhsAttr)) {
-                        this.addFunctionalDependency(generalLhs, rhsAttr);
-                        specialized.set(attr);
+                for (int attr = this.numAttributes - 1; attr >= 0; attr--) { // TODO: Is iterating backwards a good or bad idea?
+                    if (!lhs.get(attr) && (attr != rhsAttr)) {
+                        generalLhs.set(attr);
+                        if (!this.containsFdOrGeneralization(generalLhs, rhsAttr)) {
+                            this.addFunctionalDependency(generalLhs, rhsAttr);
+                            specialized.set(attr);
+                        }
+                        generalLhs.clear(attr);
                     }
-                    generalLhs.clear(attr);
                 }
             }
-        }
 
-        return specialized;
+            return specialized;
+        } finally {
+            access.writeLock().unlock();
+            log.debug("SpecializePositiveCover RELEASE writeLock");
+        }
     }
 
-    private synchronized void addFunctionalDependency(BitSet lhs, int rhs) {
-        FDTreeNode currentNode = this;
-        currentNode.rhsAttributes.set(rhs);
-
-        for (int i = lhs.nextSetBit(0); i >= 0; i = lhs.nextSetBit(i + 1)) {
-            if (currentNode.children == null) {
-                currentNode.children = new FDTreeNode[this.numAttributes];
-                currentNode.children[i] = new FDTreeNode(this.numAttributes);
-            } else if (currentNode.children[i] == null) {
-                currentNode.children[i] = new FDTreeNode(this.numAttributes);
+    public void markAsValidate(BitSet lhs, BitSet rhs) {
+        access.writeLock().lock();
+        try {
+            FDTreeNode current = this;
+            for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
+                if (current.children == null || current.children[attr] == null) {
+                    return; // path no longer exists — already specialized away, skip silently
+                }
+                current = current.children[attr];
             }
 
-            currentNode = currentNode.children[i];
-            currentNode.rhsAttributes.set(rhs);
+            // Path still exists — safe to mark
+            BitSet toMark = (BitSet) rhs.clone();
+            toMark.and(current.rhsAttributes);
+
+            current.rhsValidatedFds.or(toMark);
+            current.rhsCandidateFds.or(toMark);
+        } finally {
+            access.writeLock().unlock();
         }
-        currentNode.rhsCandidateFds.set(rhs);
     }
 
     // Marks lhs -> rhs as confirmed valid. Sets the bit in rhsValidatedFds at the node for lhs.
-    public synchronized void markAsValidate(BitSet lhs, BitSet rhs) {
-        FDTreeNode current = this;
-        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
-            if (current.children == null) {
-                current.children = new FDTreeNode[this.numAttributes];
+    public void markAsValidate3(BitSet lhs, BitSet rhs) {
+        access.writeLock().lock();
+        log.debug("MarkAsValidate GET writeLock");
+        try {
+            FDTreeNode current = this;
+            for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
+                if (current.children == null) {
+                    current.children = new FDTreeNode[this.numAttributes];
+                }
+
+                if (current.children[attr] == null) {
+                    current.children[attr] = new FDTreeNode(numAttributes, access);
+                }
+
+                current = current.children[attr];
             }
 
-            if (current.children[attr] == null) {
-                current.children[attr] = new FDTreeNode(numAttributes);
-            }
+            // Only mark bits that are actually owned by this node
+            BitSet toMark = (BitSet) rhs.clone();
+            toMark.and(current.rhsAttributes);
 
-            current = current.children[attr];
+            current.rhsValidatedFds.or(toMark);
+            current.rhsCandidateFds.or(toMark);
+        } finally {
+            access.writeLock().unlock();
+            log.debug("MarkAsValidate RELEASE writeLock");
         }
-
-        // Only mark bits that are actually owned by this node
-        BitSet toMark = (BitSet) rhs.clone();
-        toMark.and(current.rhsAttributes);
-
-        current.rhsValidatedFds.or(toMark);
-        current.rhsCandidateFds.or(toMark);
     }
 
     public LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> getLhsPathsForRhsNew(BitSet targetRhs, int rhsBit) {
-        // Collect minimal lhs paths for each target rhs bit
-        LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> paths = new LinkedHashSet<>();
-        getLhsPathsForRhsNewRecursive(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
-        return paths;
+        access.readLock().lock();
+        log.debug("GetLhsPathsForRhsNew GET readLock");
+        try {
+            // Collect minimal lhs paths for each target rhs bit
+            LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> paths = new LinkedHashSet<>();
+            getLhsPathsForRhsNewRecursive(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
+            return paths;
+        } finally {
+            access.readLock().unlock();
+            log.debug("GetLhsPathsForRhsNew RELEASE readLock");
+        }
     }
 
     private void getLhsPathsForRhsNewRecursive(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> result) {
@@ -134,6 +170,48 @@ public class FDTreeNode {
                 currentLhs.clear(i);
             }
         }
+    }
+
+    public ObjectObjectImmutablePair<BitSet, BitSet> searchByLhs(BitSet lhs, BitSet rhs) {
+        access.readLock().lock();
+        log.debug("SearchByLhs GET readLock");
+        try {
+            BitSet confirmed = new BitSet(numAttributes);
+            BitSet possible = new BitSet(numAttributes);
+
+            for (int rhsBit = rhs.nextSetBit(0); rhsBit >= 0; rhsBit = rhs.nextSetBit(rhsBit + 1)) {
+
+                // Check exact path + all generalizations for this rhs bit
+                List<BitSet> generalizations = getFdAndGeneralizations(lhs, rhsBit);
+
+                for(BitSet genLhs : generalizations){
+                    // Check if any of these are validated or just candidates
+                    boolean isValidated = isValidatedAt(genLhs, rhsBit);
+
+                    if (isValidated) {
+                        confirmed.set(rhsBit);
+                    } else {
+                        possible.set(rhsBit);
+                    }
+                }
+            }
+
+            return new ObjectObjectImmutablePair<>(confirmed, possible);
+        } finally {
+            access.readLock().unlock();
+            log.debug("SearchByLhs RELEASE readLock");
+        }
+    }
+
+    private boolean isValidatedAt(BitSet lhs, int rhs) {
+        FDTreeNode node = this;
+        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
+            if (node.children == null || node.children[attr] == null){
+                return false;
+            }
+            node = node.children[attr];
+        }
+        return node.rhsValidatedFds.get(rhs);
     }
 
     public Map<Integer, List<FDSearchResult>> getLhsPathsForRhs(BitSet targetRhs) {
@@ -179,42 +257,7 @@ public class FDTreeNode {
         }
     }
 
-    public ObjectObjectImmutablePair<BitSet, BitSet> searchByLhs(BitSet lhs, BitSet rhs) {
-        BitSet confirmed = new BitSet(numAttributes);
-        BitSet possible = new BitSet(numAttributes);
-
-        for (int rhsBit = rhs.nextSetBit(0); rhsBit >= 0; rhsBit = rhs.nextSetBit(rhsBit + 1)) {
-
-            // Check exact path + all generalizations for this rhs bit
-            List<BitSet> generalizations = getFdAndGeneralizations(lhs, rhsBit);
-
-            for(BitSet genLhs : generalizations){
-                // Check if any of these are validated or just candidates
-                boolean isValidated = isValidatedAt(genLhs, rhsBit);
-
-                if (isValidated) {
-                    confirmed.set(rhsBit);
-                } else {
-                    possible.set(rhsBit);
-                }
-            }
-        }
-
-        return new ObjectObjectImmutablePair<>(confirmed, possible);
-    }
-
-    private boolean isValidatedAt(BitSet lhs, int rhs) {
-        FDTreeNode node = this;
-        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
-            if (node.children == null || node.children[attr] == null){
-                return false;
-            }
-            node = node.children[attr];
-        }
-        return node.rhsValidatedFds.get(rhs);
-    }
-
-    public List<BitSet> getFdAndGeneralizations(BitSet lhs, int rhs) {
+    private List<BitSet> getFdAndGeneralizations(BitSet lhs, int rhs) {
         List<BitSet> foundLhs = new ArrayList<>();
         BitSet currentLhs = new BitSet(); //Root Node
         int nextLhsAttr = lhs.nextSetBit(0);
@@ -244,7 +287,25 @@ public class FDTreeNode {
         }
     }
 
-    private synchronized void removeFunctionalDependency(BitSet lhs, int rhs) {
+    private void addFunctionalDependency(BitSet lhs, int rhs) {
+        FDTreeNode currentNode = this;
+        currentNode.rhsAttributes.set(rhs);
+
+        for (int i = lhs.nextSetBit(0); i >= 0; i = lhs.nextSetBit(i + 1)) {
+            if (currentNode.children == null) {
+                currentNode.children = new FDTreeNode[this.numAttributes];
+                currentNode.children[i] = new FDTreeNode(this.numAttributes, access);
+            } else if (currentNode.children[i] == null) {
+                currentNode.children[i] = new FDTreeNode(this.numAttributes, access);
+            }
+
+            currentNode = currentNode.children[i];
+            currentNode.rhsAttributes.set(rhs);
+        }
+        currentNode.rhsCandidateFds.set(rhs);
+    }
+
+    private void removeFunctionalDependency(BitSet lhs, int rhs) {
         int currentLhsAttr = lhs.nextSetBit(0);
         this.removeFunctionalDependencyRecursive(lhs, rhs, currentLhsAttr);
     }
@@ -291,7 +352,7 @@ public class FDTreeNode {
         return true;
     }
 
-    public boolean containsFdOrGeneralization(BitSet lhs, int rhs) {
+    private boolean containsFdOrGeneralization(BitSet lhs, int rhs) {
         int nextLhsAttr = lhs.nextSetBit(0);
         return this.containsFdOrGeneralizationRecursive(lhs, rhs, nextLhsAttr);
     }

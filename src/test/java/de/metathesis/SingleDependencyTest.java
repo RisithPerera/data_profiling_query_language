@@ -22,7 +22,7 @@ public class SingleDependencyTest {
     @BeforeAll
     public static void initConfig() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        InputStream is = SingleDependencyTest.class.getClassLoader().getResourceAsStream("datasets.json");
+        InputStream is = SingleDependencyTest.class.getClassLoader().getResourceAsStream("datasets_test.json");
         datasets = mapper.readValue(is, new TypeReference<List<DatasetConfig>>() {});
     }
 

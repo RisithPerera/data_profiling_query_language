@@ -14,7 +14,7 @@ import java.io.InputStream;
 import java.util.List;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class BinaryDependencyTest {
+public class IND_IND_UCC_Test {
     Metaserve metaserve;
 
     @BeforeAll
@@ -22,11 +22,11 @@ public class BinaryDependencyTest {
         String datasetConfigs = "datasets.json";
 
         ObjectMapper mapper = new ObjectMapper();
-        InputStream is = BinaryDependencyTest.class.getClassLoader().getResourceAsStream(datasetConfigs);
+        InputStream is = IND_IND_UCC_Test.class.getClassLoader().getResourceAsStream(datasetConfigs);
         List<DatasetConfig> datasets = mapper.readValue(is, new TypeReference<List<DatasetConfig>>() {});
 
         DatasetConfig config = datasets.stream()
-                .filter(d -> d.getName().equals("TPCH_12"))
+                .filter(d -> d.getName().equals("TPCH_425"))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Dataset not found!"));
 
@@ -36,7 +36,7 @@ public class BinaryDependencyTest {
         inputConfig.setFILE_QUOTE_CHAR(config.getQuoteChar());
         inputConfig.setFILE_ENDING(config.getFileEnding());
         inputConfig.setFILE_HAS_HEADER(config.isHasHeader());
-        inputConfig.setNORMALIZE_RESULTS(true);
+        inputConfig.setNORMALIZE_RESULTS(false);
 
         ExecutorConfiguration executorConfiguration = EngineConfigurationSingleton.get().getExecutorConfig();
         executorConfiguration.setExecutorType(ExecutorConfiguration.Executor.valueOf("HOLISTIC")); //HOLISTIC, DPAL
@@ -61,69 +61,51 @@ public class BinaryDependencyTest {
     }
 
     @Test
-    @Order(2)
-    public void testB1() {
-        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE FD(X,Y) AND UCC(Y)");
-    }
-
-    @Test
-    @Order(3)
-    public void testB2() {
-        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE FD(X,Y) AND UCC(X)");
-    }
-
-    @Test
-    @Order(4)
-    public void testB3() {
-        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE IND(X,Y) AND UCC(Y)");
-    }
-
-    @Test
-    @Order(5)
-    public void testB4() {
-        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE IND(X,Y) AND UCC(X)");
-    }
-
-    @Test
-    @Order(6)
-    public void testB5() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Y) AND FD(Y,Z)");
-    }
-
-    @Test
-    @Order(7)
-    public void testB6() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Y) AND FD(X,Z)");
-    }
-
-    @Test
     @Order(8)
-    public void testB7() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Y) AND FD(Z,Y)");
+    public void testK1() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Z) AND IND(X,Y) AND UCC(Y)");
     }
 
     @Test
     @Order(9)
-    public void testB8() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Y) AND FD(Z,X)");
+    public void testK2() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,X) AND IND(X,Y) AND UCC(Y)");
     }
 
     @Test
     @Order(10)
-    public void testUCC() {
-        runQuery("SELECT X FROM CC(*) X WHERE UCC(X)");
+    public void testK3() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Y,Z) AND IND(X,Y) AND UCC(Y)");
     }
 
     @Test
     @Order(11)
-    public void testIND() {
-        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE IND(X,Y)");
+    public void testK4() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,Y) AND IND(X,Y) AND UCC(Y)");
     }
 
     @Test
     @Order(12)
-    public void testFD() {
-        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE FD(X,Y)");
+    public void testK5() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Z) AND IND(X,Y) AND UCC(X)");
+    }
+
+    @Test
+    @Order(13)
+    public void testK6() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,X) AND IND(X,Y) AND UCC(X)");
+    }
+
+    @Test
+    @Order(14)
+    public void testK7() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Y,Z) AND IND(X,Y) AND UCC(X)");
+    }
+
+    @Test
+    @Order(15)
+    public void testK8() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,Y) AND IND(X,Y) AND UCC(X)");
     }
 
     private void runQuery(String query){

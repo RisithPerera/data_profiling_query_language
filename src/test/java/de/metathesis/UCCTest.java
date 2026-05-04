@@ -4,9 +4,10 @@ import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metaserve.util.exceptions.TablesDiscoveryException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.profilers.UCCProfiler;
-import de.metathesis.structures.requests.SearchSpace;
-import de.metathesis.structures.requests.UCCRequest;
-import de.metathesis.structures.results.UCCResult;
+
+import de.metathesis.profilers.requests.SearchSpace;
+import de.metathesis.profilers.requests.UCCRequest;
+import de.metathesis.profilers.results.UCCResult;
 import de.metathesis.utils.Utility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -57,9 +58,9 @@ public class UCCTest {
             UCCResult result = uccProfiler.profile(new UCCRequest(lhs));
 
             System.out.println("--------- Level: " + level + " Result Size: " + result.size());
-            for(UCCResult.UCC ucc:  result) {
-                System.out.println(resultFormatter.formatUCC(ucc));
-            }
+//            for(UCCResult.UCC ucc:  result) {
+//                System.out.println(resultFormatter.formatUCC(ucc));
+//            }
         }
     }
 

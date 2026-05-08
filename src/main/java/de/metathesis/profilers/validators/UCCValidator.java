@@ -41,12 +41,7 @@ public class UCCValidator {
         this.plis = relation.getUnaryPLIs();
 
         this.root = new UCCTreeNode(numAttributes);
-        this.root.setChildren(new UCCTreeNode[numAttributes]);
-
-        //Initialize Most General Uniques
-        for (int attr = 0; attr < this.numAttributes; attr++) {
-            this.root.getChildren()[attr] = new UCCTreeNode(this.numAttributes, true);
-        }
+        this.root.init();
     }
 
     private class ValidationTask implements Callable<ValidationResult> {
@@ -102,9 +97,8 @@ public class UCCValidator {
     }
 
     // Validate using positive cover induction
-    public Set<IntIntImmutablePair> validateWithPositiveCover(ExecutorService executor,
-                                                              NegativeCover newNegativeCover,
-                                                              int level, Set<BitSet> results) throws ExecutionException, InterruptedException {
+    public Set<IntIntImmutablePair> validateFree(ExecutorService executor, NegativeCover newNegativeCover,
+                                                 int level, Set<BitSet> results) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
         Set<BitSet> candidates = this.root.getCandidatesAtDepth(level, results);
@@ -129,7 +123,7 @@ public class UCCValidator {
                 this.root.markAsValidate(result.ucc());
             } else {
                 invalidUCCCount++;
-                specializePositiveCover(result.ucc());
+                this.root.specializePositiveCover(result.ucc());
                 suggestions.addAll(result.suggestions());
 
                 if (validUCCCount > 0 && invalidUCCCount > validUCCCount * validationThreshold) {
@@ -148,9 +142,7 @@ public class UCCValidator {
         return suggestions.isEmpty() ? null : suggestions;
     }
 
-    public Set<IntIntImmutablePair> validateLockedCandidates(NegativeCover newNegativeCover,
-                                                             Set<BitSet> candidateList,
-                                                             Set<BitSet> confirmList) {
+    public Set<IntIntImmutablePair> validateLock(NegativeCover newNegativeCover, Set<BitSet> candidateList, Set<BitSet> confirmList) {
 
         inductPositiveCover(newNegativeCover);
 
@@ -190,7 +182,7 @@ public class UCCValidator {
                 this.root.markAsValidate(result.ucc());
             } else {
                 invalidUCCCount++;
-                specializePositiveCover(result.ucc());
+                this.root.specializePositiveCover(result.ucc());
                 suggestions.addAll(result.suggestions());
 
                 if (invalidUCCCount > totalCandidateCount * validationThreshold) {
@@ -213,29 +205,10 @@ public class UCCValidator {
             }
 
             for (BitSet nonUCC : nonUCCs.getLevels().get(i)) {
-                this.specializePositiveCover(nonUCC);
+                this.root.specializePositiveCover(nonUCC);
             }
         }
 
         this.isInitialValidation = false;
-    }
-
-    // Specializes the positive cover for the non-UCC: agreeSet.
-    private void specializePositiveCover(BitSet nonUCC) {
-        List<BitSet> specUCCs = this.root.getUCCAndGeneralizations(nonUCC);
-
-        for (BitSet specUCC : specUCCs) {
-            this.root.removeUniqueColumnCombination(specUCC);
-
-            for (int attr = this.numAttributes - 1; attr >= 0; attr--) {
-                if (!nonUCC.get(attr)) {
-                    specUCC.set(attr);
-                    if (this.root.containsUCCOrGeneralization(specUCC) == ValidationStatus.INVALID) {
-                        this.root.addUniqueColumnCombination(specUCC);
-                    }
-                    specUCC.clear(attr);
-                }
-            }
-        }
     }
 }

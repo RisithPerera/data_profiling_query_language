@@ -1,6 +1,7 @@
 package de.metathesis.profilers.structures;
 
 import de.metathesis.profilers.validators.FDValidator;
+import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import lombok.Getter;
 import org.apache.logging.log4j.LogManager;
@@ -31,7 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 @Getter
 public class FDTreeNode {
-    private static final Logger log = LogManager.getLogger(FDValidator.class);
+    private static final Logger log = LogManager.getLogger(FDTreeNode.class);
 
     private FDTreeNode[] children;
     private final BitSet rhsAttributes;      // propagation marker (union of subtree candidates)
@@ -85,45 +86,17 @@ public class FDTreeNode {
 
     public void markAsValidate(BitSet lhs, BitSet rhs) {
         access.writeLock().lock();
-        try {
-            FDTreeNode current = this;
-            for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
-                if (current.children == null || current.children[attr] == null) {
-                    return; // path no longer exists — already specialized away, skip silently
-                }
-                current = current.children[attr];
-            }
-
-            // Path still exists — safe to mark
-            BitSet toMark = (BitSet) rhs.clone();
-            toMark.and(current.rhsAttributes);
-
-            current.rhsValidatedFds.or(toMark);
-            current.rhsCandidateFds.or(toMark);
-        } finally {
-            access.writeLock().unlock();
-        }
-    }
-
-    // Marks lhs -> rhs as confirmed valid. Sets the bit in rhsValidatedFds at the node for lhs.
-    public void markAsValidate3(BitSet lhs, BitSet rhs) {
-        access.writeLock().lock();
         log.debug("MarkAsValidate GET writeLock");
         try {
             FDTreeNode current = this;
             for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
-                if (current.children == null) {
-                    current.children = new FDTreeNode[this.numAttributes];
+                if (current.children == null || current.children[attr] == null) {
+                    return; // path no longer exists already specialized away, skip silently
                 }
-
-                if (current.children[attr] == null) {
-                    current.children[attr] = new FDTreeNode(numAttributes, access);
-                }
-
                 current = current.children[attr];
             }
 
-            // Only mark bits that are actually owned by this node
+            // Path still exists safe to mark
             BitSet toMark = (BitSet) rhs.clone();
             toMark.and(current.rhsAttributes);
 
@@ -135,13 +108,113 @@ public class FDTreeNode {
         }
     }
 
-    public LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> getLhsPathsForRhsNew(BitSet targetRhs, int rhsBit) {
+    public Map<BitSet, BitSet> getLhsPaths(int targetDepth) {
+        access.readLock().lock();
+        log.debug("GetLhsPaths GET readLock");
+        try {
+            Map<BitSet, BitSet> candidates = new HashMap<>();
+            // Start with unvalidated RHS from root (depth 0)
+            BitSet inheritedRhs = (BitSet) this.getRhsCandidateFds().clone();
+            inheritedRhs.andNot(this.getRhsValidatedFds());
+            collectAtDepth(this, new BitSet(), inheritedRhs, 0, targetDepth, candidates);
+            return candidates;
+        } finally {
+            access.readLock().unlock();
+            log.debug("GetLhsPaths RELEASE readLock");
+        }
+    }
+
+    private void collectAtDepth(FDTreeNode node, BitSet currentLhs, BitSet prevInheritedRhs, int depth, int targetDepth, Map<BitSet, BitSet> candidates) {
+
+        BitSet currInheritedRhs = (BitSet) node.getRhsCandidateFds().clone();
+        currInheritedRhs.andNot(node.getRhsValidatedFds());
+        currInheritedRhs.or(prevInheritedRhs);
+        currInheritedRhs.andNot(currentLhs); // non triviality
+
+        if (depth == targetDepth) {
+            if (!currInheritedRhs.isEmpty()) {
+                addCandidate(candidates, (BitSet) currentLhs.clone(), (BitSet) currInheritedRhs.clone());
+            }
+            return;
+        }
+
+        BitSet currNonValidatedRhs = (BitSet) node.getRhsAttributes().clone();
+        currNonValidatedRhs.andNot(node.getRhsValidatedFds());
+
+        // Follow existing children
+        if (node.getChildren() != null) {
+            for (int attr = 0; attr < numAttributes; attr++) {
+                BitSet attrInherited = (BitSet) currInheritedRhs.clone();
+                attrInherited.clear(attr);
+
+                if(!currNonValidatedRhs.isEmpty()){
+                    if (node.getChildren()[attr] != null) {
+                        currentLhs.set(attr);
+                        collectAtDepth(node.getChildren()[attr], currentLhs, attrInherited, depth + 1, targetDepth, candidates);
+                        currentLhs.clear(attr);
+                    } else {
+                        if (!currInheritedRhs.isEmpty()) {
+                            BitSet lhs = (BitSet) currentLhs.clone();
+                            lhs.set(attr);
+                            BitSet rhs = (BitSet) currInheritedRhs.clone();
+                            rhs.clear(attr);
+                            int additionalDepth = targetDepth - (depth + 1);
+                            specializeNode(lhs, rhs, additionalDepth);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Cover all paths the tree doesn't have at all
+        if (!currInheritedRhs.isEmpty() && depth < targetDepth) {
+            int additionalDepth = targetDepth - depth;
+            Map<BitSet, BitSet> specializedCandidates = specializeNode(currentLhs, currInheritedRhs, additionalDepth);
+            for (Map.Entry<BitSet, BitSet> entry : specializedCandidates.entrySet()) {
+                addCandidate(candidates, entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    private Map<BitSet, BitSet> specializeNode(BitSet currentLhs, BitSet rhsCandidates, int additionalDepth) {
+        Map<BitSet, BitSet> result = new HashMap<>();
+
+        // Remaining attributes = all - currentLhs
+        BitSet remaining = new BitSet(numAttributes);
+        remaining.set(0, numAttributes);
+        remaining.andNot(currentLhs);
+
+        BitSet[] combinations = Utility.generateApriori(remaining, additionalDepth);
+
+        for (BitSet combo : combinations) {
+            BitSet newLhs = (BitSet) currentLhs.clone();
+            newLhs.or(combo);
+
+            BitSet newRhs = (BitSet) rhsCandidates.clone();
+            newRhs.andNot(newLhs); // non-triviality — minus entire new lhs
+
+            if (!newRhs.isEmpty()) {
+                addCandidate(result, newLhs, newRhs);
+            }
+        }
+
+        return result;
+    }
+
+    private void addCandidate(Map<BitSet, BitSet> map, BitSet lhs, BitSet rhs) {
+        map.merge(lhs, rhs, (existing, newRhs) -> {
+            existing.or(newRhs);
+            return existing;
+        });
+    }
+
+    public LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> getLhsPathsForRhs(BitSet targetRhs, int rhsBit) {
         access.readLock().lock();
         log.debug("GetLhsPathsForRhsNew GET readLock");
         try {
             // Collect minimal lhs paths for each target rhs bit
             LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> paths = new LinkedHashSet<>();
-            getLhsPathsForRhsNewRecursive(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
+            getLhsPathsForRhsRecursive(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
             return paths;
         } finally {
             access.readLock().unlock();
@@ -149,7 +222,7 @@ public class FDTreeNode {
         }
     }
 
-    private void getLhsPathsForRhsNewRecursive(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> result) {
+    private void getLhsPathsForRhsRecursive(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> result) {
         // this path has no relevance to rhsBit
         if (!node.rhsAttributes.get(rhsBit)) return;
 
@@ -166,13 +239,13 @@ public class FDTreeNode {
             //skip paths containing targetRhs bits because lhs path should not contain given target rhs
             if (!targetRhs.get(i) && node.children[i] != null) {
                 currentLhs.set(i);
-                getLhsPathsForRhsNewRecursive(node.children[i], currentLhs, rhsBit, targetRhs, result);
+                getLhsPathsForRhsRecursive(node.children[i], currentLhs, rhsBit, targetRhs, result);
                 currentLhs.clear(i);
             }
         }
     }
 
-    public ObjectObjectImmutablePair<BitSet, BitSet> searchByLhs(BitSet lhs, BitSet rhs) {
+    public ObjectObjectImmutablePair<BitSet, BitSet> getRhsForLhsPaths(BitSet lhs, BitSet rhs) {
         access.readLock().lock();
         log.debug("SearchByLhs GET readLock");
         try {

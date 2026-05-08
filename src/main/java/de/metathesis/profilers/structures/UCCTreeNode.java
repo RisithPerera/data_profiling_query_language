@@ -4,8 +4,11 @@ import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A node in the positive cover prefix tree.
@@ -14,20 +17,58 @@ import java.util.*;
  */
 @Getter
 public class UCCTreeNode {
+    private static final Logger log = LogManager.getLogger(UCCTreeNode.class);
 
     @Setter
     private UCCTreeNode[] children;
     private boolean isCandidateUCC;
     private boolean isValidatedUCC;
     private final int numAttributes;
+    private final ReentrantReadWriteLock access;
 
     public UCCTreeNode(int numAttributes) {
-        this.numAttributes = numAttributes;
+        this(numAttributes, false, new ReentrantReadWriteLock());
     }
 
-    public UCCTreeNode(int numAttributes, boolean isCandidateUCC) {
+    public UCCTreeNode(int numAttributes, boolean isCandidateUCC, ReentrantReadWriteLock access) {
         this.numAttributes = numAttributes;
         this.isCandidateUCC = isCandidateUCC;
+        this.access = access;
+    }
+
+    public void init(){
+        this.setChildren(new UCCTreeNode[numAttributes]);
+
+        //Initialize Most General Uniques
+        for (int attr = 0; attr < this.numAttributes; attr++) {
+            this.getChildren()[attr] = new UCCTreeNode(this.numAttributes, true, access);
+        }
+    }
+
+    // Specializes the positive cover for the non-UCC: agreeSet.
+    public void specializePositiveCover(BitSet nonUCC) {
+        access.writeLock().lock();
+        log.debug("SpecializePositiveCover GET writeLock");
+        try {
+            List<BitSet> specUCCs = this.getUCCAndGeneralizations(nonUCC);
+
+            for (BitSet specUCC : specUCCs) {
+                this.removeUniqueColumnCombination(specUCC);
+
+                for (int attr = this.numAttributes - 1; attr >= 0; attr--) {
+                    if (!nonUCC.get(attr)) {
+                        specUCC.set(attr);
+                        if (this.containsUCCOrGeneralization(specUCC) == ValidationStatus.INVALID) {
+                            this.addUniqueColumnCombination(specUCC);
+                        }
+                        specUCC.clear(attr);
+                    }
+                }
+            }
+        } finally {
+            access.writeLock().unlock();
+            log.debug("SpecializePositiveCover RELEASE writeLock");
+        }
     }
 
     public Set<BitSet> getCandidatesAtDepth(int level, Set<BitSet> results) {
@@ -86,26 +127,28 @@ public class UCCTreeNode {
         return result;
     }
 
-    // Marks lhs -> rhs as confirmed valid. Sets the bit in rhsValidatedFds at the node for lhs.
-    public synchronized void markAsValidate(BitSet ucc) {
-        UCCTreeNode current = this;
-        for (int attr = ucc.nextSetBit(0); attr >= 0; attr = ucc.nextSetBit(attr + 1)) {
-            if (current.children == null) {
-                current.children = new UCCTreeNode[this.numAttributes];
+    public void markAsValidate(BitSet ucc) {
+        access.writeLock().lock();
+        log.debug("MarkAsValidate GET writeLock");
+        try {
+            UCCTreeNode current = this;
+            for (int attr = ucc.nextSetBit(0); attr >= 0; attr = ucc.nextSetBit(attr + 1)) {
+                if (current.children == null || current.children[attr] == null) {
+                    return;
+                }
+
+                current = current.children[attr];
             }
 
-            if (current.children[attr] == null) {
-                current.children[attr] = new UCCTreeNode(numAttributes);
-            }
-
-            current = current.children[attr];
+            current.isCandidateUCC = true;
+            current.isValidatedUCC = true;
+        } finally {
+            access.writeLock().unlock();
+            log.debug("MarkAsValidate RELEASE writeLock");
         }
-
-        current.isCandidateUCC = true;
-        current.isValidatedUCC = true;
     }
 
-    public List<BitSet> getUCCAndGeneralizations(BitSet ucc) {
+    private List<BitSet> getUCCAndGeneralizations(BitSet ucc) {
         List<BitSet> foundUCCs = new ArrayList<>();
         BitSet currentUCC = new BitSet();
         int nextUCCAttr = ucc.nextSetBit(0);
@@ -135,15 +178,15 @@ public class UCCTreeNode {
         }
     }
 
-    public synchronized void addUniqueColumnCombination(BitSet ucc) {
+    private void addUniqueColumnCombination(BitSet ucc) {
         UCCTreeNode currentNode = this;
 
         for (int i = ucc.nextSetBit(0); i >= 0; i = ucc.nextSetBit(i + 1)) {
             if (currentNode.children == null) {
                 currentNode.children = new UCCTreeNode[this.numAttributes];
-                currentNode.children[i] = new UCCTreeNode(this.numAttributes, false);
+                currentNode.children[i] = new UCCTreeNode(this.numAttributes, false, access);
             } else if (currentNode.children[i] == null) {
-                currentNode.children[i] = new UCCTreeNode(this.numAttributes, false);
+                currentNode.children[i] = new UCCTreeNode(this.numAttributes, false, access);
             }
 
             currentNode = currentNode.children[i];
@@ -152,7 +195,7 @@ public class UCCTreeNode {
         currentNode.isCandidateUCC = true;
     }
 
-    public synchronized void removeUniqueColumnCombination(BitSet ucc) {
+    private void removeUniqueColumnCombination(BitSet ucc) {
         int currentUCCAttr = ucc.nextSetBit(0);
         this.removeUniqueColumnCombinationRecursive(ucc, currentUCCAttr);
     }

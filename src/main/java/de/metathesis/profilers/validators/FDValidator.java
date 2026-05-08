@@ -1,6 +1,5 @@
 package de.metathesis.profilers.validators;
 
-import de.metanome.algorithms.hyfd.structures.FDTree;
 import de.metathesis.profilers.structures.FDTreeNode;
 import de.metathesis.profilers.structures.NegativeCover;
 import de.metathesis.structures.PositionListIndex;
@@ -124,7 +123,7 @@ public class FDValidator {
                                                      List<ObjectObjectImmutablePair<BitSet, BitSet>> results) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
-        Map<BitSet, BitSet> candidates = getCandidatesAtDepth(level);
+        Map<BitSet, BitSet> candidates = this.root.getLhsPaths(level);
 
         List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
 
@@ -172,9 +171,9 @@ public class FDValidator {
         return null;
     }
 
-    public Set<IntIntImmutablePair> validateFreeLockNew(NegativeCover newNegativeCover,
-                                                        Set<BitSet> rhsCandidateList,
-                                                        List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) throws ExecutionException, InterruptedException{
+    public Set<IntIntImmutablePair> validateFreeLock(NegativeCover newNegativeCover,
+                                                     Set<BitSet> rhsCandidateList,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList){
         inductPositiveCover(newNegativeCover);
 
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
@@ -189,7 +188,7 @@ public class FDValidator {
             boolean rhsCandidateValid = true;
 
             for (int rhsAttr = rhsCandidate.nextSetBit(0); rhsAttr >= 0; rhsAttr = rhsCandidate.nextSetBit(rhsAttr + 1)) {
-                LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> lhsCandidates = this.root.getLhsPathsForRhsNew(rhsCandidate, rhsAttr);
+                LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> lhsCandidates = this.root.getLhsPathsForRhs(rhsCandidate, rhsAttr);
                 log.info("Rhs: {} Found lhs candidates: {}", rhsAttr, lhsCandidates.size());
 
                 BitSet rhsBit = new BitSet();
@@ -239,13 +238,6 @@ public class FDValidator {
             }
 
             log.info("All Rhs validated lhs find is done! {}", rhsCandidateValid);
-//            for (Map.Entry<Integer, List<BitSet>> entry : minimalLhsPerBit.entrySet()) {
-//                Integer key = entry.getKey();
-//                int size = entry.getValue() != null ? entry.getValue().size() : 0;
-//
-//                System.out.println("Key: " + key + ", List size: " + size);
-//            }
-//            System.out.println("-------------------------------------------------------");
 
             if (rhsCandidateValid) {
                 //Create the final result using iterative merging
@@ -294,7 +286,7 @@ public class FDValidator {
             BitSet lhs = candidate.left();
             BitSet rhs = candidate.right();
 
-            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.searchByLhs(lhs, rhs);
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPaths(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
 
@@ -363,7 +355,7 @@ public class FDValidator {
             BitSet rhs = candidate.right();
 
             // Check posCover status first
-            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.searchByLhs(lhs, rhs);
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPaths(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
 
@@ -429,106 +421,6 @@ public class FDValidator {
         }
 
         this.isInitialValidation = false;
-    }
-
-    private Map<BitSet, BitSet> getCandidatesAtDepth(int targetDepth) {
-        Map<BitSet, BitSet> candidates = new HashMap<>();
-        // Start with unvalidated RHS from root (depth 0)
-        BitSet inheritedRhs = (BitSet) root.getRhsCandidateFds().clone();
-        inheritedRhs.andNot(root.getRhsValidatedFds());
-        collectAtDepth(root, new BitSet(), inheritedRhs, 0, targetDepth, candidates);
-        return candidates;
-    }
-
-    private void collectAtDepth(FDTreeNode node, BitSet currentLhs, BitSet inheritedRhs, int depth, int targetDepth, Map<BitSet, BitSet> candidates) {
-
-        if (depth == targetDepth) {
-            // Merge node's own unvalidated remaining with inherited
-            BitSet rhs = (BitSet) node.getRhsCandidateFds().clone();
-            rhs.andNot(node.getRhsValidatedFds());
-            rhs.or(inheritedRhs);
-            rhs.andNot(currentLhs); // non-triviality
-
-            if (!rhs.isEmpty()) {
-                addCandidate(candidates, (BitSet) currentLhs.clone(), rhs);
-            }
-            return;
-        }
-
-        // Compute inherited RHS for children:
-        // current node's unvalidated remaining pass down
-        BitSet parentInherited = (BitSet) node.getRhsCandidateFds().clone();
-        parentInherited.andNot(node.getRhsValidatedFds());
-        parentInherited.or(inheritedRhs);
-
-        BitSet parentNotValidated = (BitSet) node.getRhsAttributes().clone();
-        parentNotValidated.andNot(node.getRhsValidatedFds());
-
-        // Follow existing children
-        if (node.getChildren() != null) {
-            for (int attr = 0; attr < numAttributes; attr++) {
-                BitSet attrInherited = (BitSet) parentInherited.clone();
-                attrInherited.clear(attr);
-
-                if(!parentNotValidated.isEmpty()){
-                    if (node.getChildren()[attr] != null) {
-                        currentLhs.set(attr);
-                        collectAtDepth(node.getChildren()[attr], currentLhs, attrInherited, depth + 1, targetDepth, candidates);
-                        currentLhs.clear(attr);
-                    } else {
-                        if (!parentInherited.isEmpty()) {
-                            BitSet lhs = (BitSet) currentLhs.clone();
-                            lhs.set(attr);
-                            BitSet rhs = (BitSet) parentInherited.clone();
-                            rhs.clear(attr);
-                            int additionalDepth = targetDepth - (depth + 1);
-                            specializeNode(lhs, rhs, additionalDepth);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Cover all paths the tree doesn't have at all
-        if (!parentInherited.isEmpty() && depth < targetDepth) {
-            int additionalDepth = targetDepth - depth;
-            Map<BitSet, BitSet> specializedCandidates = specializeNode(currentLhs, parentInherited, additionalDepth);
-            for (Map.Entry<BitSet, BitSet> entry : specializedCandidates.entrySet()) {
-                addCandidate(candidates, entry.getKey(), entry.getValue());
-            }
-        }
-    }
-
-    private Map<BitSet, BitSet> specializeNode(BitSet currentLhs, BitSet rhsCandidates, int additionalDepth) {
-        Map<BitSet, BitSet> result = new HashMap<>();
-
-        // Remaining attributes = all - currentLhs
-        BitSet remaining = new BitSet(numAttributes);
-        remaining.set(0, numAttributes);
-        remaining.andNot(currentLhs);
-
-        BitSet[] combinations = Utility.generateApriori(remaining, additionalDepth);
-
-        for (BitSet combo : combinations) {
-            BitSet newLhs = (BitSet) currentLhs.clone();
-            newLhs.or(combo);
-
-            BitSet newRhs = (BitSet) rhsCandidates.clone();
-            newRhs.andNot(newLhs); // non-triviality — minus entire new lhs
-
-            if (!newRhs.isEmpty()) {
-                addCandidate(result, newLhs, newRhs);
-            }
-        }
-
-        return result;
-    }
-
-    private void addCandidate(Map<BitSet, BitSet> map, BitSet lhs, BitSet rhs) {
-        map.merge(lhs, rhs, (existing, newRhs) -> {
-            existing.or(newRhs);
-            return existing;
-        });
     }
 
     public static List<BitSet> minimalCrossProduct(List<BitSet> list1, List<BitSet> list2) {

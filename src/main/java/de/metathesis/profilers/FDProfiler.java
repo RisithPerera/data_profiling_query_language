@@ -166,24 +166,19 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             Sampler sampler = this.preprocessor.getSampler(relationIndex);
             FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
 
-            try {
-                List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmedFDList = new ArrayList<>();
-                Set<IntIntImmutablePair> suggestions = new HashSet<>();
+            List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmedFDList = new ArrayList<>();
+            Set<IntIntImmutablePair> suggestions = new HashSet<>();
 
-                do {
-                    NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
-                    suggestions = validator.validateFreeLockNew(newNonFds, rhsCandidateList, confirmedFDList);
-                } while (suggestions != null);
+            do {
+                NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
+                suggestions = validator.validateFreeLock(newNonFds, rhsCandidateList, confirmedFDList);
+            } while (suggestions != null);
 
-                for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {
-                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, confirmedPair.left());
-                    AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, confirmedPair.right());
-                    result.add(lhsAbs, rhsAbs);
-                }
-            }catch (ExecutionException | InterruptedException e){
-                throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "at level: " + 0, e);
+            for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {
+                AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, confirmedPair.left());
+                AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, confirmedPair.right());
+                result.add(lhsAbs, rhsAbs);
             }
-
         }
 
         return result;

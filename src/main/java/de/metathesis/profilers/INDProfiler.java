@@ -6,13 +6,14 @@ import de.metathesis.profilers.requests.SearchSpace;
 import de.metathesis.profilers.results.INDResult;
 import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.structures.Relation;
-
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {

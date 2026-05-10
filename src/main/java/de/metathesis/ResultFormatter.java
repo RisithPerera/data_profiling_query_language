@@ -1,17 +1,13 @@
 package de.metathesis;
 
 import de.metaserve.executor.min.graph.edge.Edge;
-import de.metaserve.executor.min.graph.edge.FDEdge;
-import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
 import de.metathesis.profilers.results.FDResult;
 import de.metathesis.profilers.results.INDResult;
 import de.metathesis.profilers.results.Result;
 import de.metathesis.profilers.results.UCCResult;
 import de.metathesis.structures.AttributeBitSet;
-import de.metathesis.structures.ExecutionNode;
 import de.metathesis.structures.ResultTable;
-
 
 import java.util.*;
 

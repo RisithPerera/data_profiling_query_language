@@ -1,9 +1,9 @@
 package de.metathesis.profilers.validators;
 
 import de.metathesis.profilers.structures.NegativeCover;
+import de.metathesis.profilers.structures.UCCTreeNode;
 import de.metathesis.structures.PositionListIndex;
 import de.metathesis.structures.Relation;
-import de.metathesis.profilers.structures.UCCTreeNode;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;

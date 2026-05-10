@@ -4,11 +4,10 @@ import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.profilers.requests.FDRequest;
 import de.metathesis.profilers.requests.SearchSpace;
 import de.metathesis.profilers.results.FDResult;
-import de.metathesis.profilers.validators.FDValidator;
 import de.metathesis.profilers.sampling.Sampler;
-import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.profilers.structures.NegativeCover;
-
+import de.metathesis.profilers.validators.FDValidator;
+import de.metathesis.structures.AttributeBitSet;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;

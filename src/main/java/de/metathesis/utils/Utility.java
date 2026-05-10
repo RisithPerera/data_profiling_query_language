@@ -3,7 +3,10 @@ package de.metathesis.utils;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 

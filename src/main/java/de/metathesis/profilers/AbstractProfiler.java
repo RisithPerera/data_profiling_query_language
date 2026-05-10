@@ -2,7 +2,6 @@ package de.metathesis.profilers;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metathesis.Preprocessor;
-
 import de.metathesis.profilers.requests.Request;
 import de.metathesis.profilers.results.Result;
 import lombok.Getter;

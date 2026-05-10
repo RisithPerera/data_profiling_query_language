@@ -5,9 +5,9 @@ import de.metathesis.profilers.requests.SearchSpace;
 import de.metathesis.profilers.requests.UCCRequest;
 import de.metathesis.profilers.results.UCCResult;
 import de.metathesis.profilers.sampling.Sampler;
+import de.metathesis.profilers.structures.NegativeCover;
 import de.metathesis.profilers.validators.UCCValidator;
 import de.metathesis.structures.AttributeBitSet;
-import de.metathesis.profilers.structures.NegativeCover;
 import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 

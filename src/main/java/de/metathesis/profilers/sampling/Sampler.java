@@ -1,7 +1,8 @@
 package de.metathesis.profilers.sampling;
 
 import de.metathesis.profilers.structures.NegativeCover;
-import de.metathesis.structures.*;
+import de.metathesis.structures.PositionListIndex;
+import de.metathesis.structures.Relation;
 import de.metathesis.utils.MemoryUtils;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;

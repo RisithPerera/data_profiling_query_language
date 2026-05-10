@@ -34,7 +34,7 @@ public class HolisticProfileStrategy implements Strategy{
         this.relationMap = relationMap;
         this.resultFormatter = ResultFormatter.getInstance();
 
-        int threadPoolSize = 2; //Runtime.getRuntime().availableProcessors();
+        int threadPoolSize = Runtime.getRuntime().availableProcessors();
         System.out.println("Fixed Thread Pool Count: " + threadPoolSize);
 
         this.executor = Executors.newFixedThreadPool(threadPoolSize);

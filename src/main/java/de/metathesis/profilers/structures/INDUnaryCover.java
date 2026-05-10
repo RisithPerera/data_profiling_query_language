@@ -19,32 +19,18 @@ public class INDUnaryCover {
     // tracks which (lhsRel, rhsRel) pairs have been computed for unary INDs
     private final ConcurrentHashMap<Long, Boolean> computedPairs = new ConcurrentHashMap<>();
 
-    private void add(int lhsRel, int lhsCol, int rhsRel, int rhsCol) {
-        // forward
-        forward.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(rhsCol, k -> new BitSet())
-                .set(lhsCol);
-
-        // reverse
-        reverse.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(lhsCol, k -> new BitSet())
-                .set(rhsCol);
-    }
-
     public BitSet getLhsCols(int lhsRel, int rhsRel, int rhsCol) {
-        return forward
+        return (BitSet) forward
                 .getOrDefault(lhsRel, Collections.emptyMap())
                 .getOrDefault(rhsRel, Collections.emptyMap())
-                .getOrDefault(rhsCol, new BitSet());
+                .getOrDefault(rhsCol, new BitSet()).clone();
     }
 
-    public BitSet getRhsCols(int lhsRel, int lhsCol, int rhsRel) {
-        return reverse
+    public BitSet getRhsCols(int lhsRel, int rhsRel, int lhsCol) {
+        return (BitSet) reverse
                 .getOrDefault(lhsRel, Collections.emptyMap())
                 .getOrDefault(rhsRel, Collections.emptyMap())
-                .getOrDefault(lhsCol, new BitSet());
+                .getOrDefault(lhsCol, new BitSet()).clone();
     }
 
     public boolean contains(int lhsRel, int lhsCol, int rhsRel, int rhsCol) {
@@ -129,6 +115,20 @@ public class INDUnaryCover {
                 add(lhsRel, lc, rhsRel, rc);
             }
         }
+    }
+
+    private void add(int lhsRel, int lhsCol, int rhsRel, int rhsCol) {
+        // forward
+        forward.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(rhsCol, k -> new BitSet())
+                .set(lhsCol);
+
+        // reverse
+        reverse.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(lhsCol, k -> new BitSet())
+                .set(rhsCol);
     }
 
     public void clear(){

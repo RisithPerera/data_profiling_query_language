@@ -88,6 +88,8 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         INDResult result = new INDResult();
 
         for (AttributeBitSet rhs : rhsAttrs) {
+            if(rhs.isEmpty()) continue;
+
             int rhsRel = rhs.getRelationIndex();
             int[] rhsCols = rhs.getAttributeIndexArray();
             Relation rhsRelation = preprocessor.getRelation(rhsRel);
@@ -111,17 +113,20 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // for each rhs position, get valid lhs cols from unary INDs
                 BitSet[] validLhsPerPosition = new BitSet[rhsCols.length];
                 for (int pos = 0; pos < rhsCols.length; pos++) {
-                    validLhsPerPosition[pos] = this.preprocessor.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
-                    if (validLhsPerPosition[pos].isEmpty()) {
-                        continue outer;
+                    BitSet valid = this.preprocessor.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
+
+                    // same relation — remove lhs cols which included in given rhs
+                    if (lhsRel == rhsRel) {
+                        for (int rc : rhsCols) valid.clear(rc);
                     }
+
+                    if (valid.isEmpty()) continue outer;
+                    validLhsPerPosition[pos] = valid;
                 }
 
                 String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
 
                 for (int[] lhsCols : Utility.cartesianProduct(validLhsPerPosition)) {
-                    if (lhsRel == rhsRel && !Utility.isDisjoint(lhsCols, rhsCols)) continue;
-
                     String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
                     if (isIncluded(lhsTuples, rhsTuples)) {
                         result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, rhsCols));
@@ -151,7 +156,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 if(lhsCols.length == 1){
-                    BitSet rhsCols = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, lhsCols[0], rhsRel);
+                    BitSet rhsCols = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[0]);
                     for (int attr = rhsCols.nextSetBit(0); attr >= 0; attr = rhsCols.nextSetBit(attr + 1)) {
                         result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, attr));
                     }
@@ -161,10 +166,15 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // for each lhs position, get valid rhs cols from unary INDs
                 BitSet[] validRhsPerPosition = new BitSet[lhsCols.length];
                 for (int pos = 0; pos < lhsCols.length; pos++) {
-                    validRhsPerPosition[pos] = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, lhsCols[pos], rhsRel);
-                    if (validRhsPerPosition[pos].isEmpty()){
-                        continue outer;
+                    BitSet valid = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[pos]);
+
+                    // same relation — remove lhs cols which included in given rhs
+                    if (lhsRel == rhsRel) {
+                        for (int rhsAttr : lhsCols) valid.clear(rhsAttr);
                     }
+
+                    if (valid.isEmpty()) continue outer;
+                    validRhsPerPosition[pos] = valid;
                 }
 
                 String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
@@ -185,7 +195,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         return result;
     }
 
-    //Not Check
+    //Checked
     private INDResult profileLockLock(ObjectOpenHashSet<AttributeBitSet> lhsAttrs, ObjectOpenHashSet<AttributeBitSet> rhsAttrs) {
 
         INDResult result = new INDResult();
@@ -193,33 +203,31 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         for (AttributeBitSet lhs : lhsAttrs) {
             int lhsRel = lhs.getRelationIndex();
             int[] lhsCols = lhs.getAttributeIndexArray();
-            int arity = lhsCols.length;
+            Relation lhsRelation = preprocessor.getRelation(lhsRel);
+            String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
 
             outer: for (AttributeBitSet rhs : rhsAttrs) {
                 int rhsRel = rhs.getRelationIndex();
                 int[] rhsCols = rhs.getAttributeIndexArray();
 
                 // sizes must match
-                if (rhsCols.length != arity) continue;
+                if (rhsCols.length != lhsCols.length) continue;
 
                 // same relation size limit
-                Relation lhsRelation = preprocessor.getRelation(lhsRel);
-                if (lhsRel == rhsRel && arity > lhsRelation.getNumOfAttributes() / 2) continue;
+                if (lhsRel == rhsRel && lhsCols.length > lhsRelation.getNumOfAttributes() / 2) continue;
 
                 Relation rhsRelation = preprocessor.getRelation(rhsRel);
 
                 // unary gate — LHS is locked so no permutation, check position by position
                 this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
-                for (int pos = 0; pos < arity; pos++) {
+                for (int pos = 0; pos < lhsCols.length; pos++) {
                     if (!this.preprocessor.getIndUnaryCover().contains(lhsRel, lhsCols[pos], rhsRel, rhsCols[pos])) {
                         continue outer;
                     }
                 }
 
                 // full tuple check
-
-                String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
                 String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
 
                 if (isIncluded(lhsTuples, rhsTuples)) {
@@ -231,22 +239,15 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
     }
 
     /* ------------------- Utility Methods ------------------- */
-
-    private void combineBindings(List<int[]> bindings, int level, int start,
-                                 int[] lhsCols, int[] rhsCols, int pos,
-                                 int lhsRel, int rhsRel,
-                                 Relation lhsRelation, Relation rhsRelation,
-                                 INDResult result) {
+    private void combineBindings(List<int[]> bindings, int level, int start, int[] lhsCols, int[] rhsCols, int pos,
+                                 int lhsRel, int rhsRel, Relation lhsRelation, Relation rhsRelation, INDResult result) {
 
         if (pos == level) {
             // full tuple check
             String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
             String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
             if (isIncluded(lhsTuples, rhsTuples)) {
-                result.add(
-                        new AttributeBitSet(lhsRel, lhsCols.clone()),
-                        new AttributeBitSet(rhsRel, rhsCols.clone())
-                );
+                result.add(new AttributeBitSet(lhsRel, lhsCols.clone()), new AttributeBitSet(rhsRel, rhsCols.clone()));
             }
             return;
         }

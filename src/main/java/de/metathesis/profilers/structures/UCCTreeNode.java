@@ -1,6 +1,5 @@
 package de.metathesis.profilers.structures;
 
-import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import lombok.Getter;
 import lombok.Setter;
@@ -45,23 +44,22 @@ public class UCCTreeNode {
         }
     }
 
-    // Specializes the positive cover for the non-UCC: agreeSet.
     public void specializePositiveCover(BitSet nonUCC) {
         access.writeLock().lock();
         log.debug("SpecializePositiveCover GET writeLock");
         try {
-            List<BitSet> specUCCs = this.getUCCAndGeneralizations(nonUCC);
+            List<BitSet> generalLhsList = this.getUCCAndGeneralizations(nonUCC);
 
-            for (BitSet specUCC : specUCCs) {
-                this.removeUniqueColumnCombination(specUCC);
+            for (BitSet generalLhs : generalLhsList) {
+                this.removeUniqueColumnCombination(generalLhs);
 
                 for (int attr = this.numAttributes - 1; attr >= 0; attr--) {
                     if (!nonUCC.get(attr)) {
-                        specUCC.set(attr);
-                        if (this.containsUCCOrGeneralization(specUCC) == ValidationStatus.INVALID) {
-                            this.addUniqueColumnCombination(specUCC);
+                        generalLhs.set(attr);
+                        if (!this.containsUCCOrGeneralization(generalLhs)) {
+                            this.addUniqueColumnCombination(generalLhs);
                         }
-                        specUCC.clear(attr);
+                        generalLhs.clear(attr);
                     }
                 }
             }
@@ -69,62 +67,6 @@ public class UCCTreeNode {
             access.writeLock().unlock();
             log.debug("SpecializePositiveCover RELEASE writeLock");
         }
-    }
-
-    public Set<BitSet> getCandidatesAtDepth(int level, Set<BitSet> results) {
-        Set<BitSet> candidates = new ObjectOpenHashSet<>();
-        this.getCandidatesAtDepthRecursive(level, 0, new BitSet(), candidates, results);
-        return candidates;
-    }
-
-    private void getCandidatesAtDepthRecursive(int level, int currentLevel, BitSet currentUCC, Set<BitSet> candidates, Set<BitSet> results) {
-        if (level == currentLevel) {
-            if(this.isCandidateUCC && !this.isValidatedUCC){
-                candidates.add((BitSet) currentUCC.clone());
-            }else if (this.isValidatedUCC){
-                results.add((BitSet) currentUCC.clone());
-            }
-            return;
-        }
-
-        if(this.children != null){
-            for (int child = 0; child < this.numAttributes; child++) {
-                if (this.children[child] == null) {
-                    continue;
-                }
-
-                currentUCC.set(child);
-                this.children[child].getCandidatesAtDepthRecursive(level, currentLevel + 1, currentUCC, candidates, results);
-                currentUCC.clear(child);
-            }
-        }
-
-        // Cover all paths the tree doesn't have at all
-        if (currentLevel < level && this.isCandidateUCC && !this.isValidatedUCC) {
-            int additionalDepth = level - currentLevel;
-            Set<BitSet>  specializedCandidates = specializeNode(currentUCC, additionalDepth);
-            candidates.addAll(specializedCandidates);
-        }
-    }
-
-    private Set<BitSet> specializeNode(BitSet currentUCC, int additionalDepth) {
-        Set<BitSet>  result = new HashSet<>();
-
-        // Remaining attributes = all - currentLhs
-        BitSet remaining = new BitSet(numAttributes);
-        remaining.set(0, numAttributes);
-        remaining.andNot(currentUCC);
-
-        BitSet[] combinations = Utility.generateApriori(remaining, additionalDepth);
-
-        for (BitSet combo : combinations) {
-            BitSet newUCC = (BitSet) currentUCC.clone();
-            newUCC.or(combo);
-
-            result.add(newUCC);
-        }
-
-        return result;
     }
 
     public void markAsValidate(BitSet ucc) {
@@ -146,6 +88,109 @@ public class UCCTreeNode {
             access.writeLock().unlock();
             log.debug("MarkAsValidate RELEASE writeLock");
         }
+    }
+
+    public void getValidatedUCCsAtDepth(int targetDepth, Set<BitSet> results) {
+        access.readLock().lock();
+        log.debug("GetValidatedUCCsAtDepth GET readLock");
+        try {
+            getValidatedUCCsAtDepthRecursive(this, new BitSet(numAttributes), 0, targetDepth, results);
+        } finally {
+            access.readLock().unlock();
+            log.debug("GetValidatedUCCsAtDepth RELEASE readLock");
+        }
+    }
+
+    private void getValidatedUCCsAtDepthRecursive(UCCTreeNode node, BitSet currentUCC, int currentDepth, int targetDepth, Set<BitSet> results) {
+
+        if (currentDepth == targetDepth) {
+            if (node.isValidatedUCC) {
+                results.add((BitSet) currentUCC.clone());
+            }
+            return;
+        }
+
+        if (node.children == null) return;
+
+        for (int i = 0; i < node.numAttributes; i++) {
+            if (node.children[i] != null) {
+                currentUCC.set(i);
+                getValidatedUCCsAtDepthRecursive(node.children[i], currentUCC, currentDepth + 1, targetDepth, results);
+                currentUCC.clear(i);
+            }
+        }
+    }
+
+    public Set<BitSet> getLhsPathsAtDepth(int targetDepth) {
+        access.readLock().lock();
+        log.debug("GetLhsPathsAtDepth GET readLock");
+        try {
+            Set<BitSet> candidates = new ObjectOpenHashSet<>();
+            getLhsPathsAtDepthRecursive(this, new BitSet(numAttributes), 0, targetDepth, candidates);
+            return candidates;
+        } finally {
+            access.readLock().unlock();
+            log.debug("GetLhsPathsAtDepth RELEASE readLock");
+        }
+    }
+
+    private void getLhsPathsAtDepthRecursive(UCCTreeNode node, BitSet currentUCC, int currentDepth, int targetDepth, Set<BitSet> candidates) {
+
+        if (!node.isCandidateUCC && (node.children == null)) return;
+
+        if (node.isCandidateUCC && !node.isValidatedUCC && !currentUCC.isEmpty()) {
+            candidates.add((BitSet) currentUCC.clone());
+        }
+
+        if (currentDepth == targetDepth) return;
+
+        if (node.children == null) return;
+
+        for (int i = 0; i < node.numAttributes; i++) {
+            if (node.children[i] != null) {
+                currentUCC.set(i);
+                getLhsPathsAtDepthRecursive(node.children[i], currentUCC, currentDepth + 1, targetDepth, candidates);
+                currentUCC.clear(i);
+            }
+        }
+    }
+
+    public int getStatusForLhsPath(BitSet lhs) {
+        access.readLock().lock();
+        log.debug("GetStatusForLhsPath GET readLock");
+        try {
+            List<BitSet> generalizations = getUCCAndGeneralizations(lhs);
+
+            if (generalizations.isEmpty()){
+                return -1; // no UCC exists for this lhs or any generalization
+            }
+
+            for (BitSet genLhs : generalizations) {
+                if (isValidatedAt(genLhs)){
+                    return 1; // validated
+                }
+            }
+
+            return 0; // found as candidate but not validated
+        } finally {
+            access.readLock().unlock();
+            log.debug("GetStatusForLhsPath RELEASE readLock");
+        }
+    }
+
+    private boolean isValidatedAt(BitSet lhs) {
+        UCCTreeNode node = this;
+        for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
+            if (node.isValidatedUCC){
+                return true;
+            }
+            if (node.children == null || node.children[attr] == null){
+                return false;
+            }
+            node = node.children[attr];
+        }
+
+        return node.isValidatedUCC;
     }
 
     private List<BitSet> getUCCAndGeneralizations(BitSet ucc) {
@@ -209,43 +254,36 @@ public class UCCTreeNode {
         if ((this.children != null) && (this.children[currentUCCAttr] != null)) {
             this.children[currentUCCAttr].removeUniqueColumnCombinationRecursive(ucc, ucc.nextSetBit(currentUCCAttr + 1));
 
-            if (this.children[currentUCCAttr].isObsolete())
+            // Remove child if it has no children and is not a candidate
+            if (!this.children[currentUCCAttr].isCandidateUCC && !this.children[currentUCCAttr].hasChildren()) {
                 this.children[currentUCCAttr] = null;
+            }
         }
     }
 
-    public ValidationStatus containsUCCOrGeneralization(BitSet ucc) {
+    private boolean containsUCCOrGeneralization(BitSet ucc) {
         int nextUCCAttr = ucc.nextSetBit(0);
         return this.containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr);
     }
 
-    private ValidationStatus containsUCCOrGeneralizationRecursive(BitSet ucc, int currentUCCAttr) {
-        if (this.isValidatedUCC) {
-            return ValidationStatus.VALID;
-        }
-
-        if (this.isCandidateUCC) {
-            return ValidationStatus.POSSIBLE;
+    private boolean containsUCCOrGeneralizationRecursive(BitSet ucc, int currentUCCAttr) {
+        if (this.isValidatedUCC || this.isCandidateUCC) {
+            return true;
         }
 
         if (currentUCCAttr < 0) {
-            return ValidationStatus.INVALID;
+            return false;
         }
 
         int nextUCCAttr = ucc.nextSetBit(currentUCCAttr + 1);
 
         if ((this.children != null) && (this.children[currentUCCAttr] != null)) {
-            ValidationStatus result = this.children[currentUCCAttr].containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr);
-            if (result != ValidationStatus.INVALID) {
-                return result;
+            if (this.children[currentUCCAttr].containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr)) {
+                return true;
             }
         }
 
         return this.containsUCCOrGeneralizationRecursive(ucc, nextUCCAttr);
-    }
-
-    private boolean isObsolete() {
-        return (!this.hasChildren()) && (!this.isCandidateUCC);
     }
 
     private boolean hasChildren() {
@@ -260,10 +298,6 @@ public class UCCTreeNode {
         }
 
         return false;
-    }
-
-    public enum ValidationStatus {
-        VALID, INVALID, POSSIBLE
     }
 
     @Override

@@ -168,4 +168,14 @@ public class Utility {
                 threadPool.getQueue().size()
         );
     }
+
+    public static String bitSetToJsonArray(BitSet bs) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
+            sb.append(i).append(",");
+        }
+        if (sb.length() > 1) sb.deleteCharAt(sb.length() - 1);
+        sb.append("]");
+        return sb.toString();
+    }
 }

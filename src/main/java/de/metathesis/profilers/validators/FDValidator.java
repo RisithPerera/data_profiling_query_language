@@ -118,55 +118,56 @@ public class FDValidator {
     ) {}
 
     public Set<IntIntImmutablePair> validateFreeFree(ExecutorService executor,
-                                                     NegativeCover newNegativeCover,
-                                                     int level,
-                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> results) throws ExecutionException, InterruptedException {
+                                                        NegativeCover newNegativeCover,
+                                                        int level,
+                                                        List<ObjectObjectImmutablePair<BitSet, BitSet>> results) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
-        Map<BitSet, BitSet> candidates = this.root.getLhsPaths(level);
-
-        List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
-
-        for (Map.Entry<BitSet, BitSet> candidate : candidates.entrySet()) {
-            futures.add(executor.submit(new ValidationTask((BitSet) candidate.getKey().clone(), (BitSet) candidate.getValue().clone())));
-        }
-
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
-        int totalCandidateCount   = 0;
+        int totalCandidateCount = 0;
         int invalidFDCount = 0;
 
-        for (Future<ValidationResult> future : futures) {
-            ValidationResult result = future.get();
+        // Validate until no more possible candidates at size <= level
+        while (true) {
+            Map<BitSet, BitSet> candidates = this.root.getLhsPathsAtDepth(level);
+            if (candidates.isEmpty()) break;
 
-            BitSet lhs = result.lhs();
-            BitSet rhs = result.rhs();
-            BitSet validRhs = result.validRhs();
-            totalCandidateCount += rhs.cardinality();
-
-            // Invalid RHS bits — specialize posCover
-            BitSet invalidRhs = (BitSet) rhs.clone();
-            invalidRhs.andNot(validRhs);
-            invalidFDCount += invalidRhs.cardinality();
-
-            // Valid RHS bits — confirm in posCover and store results
-            if (!validRhs.isEmpty()) {
-                results.add(new ObjectObjectImmutablePair<>(lhs, validRhs));
-                this.root.markAsValidate(lhs, validRhs);
+            List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
+            for (Map.Entry<BitSet, BitSet> entry : candidates.entrySet()) {
+                futures.add(executor.submit(new ValidationTask((BitSet) entry.getKey().clone(), (BitSet) entry.getValue().clone())));
             }
 
-            for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
-                this.root.specializePositiveCover(lhs, attr);
+            for (Future<ValidationResult> future : futures) {
+                ValidationResult result = future.get();
+
+                BitSet lhs = result.lhs();
+                BitSet validRhs = result.validRhs();
+                BitSet invalidRhs = (BitSet) result.rhs().clone();
+                invalidRhs.andNot(validRhs);
+
+                totalCandidateCount += result.rhs().cardinality();
+                invalidFDCount += invalidRhs.cardinality();
+
+                if (!validRhs.isEmpty()) {
+                    this.root.markAsValidate(lhs, validRhs);
+                }
+
+                if (!invalidRhs.isEmpty()) {
+                    for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
+                        this.root.specializePositiveCover(lhs, attr);
+                    }
+
+                    suggestions.addAll(result.suggestions());
+                }
             }
 
-            if (!invalidRhs.isEmpty()) {
-                suggestions.addAll(result.suggestions());
+            if (invalidFDCount > totalCandidateCount * validationThreshold) {
+                return suggestions;
             }
         }
 
-        if (invalidFDCount > totalCandidateCount * validationThreshold) {
-            log.info("Back to Sampling | TC: {}, IC: {}, VE: {}", totalCandidateCount, invalidFDCount, totalCandidateCount * validationThreshold);
-            return suggestions;
-        }
+        // Collect all validated FDs on the given level size
+        this.root.getValidatedFDsAtDepth(level, results);
 
         return null;
     }
@@ -286,7 +287,7 @@ public class FDValidator {
             BitSet lhs = candidate.left();
             BitSet rhs = candidate.right();
 
-            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPaths(lhs, rhs);
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPath(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
 
@@ -355,7 +356,7 @@ public class FDValidator {
             BitSet rhs = candidate.right();
 
             // Check posCover status first
-            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPaths(lhs, rhs);
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPath(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
 
@@ -423,7 +424,7 @@ public class FDValidator {
         this.isInitialValidation = false;
     }
 
-    public static List<BitSet> minimalCrossProduct(List<BitSet> list1, List<BitSet> list2) {
+    private List<BitSet> minimalCrossProduct(List<BitSet> list1, List<BitSet> list2) {
         Comparator<BitSet> comparator = (a, b) -> {
             int sizeCmp = Integer.compare(a.cardinality(), b.cardinality());
             if (sizeCmp != 0) return sizeCmp;
@@ -451,7 +452,7 @@ public class FDValidator {
         return result;
     }
 
-    private static void addMinimal(List<BitSet> result, BitSet candidate) {
+    private void addMinimal(List<BitSet> result, BitSet candidate) {
         for (BitSet existing : result) {
             if (isSubset(existing, candidate)) return; // candidate is superset, skip
         }
@@ -459,7 +460,7 @@ public class FDValidator {
         result.add(candidate);
     }
 
-    private static boolean isSubset(BitSet a, BitSet b) {
+    private boolean isSubset(BitSet a, BitSet b) {
         BitSet temp = (BitSet) a.clone();
         temp.andNot(b);
         return temp.isEmpty();

@@ -215,7 +215,7 @@ public final class Instructor {
         List<Edge> remaining = new ArrayList<>(setMembershipMap.keySet());
 
         // Add all U first, then all F, then all I_MINUS
-        for (Graph.SetMembership target : List.of(Graph.SetMembership.U, Graph.SetMembership.F, Graph.SetMembership.I_MINUS)) {
+        for (Graph.SetMembership target : List.of(Graph.SetMembership.U, Graph.SetMembership.F)) {
             for (Iterator<Edge> it = remaining.iterator(); it.hasNext(); ) {
                 Edge edge = it.next();
                 if (target.equals(setMembershipMap.get(edge))) {
@@ -223,10 +223,6 @@ public final class Instructor {
                     it.remove();
                 }
             }
-        }
-
-        if(ordered.isEmpty()){
-            throw new RuntimeException("This query does not support at the moment! Query doesnt have a minimal dependency [U,F,I-]");
         }
 
         // BFS expansion from all seen variables so far

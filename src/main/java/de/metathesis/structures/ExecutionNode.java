@@ -58,8 +58,8 @@ public final class ExecutionNode {
             log.info(Utility.buildLog(String.format("F: %s", this), this.factory.getExecutor()));
 
             results = out;
-            //showResults(); //Testing Purposes
-            if(children.isEmpty()){
+
+            if(children.isEmpty()){ //Check if this a leaf node
                 cropParentResults();
                 log.debug("Finished Cropping All Parents: {}", this);
             }

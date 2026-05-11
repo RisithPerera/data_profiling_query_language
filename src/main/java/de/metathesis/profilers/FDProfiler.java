@@ -52,8 +52,8 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
 
         for (int relationIndex : commonRelationIndexes) {
             try {
-                Sampler sampler = this.preprocessor.getSampler(relationIndex);
-                FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
+                Sampler sampler = this.profilingContext.getSampler(relationIndex);
+                FDValidator validator = this.profilingContext.getFDValidator(relationIndex);
 
                 List<ObjectObjectImmutablePair<BitSet, BitSet>> results = new ArrayList<>();
                 Set<IntIntImmutablePair> suggestions = new HashSet<>();
@@ -101,8 +101,8 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             int relationIndex = entry.getKey();
             Set<BitSet> lhsList = entry.getValue();
 
-            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
-            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+            FDValidator validator = this.profilingContext.getFDValidator(relationIndex);
+            Sampler sampler = this.profilingContext.getSampler(relationIndex);
 
             // Build pending pairs: lhs -> to all rhs remaining at once
             List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList = new ArrayList<>();
@@ -162,8 +162,8 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
             int relationIndex = entry.getKey();
             Set<BitSet> rhsCandidateList = entry.getValue();
 
-            Sampler sampler = this.preprocessor.getSampler(relationIndex);
-            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
+            Sampler sampler = this.profilingContext.getSampler(relationIndex);
+            FDValidator validator = this.profilingContext.getFDValidator(relationIndex);
 
             List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmedFDList = new ArrayList<>();
             Set<IntIntImmutablePair> suggestions = new HashSet<>();
@@ -193,8 +193,8 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         for (AttributeBitSet lhs : lhsAttributes) {
             int relationIndex = lhs.getRelationIndex();
 
-            FDValidator validator = this.preprocessor.getFDValidator(relationIndex);
-            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+            FDValidator validator = this.profilingContext.getFDValidator(relationIndex);
+            Sampler sampler = this.profilingContext.getSampler(relationIndex);
 
             // Build pending pairs: lhs -> to all rhs remaining at once
             List<ObjectObjectImmutablePair<BitSet, BitSet>> pendingList = new ArrayList<>();

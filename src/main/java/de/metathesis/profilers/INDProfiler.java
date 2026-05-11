@@ -50,19 +50,19 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         if(level == 0) return result;
 
         for (int lhsRel : lhsRelations) {
-            Relation lhsRelation = preprocessor.getRelation(lhsRel);
+            Relation lhsRelation = profilingContext.getRelation(lhsRel);
 
             for (int rhsRel : rhsRelations) {
                 // same relation size limit
                 if (lhsRel == rhsRel && level > lhsRelation.getNumOfAttributes() / 2) continue;
 
-                Relation rhsRelation = preprocessor.getRelation(rhsRel);
+                Relation rhsRelation = profilingContext.getRelation(rhsRel);
 
                 // compute unary INDs for this pair if not already done
-                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.profilingContext.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 // flatten unary bindings for this pair into (lhsCol, rhsCol) pairs
-                List<int[]> unaryBindings = this.preprocessor.getIndUnaryCover().getBindings(lhsRel, rhsRel);
+                List<int[]> unaryBindings = this.profilingContext.getIndUnaryCover().getBindings(lhsRel, rhsRel);
 
                 if (level == 1) {
                     for (int[] binding : unaryBindings) {
@@ -93,18 +93,18 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
             int rhsRel = rhs.getRelationIndex();
             int[] rhsCols = rhs.getAttributeIndexArray();
-            Relation rhsRelation = preprocessor.getRelation(rhsRel);
+            Relation rhsRelation = profilingContext.getRelation(rhsRel);
 
             outer: for (int lhsRel : lhsRelations) {
                 // same relation size limit
-                Relation lhsRelation = preprocessor.getRelation(lhsRel);
+                Relation lhsRelation = profilingContext.getRelation(lhsRel);
                 if (lhsRel == rhsRel && rhsCols.length > lhsRelation.getNumOfAttributes() / 2) continue;
 
                 // ensure unary INDs computed for this pair
-                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.profilingContext.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 if (rhsCols.length == 1) {
-                    BitSet lhsCols = this.preprocessor.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[0]);
+                    BitSet lhsCols = this.profilingContext.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[0]);
                     for (int attr = lhsCols.nextSetBit(0); attr >= 0; attr = lhsCols.nextSetBit(attr + 1)) {
                         result.add(new AttributeBitSet(lhsRel, attr), new AttributeBitSet(rhsRel, rhsCols));
                     }
@@ -114,7 +114,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // for each rhs position, get valid lhs cols from unary INDs
                 BitSet[] validLhsPerPosition = new BitSet[rhsCols.length];
                 for (int pos = 0; pos < rhsCols.length; pos++) {
-                    BitSet valid = this.preprocessor.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
+                    BitSet valid = this.profilingContext.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
 
                     // same relation — remove lhs cols which included in given rhs
                     if (lhsRel == rhsRel) {
@@ -146,18 +146,18 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         for (AttributeBitSet lhs : lhsAttrs) {
             int lhsRel = lhs.getRelationIndex();
             int[] lhsCols = lhs.getAttributeIndexArray();
-            Relation lhsRelation = preprocessor.getRelation(lhsRel);
+            Relation lhsRelation = profilingContext.getRelation(lhsRel);
 
             outer: for (int rhsRel : rhsRelations) {
                 // same relation size limit
-                Relation rhsRelation = preprocessor.getRelation(rhsRel);
+                Relation rhsRelation = profilingContext.getRelation(rhsRel);
                 if (lhsRel == rhsRel && lhsCols.length > lhsRelation.getNumOfAttributes() / 2) continue;
 
                 // ensure unary INDs computed for this pair
-                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.profilingContext.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 if(lhsCols.length == 1){
-                    BitSet rhsCols = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[0]);
+                    BitSet rhsCols = this.profilingContext.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[0]);
                     for (int attr = rhsCols.nextSetBit(0); attr >= 0; attr = rhsCols.nextSetBit(attr + 1)) {
                         result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, attr));
                     }
@@ -167,7 +167,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // for each lhs position, get valid rhs cols from unary INDs
                 BitSet[] validRhsPerPosition = new BitSet[lhsCols.length];
                 for (int pos = 0; pos < lhsCols.length; pos++) {
-                    BitSet valid = this.preprocessor.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[pos]);
+                    BitSet valid = this.profilingContext.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[pos]);
 
                     // same relation — remove lhs cols which included in given rhs
                     if (lhsRel == rhsRel) {
@@ -204,7 +204,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
         for (AttributeBitSet lhs : lhsAttrs) {
             int lhsRel = lhs.getRelationIndex();
             int[] lhsCols = lhs.getAttributeIndexArray();
-            Relation lhsRelation = preprocessor.getRelation(lhsRel);
+            Relation lhsRelation = profilingContext.getRelation(lhsRel);
             String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
 
             outer: for (AttributeBitSet rhs : rhsAttrs) {
@@ -217,13 +217,13 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // same relation size limit
                 if (lhsRel == rhsRel && lhsCols.length > lhsRelation.getNumOfAttributes() / 2) continue;
 
-                Relation rhsRelation = preprocessor.getRelation(rhsRel);
+                Relation rhsRelation = profilingContext.getRelation(rhsRel);
 
                 // unary gate — LHS is locked so no permutation, check position by position
-                this.preprocessor.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
+                this.profilingContext.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 for (int pos = 0; pos < lhsCols.length; pos++) {
-                    if (!this.preprocessor.getIndUnaryCover().contains(lhsRel, lhsCols[pos], rhsRel, rhsCols[pos])) {
+                    if (!this.profilingContext.getIndUnaryCover().contains(lhsRel, lhsCols[pos], rhsRel, rhsCols[pos])) {
                         continue outer;
                     }
                 }

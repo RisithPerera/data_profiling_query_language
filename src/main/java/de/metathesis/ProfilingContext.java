@@ -20,10 +20,10 @@ import org.apache.logging.log4j.Logger;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class Preprocessor {
-    private static final Logger log = LogManager.getLogger(Preprocessor.class);
+public final class ProfilingContext {
+    private static final Logger log = LogManager.getLogger(ProfilingContext.class);
 
-    private static final Preprocessor INSTANCE = new Preprocessor();
+    private static final ProfilingContext INSTANCE = new ProfilingContext();
 
     private final Map<Integer, Relation> relationMap = new ConcurrentHashMap<>();
     private final Map<Integer, Sampler> samplerMap = new ConcurrentHashMap<>();
@@ -35,12 +35,12 @@ public final class Preprocessor {
     private final int inputRowLimit;
     private final String nullValue;
 
-    private Preprocessor() {
+    private ProfilingContext() {
         this.inputRowLimit = InputConfigurationSingleton.get().getFILE_MAX_ROWS();
         this.nullValue = InputConfigurationSingleton.get().getFILE_NULL_STRING();
     }
 
-    public static Preprocessor getInstance() {
+    public static ProfilingContext getInstance() {
         return INSTANCE;
     }
 

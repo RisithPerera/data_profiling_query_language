@@ -14,10 +14,10 @@ import java.util.*;
 public class ResultFormatter {
     private static final ResultFormatter INSTANCE = new ResultFormatter();
 
-    private final Preprocessor preprocessor;
+    private final ProfilingContext profilingContext;
 
     private ResultFormatter() {
-        this.preprocessor = Preprocessor.getInstance();
+        this.profilingContext = ProfilingContext.getInstance();
     }
 
     public static ResultFormatter getInstance() {
@@ -139,8 +139,8 @@ public class ResultFormatter {
     }
 
     private List<String> format(AttributeBitSet abs) {
-        String relName = this.preprocessor.getRelation(abs.getRelationIndex()).getName();
-        String[] cols = this.preprocessor.getRelation(abs.getRelationIndex()).getAttributeNames();
+        String relName = this.profilingContext.getRelation(abs.getRelationIndex()).getName();
+        String[] cols = this.profilingContext.getRelation(abs.getRelationIndex()).getAttributeNames();
 
         List<String> result = new ArrayList<>();
         for (int i : abs.getAttributeIndexArray()) {

@@ -40,8 +40,8 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
 
         for (int relationIndex : lhsRelationIndexes) {
             try {
-                Sampler sampler = this.preprocessor.getSampler(relationIndex);
-                UCCValidator validator = this.preprocessor.getUCCValidator(relationIndex);
+                Sampler sampler = this.profilingContext.getSampler(relationIndex);
+                UCCValidator validator = this.profilingContext.getUCCValidator(relationIndex);
 
                 Set<BitSet> validatedUCCSet = new ObjectOpenHashSet <>();
                 Set<IntIntImmutablePair> suggestions = new ObjectOpenHashSet <>();
@@ -77,8 +77,8 @@ public class UCCProfiler extends AbstractProfiler<UCCRequest, UCCResult> {
             int relationIndex = entry.getKey();
             Set<BitSet> pendingList = entry.getValue();
 
-            UCCValidator validator = this.preprocessor.getUCCValidator(relationIndex);
-            Sampler sampler = this.preprocessor.getSampler(relationIndex);
+            UCCValidator validator = this.profilingContext.getUCCValidator(relationIndex);
+            Sampler sampler = this.profilingContext.getSampler(relationIndex);
 
             // Track confirmed valid rhs per lhs across rounds
             Set<BitSet> confirmedList = new ObjectOpenHashSet<>();

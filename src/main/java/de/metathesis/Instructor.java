@@ -26,18 +26,18 @@ public final class Instructor {
     private static final Logger log = LogManager.getLogger(Instructor.class);
 
     private final ExecutorService pool;
-    private final Preprocessor preprocessor;
+    private final ProfilingContext profilingContext;
     private final ProfilerFactory profilerFactory;
 
     public Instructor(ExecutorService pool) {
         this.pool = pool;
-        this.preprocessor = Preprocessor.getInstance();
+        this.profilingContext = ProfilingContext.getInstance();
         this.profilerFactory = new ProfilerFactory(pool);
     }
 
     public Map<Edge, Result<?>> runExecutionMethod1(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
-        Map<String, int[]> relationIndexMap = this.preprocessor.initializeSearchSpace(relationMap);
-        Map<String, int[]> relationSizesMap = this.preprocessor.getAttributeSizesOf(relationIndexMap);
+        Map<String, int[]> relationIndexMap = this.profilingContext.initializeSearchSpace(relationMap);
+        Map<String, int[]> relationSizesMap = this.profilingContext.getAttributeSizesOf(relationIndexMap);
 
         //Make an order list of dependencies based on set membership priority order
         List<Edge> orderedEdges = setMembershipMap.entrySet().stream()
@@ -128,8 +128,8 @@ public final class Instructor {
     }
 
     public Map<Edge, Result<?>> runExecutionMethod2(Map<Edge, Graph.SetMembership> setMembershipMap, Map<String, List<String>> relationMap) throws InputGenerationException, AlgorithmConfigurationException {
-        Map<String, int[]> relationIndexMap = this.preprocessor.initializeSearchSpace(relationMap);
-        Map<String, int[]> relationSizesMap = this.preprocessor.getAttributeSizesOf(relationIndexMap);
+        Map<String, int[]> relationIndexMap = this.profilingContext.initializeSearchSpace(relationMap);
+        Map<String, int[]> relationSizesMap = this.profilingContext.getAttributeSizesOf(relationIndexMap);
 
         //Make an order list of dependencies based on set membership priority order
         List<Edge> orderedEdges = getEdgeOrder(setMembershipMap);

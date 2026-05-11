@@ -129,7 +129,7 @@ public class FDValidator {
 
         // Validate until no more possible candidates at size <= level
         while (true) {
-            Map<BitSet, BitSet> candidates = this.root.getLhsPathsAtDepth(level);
+            Map<BitSet, BitSet> candidates = this.root.getLhsPathsUpToDepth(level);
             if (candidates.isEmpty()) break;
 
             List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());

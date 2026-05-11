@@ -1,6 +1,6 @@
 package de.metathesis.structures;
 
-import de.metathesis.Preprocessor;
+import de.metathesis.ProfilingContext;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -97,7 +97,7 @@ public class AttributeBitSet{
     //TODO: This is temporary for testing purposes. Remove this!
     @Override
     public String toString() {
-        Relation relation = Preprocessor.getInstance().getRelation(this.relationIndex);
+        Relation relation = ProfilingContext.getInstance().getRelation(this.relationIndex);
 
         String[] columns = Arrays.stream(this.attributeIndexArray)
                 .mapToObj(i -> relation.getAttributeNames()[i])

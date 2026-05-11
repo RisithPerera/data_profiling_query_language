@@ -1,4 +1,4 @@
-package de.metathesis;
+package de.metathesis.old;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,13 +8,15 @@ import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.listener.ComplitionListener;
 import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
+import de.metathesis.Preprocessor;
+import de.metathesis.structures.DatasetConfig;
 import org.junit.jupiter.api.*;
 
 import java.io.InputStream;
 import java.util.List;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class IND_IND_UCC_Test {
+public class TripleDependencyTest {
     Metaserve metaserve;
 
     @BeforeAll
@@ -22,11 +24,11 @@ public class IND_IND_UCC_Test {
         String datasetConfigs = "datasets.json";
 
         ObjectMapper mapper = new ObjectMapper();
-        InputStream is = IND_IND_UCC_Test.class.getClassLoader().getResourceAsStream(datasetConfigs);
+        InputStream is = TripleDependencyTest.class.getClassLoader().getResourceAsStream(datasetConfigs);
         List<DatasetConfig> datasets = mapper.readValue(is, new TypeReference<List<DatasetConfig>>() {});
 
         DatasetConfig config = datasets.stream()
-                .filter(d -> d.getName().equals("TPCH_425"))
+                .filter(d -> d.getName().equals("TPCH_12"))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Dataset not found!"));
 
@@ -61,52 +63,41 @@ public class IND_IND_UCC_Test {
     }
 
     @Test
-    @Order(8)
-    public void testK1() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Z) AND IND(X,Y) AND UCC(Y)");
+    @Order(2)
+    public void testT1() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE FD(X,Z) AND IND(X,Y) AND UCC(Y)");
     }
 
     @Test
-    @Order(9)
-    public void testK2() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,X) AND IND(X,Y) AND UCC(Y)");
+    @Order(3)
+    public void testT2() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE FD(X,Z) AND IND(Z,Y) AND UCC(Y)");
     }
 
     @Test
-    @Order(10)
-    public void testK3() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Y,Z) AND IND(X,Y) AND UCC(Y)");
+    @Order(4)
+    public void testT3() {
+        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE UCC(X) AND IND(X,Y) AND UCC(Y)");
     }
 
     @Test
-    @Order(11)
-    public void testK4() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,Y) AND IND(X,Y) AND UCC(Y)");
+    @Order(5)
+    public void testT4() {
+        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Y) AND IND(Y,Z) AND UCC(Y)");
     }
 
     @Test
-    @Order(12)
-    public void testK5() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(X,Z) AND IND(X,Y) AND UCC(X)");
+    @Order(6)
+    public void testT5() {
+        runQuery("SELECT X, Y, P, Q FROM CC(*) X, CC(*) Y, CC(*) P, CC(*) Q WHERE FD(X,P) AND IND(X,Y) AND FD(Y,Q)");
     }
 
     @Test
-    @Order(13)
-    public void testK6() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,X) AND IND(X,Y) AND UCC(X)");
+    @Order(7)
+    public void testT6() {
+        runQuery("SELECT X, Y, P, Q FROM CC(*) X, CC(*) Y, CC(*) P, CC(*) Q WHERE FD(P,X) AND IND(X,Y) AND FD(Q,Y)");
     }
 
-    @Test
-    @Order(14)
-    public void testK7() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Y,Z) AND IND(X,Y) AND UCC(X)");
-    }
-
-    @Test
-    @Order(15)
-    public void testK8() {
-        runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE IND(Z,Y) AND IND(X,Y) AND UCC(X)");
-    }
 
     private void runQuery(String query){
         List<ResultSet> resultSetList = metaserve.executeQuery(query);

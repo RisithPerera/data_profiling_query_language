@@ -1,4 +1,4 @@
-package de.metathesis;
+package de.metathesis.old;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,6 +8,7 @@ import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.listener.ComplitionListener;
 import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
+import de.metathesis.structures.DatasetConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,7 @@ public class QueryTest {
         inputConfig.setNORMALIZE_RESULTS(false);
 
         ExecutorConfiguration executorConfiguration = EngineConfigurationSingleton.get().getExecutorConfig();
-        executorConfiguration.setExecutorType(ExecutorConfiguration.Executor.valueOf("DPAL")); //HOLISTIC, DPAL
+        executorConfiguration.setExecutorType(ExecutorConfiguration.Executor.valueOf("HOLISTIC")); //HOLISTIC, DPAL
     }
 
     @BeforeEach

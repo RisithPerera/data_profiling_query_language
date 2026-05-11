@@ -1,4 +1,4 @@
-package de.metathesis;
+package de.metathesis.structures;
 
 public class DatasetConfig {
     private String name;

@@ -1,10 +1,11 @@
-package de.metathesis;
+package de.metathesis.logic;
 
 import de.metanome.algorithm_integration.input.InputIterationException;
 import de.metaserve.util.exceptions.TablesDiscoveryException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
+import de.metathesis.Preprocessor;
+import de.metathesis.ResultFormatter;
 import de.metathesis.profilers.UCCProfiler;
-
 import de.metathesis.profilers.requests.SearchSpace;
 import de.metathesis.profilers.requests.UCCRequest;
 import de.metathesis.profilers.results.UCCResult;

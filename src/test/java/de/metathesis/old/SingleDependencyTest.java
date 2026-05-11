@@ -1,4 +1,4 @@
-package de.metathesis;
+package de.metathesis.old;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,6 +7,7 @@ import de.metaserve.util.configuration.ExecutorConfiguration;
 import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.listener.ComplitionListener;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
+import de.metathesis.structures.DatasetConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 

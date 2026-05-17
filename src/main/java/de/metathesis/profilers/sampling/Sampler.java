@@ -57,12 +57,14 @@ public class Sampler {
         }
 
         if (isInitialSampling) {
-            ClusterComparator comparator = new ClusterComparator(compressedRecords, compressedRecords[0].length - 1, 1);
-            for (PositionListIndex pli : relation.getUnaryPLIs()) {
-                for (IntArrayList cluster : pli.getClusters()) {
-                    cluster.sort(comparator);
+            if(this.relation.getNumOfAttributes() > 1) {
+                ClusterComparator comparator = new ClusterComparator(compressedRecords, compressedRecords[0].length - 1, 1);
+                for (PositionListIndex pli : relation.getUnaryPLIs()) {
+                    for (IntArrayList cluster : pli.getClusters()) {
+                        cluster.sort(comparator);
+                    }
+                    comparator.incrementActiveKey();
                 }
-                comparator.incrementActiveKey();
             }
 
             if(relation.isAllColumnUnique()){

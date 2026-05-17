@@ -53,13 +53,11 @@ public class FDTreeNode {
         this.access = lock;
     }
 
-    public BitSet specializePositiveCover(BitSet lhs, int rhsAttr) {
+    public void specializePositiveCover(BitSet lhs, int rhsAttr) {
         access.writeLock().lock();
         log.debug("SpecializePositiveCover GET writeLock");
         try {
             List<BitSet> generalLhsList = this.getFdAndGeneralizations(lhs, rhsAttr);
-            BitSet specialized = new BitSet();
-
             for (BitSet generalLhs : generalLhsList) {
                 this.removeFunctionalDependency(generalLhs, rhsAttr);
 
@@ -68,14 +66,12 @@ public class FDTreeNode {
                         generalLhs.set(attr);
                         if (!this.containsFdOrGeneralization(generalLhs, rhsAttr)) {
                             this.addFunctionalDependency(generalLhs, rhsAttr);
-                            specialized.set(attr);
                         }
                         generalLhs.clear(attr);
                     }
                 }
             }
 
-            return specialized;
         } finally {
             access.writeLock().unlock();
             log.debug("SpecializePositiveCover RELEASE writeLock");
@@ -89,7 +85,7 @@ public class FDTreeNode {
             FDTreeNode current = this;
             for (int attr = lhs.nextSetBit(0); attr >= 0; attr = lhs.nextSetBit(attr + 1)) {
                 if (current.children == null || current.children[attr] == null) {
-                    return; // path no longer exists already specialized away, skip silently
+                    return; // path no longer exists, skip silently
                 }
                 current = current.children[attr];
             }
@@ -106,6 +102,7 @@ public class FDTreeNode {
         }
     }
 
+    //Validate(Free, Free)
     public void getValidatedFDsAtDepth(int targetDepth, List<ObjectObjectImmutablePair<BitSet, BitSet>> results) {
         access.readLock().lock();
         log.debug("GetValidatedFDsAtDepth GET readLock");
@@ -122,7 +119,6 @@ public class FDTreeNode {
 
         if (currentDepth == targetDepth) {
             BitSet validated = (BitSet) node.rhsValidatedFds.clone();
-            validated.andNot(currentLhs); // non-triviality
             if (!validated.isEmpty()) {
                 results.add(new ObjectObjectImmutablePair<>((BitSet) currentLhs.clone(), validated));
             }
@@ -145,7 +141,7 @@ public class FDTreeNode {
         log.debug("GetLhsPathsAtDepth GET readLock");
         try {
             Map<BitSet, BitSet> candidates = new LinkedHashMap<>();
-            getLhsPathsUpToDepthRecursive(this, new BitSet(numAttributes), new BitSet(numAttributes), 0, targetDepth, candidates);
+            getLhsPathsUpToDepthRecursive(this, new BitSet(numAttributes), 0, targetDepth, candidates);
             return candidates;
         } finally {
             access.readLock().unlock();
@@ -153,18 +149,16 @@ public class FDTreeNode {
         }
     }
 
-    private void getLhsPathsUpToDepthRecursive(FDTreeNode node, BitSet currentLhs, BitSet inheritedCandidates, int currentDepth,
+    private void getLhsPathsUpToDepthRecursive(FDTreeNode node, BitSet currentLhs, int currentDepth,
                                                int targetDepth, Map<BitSet, BitSet> candidates) {
 
         if (node.rhsAttributes.isEmpty()) return;
 
         BitSet newCandidates = (BitSet) node.rhsCandidateFds.clone();
         newCandidates.andNot(node.rhsValidatedFds);
-        newCandidates.or(inheritedCandidates);
-        newCandidates.andNot(currentLhs);
 
         if (!newCandidates.isEmpty()) {
-            candidates.put((BitSet) currentLhs.clone(), (BitSet) newCandidates.clone());
+            candidates.put((BitSet) currentLhs.clone(), newCandidates);
         }
 
         if (currentDepth == targetDepth) return;
@@ -174,20 +168,20 @@ public class FDTreeNode {
         for (int i = 0; i < node.children.length; i++) {
             if (node.children[i] != null) {
                 currentLhs.set(i);
-                getLhsPathsUpToDepthRecursive(node.children[i], currentLhs,
-                        newCandidates, currentDepth + 1, targetDepth, candidates);
+                getLhsPathsUpToDepthRecursive(node.children[i], currentLhs, currentDepth + 1, targetDepth, candidates);
                 currentLhs.clear(i);
             }
         }
     }
 
-    public LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> getLhsPathsForRhs(BitSet targetRhs, int rhsBit) {
+    //Validate(Free, Lock)
+    public List<BitSet> getValidatedLhsPathsForRhs(int rhsBit, BitSet targetRhs) {
         access.readLock().lock();
         log.debug("GetLhsPathsForRhsNew GET readLock");
         try {
             // Collect minimal lhs paths for each target rhs bit
-            LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> paths = new LinkedHashSet<>();
-            getLhsPathsForRhsRecursive(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
+            List<BitSet> paths = new ArrayList<>();
+            getValidatedLhsPathsForRhsRecursive(this, new BitSet(numAttributes), rhsBit, targetRhs, paths);
             return paths;
         } finally {
             access.readLock().unlock();
@@ -195,15 +189,12 @@ public class FDTreeNode {
         }
     }
 
-    private void getLhsPathsForRhsRecursive(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs,
-                                            LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> result) {
-        // this path has no relevance to rhsBit
+    private void getValidatedLhsPathsForRhsRecursive(FDTreeNode node, BitSet currentLhs, int rhsBit, BitSet targetRhs, List<BitSet> result) {
+        // this path has no relevance to given rhsBit
         if (!node.rhsAttributes.get(rhsBit)) return;
 
-        if (node.rhsCandidateFds.get(rhsBit) || node.rhsValidatedFds.get(rhsBit)) {
-            boolean isValidated = node.rhsValidatedFds.get(rhsBit);
-
-            result.add(new ObjectObjectImmutablePair<>((BitSet) currentLhs.clone(), isValidated));
+        if (node.rhsValidatedFds.get(rhsBit)) {
+            result.add((BitSet) currentLhs.clone());
             return;
         }
 
@@ -213,13 +204,54 @@ public class FDTreeNode {
             //skip paths containing targetRhs bits because lhs path should not contain given target rhs
             if (!targetRhs.get(i) && node.children[i] != null) {
                 currentLhs.set(i);
-                getLhsPathsForRhsRecursive(node.children[i], currentLhs, rhsBit, targetRhs, result);
+                getValidatedLhsPathsForRhsRecursive(node.children[i], currentLhs, rhsBit, targetRhs, result);
                 currentLhs.clear(i);
             }
         }
     }
 
-    public ObjectObjectImmutablePair<BitSet, BitSet> getRhsForLhsPath(BitSet lhs, BitSet rhs) {
+    public Map<BitSet, BitSet> getCandidateLhsPathsForRhs(BitSet targetRhs) {
+        access.readLock().lock();
+        log.debug("GetCandidateLhsPathsForRhs GET readLock");
+        try {
+            Map<BitSet, BitSet> candidates = new LinkedHashMap<>();
+            getCandidateLhsPathsForRhsRecursive(this, new BitSet(numAttributes), targetRhs, candidates);
+            return candidates;
+        } finally {
+            access.readLock().unlock();
+            log.debug("GetCandidateLhsPathsForRhs RELEASE readLock");
+        }
+    }
+
+    private void getCandidateLhsPathsForRhsRecursive(FDTreeNode node, BitSet currentLhs, BitSet targetRhs, Map<BitSet, BitSet> candidates) {
+
+        // If subtree has no overlap with targetRhs, skip the branch
+        BitSet subtreeRelevance = (BitSet) node.rhsAttributes.clone();
+        subtreeRelevance.and(targetRhs);
+        if (subtreeRelevance.isEmpty()) return;
+
+        // Collect unvalidated candidates that overlap with targetRhs
+        BitSet newCandidates = (BitSet) node.rhsCandidateFds.clone();
+        newCandidates.andNot(node.rhsValidatedFds);
+        newCandidates.and(targetRhs);
+
+        if (!newCandidates.isEmpty()) {
+            candidates.put((BitSet) currentLhs.clone(), newCandidates);
+        }
+
+        if (node.children == null) return;
+
+        for (int i = 0; i < node.children.length; i++) {
+            if (node.children[i] != null) {
+                currentLhs.set(i);
+                getCandidateLhsPathsForRhsRecursive(node.children[i], currentLhs, targetRhs, candidates);
+                currentLhs.clear(i);
+            }
+        }
+    }
+
+    //Validate(Lock, Free) & Validate(Lock, Lock)
+    public ObjectObjectImmutablePair<BitSet, BitSet> getRhsCompositionForLhs(BitSet lhs, BitSet rhs) {
         access.readLock().lock();
         log.debug("GetRhsForLhsPath GET readLock");
         try {
@@ -231,7 +263,10 @@ public class FDTreeNode {
                 // Check exact path and all generalizations for this rhs bit
                 List<BitSet> generalizations = getFdAndGeneralizations(lhs, rhsBit);
 
-                // Check at least one generalization is valid
+                if(generalizations.isEmpty()) continue;
+
+                // Check at least one generalization is valid.
+                //TODO: We can change getFdAndGeneralizations it self to return true or false as isValidated then we dont have check like this one by one.
                 boolean isValidated = false;
                 for(BitSet genLhs : generalizations){
                     if(isValidatedAt(genLhs, rhsBit)){

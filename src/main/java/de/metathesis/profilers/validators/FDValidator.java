@@ -27,6 +27,7 @@ public class FDValidator {
     private final int numAttributes;
     private final int[][] compressed;
     private final PositionListIndex[] plis;
+    private final BitSet validatedRhs = new BitSet();
 
     private final double validationThreshold = 0.01;
 
@@ -118,9 +119,9 @@ public class FDValidator {
     ) {}
 
     public Set<IntIntImmutablePair> validateFreeFree(ExecutorService executor,
-                                                        NegativeCover newNegativeCover,
-                                                        int level,
-                                                        List<ObjectObjectImmutablePair<BitSet, BitSet>> results) throws ExecutionException, InterruptedException {
+                                                     NegativeCover newNegativeCover,
+                                                     int level,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> results) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
@@ -132,11 +133,14 @@ public class FDValidator {
             Map<BitSet, BitSet> candidates = this.root.getLhsPathsUpToDepth(level);
             if (candidates.isEmpty()) break;
 
-            List<Future<ValidationResult>> futures = new ArrayList<>(candidates.size());
+            log.info("Level: {} Found FD candidates: {}", level, candidates.size());
+
+            List<Future<ValidationResult>> futures = new ArrayList<>();
             for (Map.Entry<BitSet, BitSet> entry : candidates.entrySet()) {
                 futures.add(executor.submit(new ValidationTask((BitSet) entry.getKey().clone(), (BitSet) entry.getValue().clone())));
             }
 
+            boolean isSpecializedHappend = false;
             for (Future<ValidationResult> future : futures) {
                 ValidationResult result = future.get();
 
@@ -156,12 +160,17 @@ public class FDValidator {
                     for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
                         this.root.specializePositiveCover(lhs, attr);
                     }
-
+                    isSpecializedHappend = true;
                     suggestions.addAll(result.suggestions());
                 }
             }
 
+            if(!isSpecializedHappend){
+                break; //Everything Validated! No need check again.
+            }
+
             if (invalidFDCount > totalCandidateCount * validationThreshold) {
+                log.debug("Returning to sampling. IC:{} TC:{}", invalidFDCount, totalCandidateCount);
                 return suggestions;
             }
         }
@@ -172,99 +181,91 @@ public class FDValidator {
         return null;
     }
 
-    public Set<IntIntImmutablePair> validateFreeLock(NegativeCover newNegativeCover,
-                                                     Set<BitSet> rhsCandidateList,
-                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList){
+    public Set<IntIntImmutablePair> validateFreeLock(ExecutorService executor,
+                                                     NegativeCover newNegativeCover,
+                                                     Set<BitSet> rhsCombinations,
+                                                     List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmList) throws ExecutionException, InterruptedException {
         inductPositiveCover(newNegativeCover);
 
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
-        int validFDCount = 0;
+        int totalCandidateCount = 0;
         int invalidFDCount = 0;
 
-        Iterator<BitSet> rhsCandidateIterator = rhsCandidateList.iterator();
+        Iterator<BitSet> rhsCombinationIterator = rhsCombinations.iterator();
 
-        while (rhsCandidateIterator.hasNext()) {
-            BitSet rhsCandidate = rhsCandidateIterator.next();
-            Map<Integer, List<BitSet>> minimalLhsPerBit = new HashMap<>();
-            boolean rhsCandidateValid = true;
+        while (rhsCombinationIterator.hasNext()) {
+            BitSet candidateRhs = rhsCombinationIterator.next();
+            BitSet targetRhs = (BitSet) candidateRhs.clone();
+            //targetRhs.andNot(validatedRhs); //TODO: This needs to discuss further
 
-            for (int rhsAttr = rhsCandidate.nextSetBit(0); rhsAttr >= 0; rhsAttr = rhsCandidate.nextSetBit(rhsAttr + 1)) {
-                LinkedHashSet<ObjectObjectImmutablePair<BitSet, Boolean>> lhsCandidates = this.root.getLhsPathsForRhs(rhsCandidate, rhsAttr);
-                log.info("Rhs: {} Found lhs candidates: {}", rhsAttr, lhsCandidates.size());
+            // Validate until no more possible candidates at size <= level
+            while (!targetRhs.isEmpty()) {
+                Map<BitSet, BitSet> candidates = this.root.getCandidateLhsPathsForRhs(targetRhs);
+                if (candidates.isEmpty()) break;
 
-                BitSet rhsBit = new BitSet();
-                rhsBit.set(rhsAttr);
+                log.info("Target Rhs: {} Found FD candidates: {}", targetRhs, candidates.size());
 
-                List<BitSet> confirmedLhsForBit = new ArrayList<>();
+                List<Future<ValidationResult>> futures = new ArrayList<>();
+                for (Map.Entry<BitSet, BitSet> entry : candidates.entrySet()) {
+                    futures.add(executor.submit(new ValidationTask((BitSet) entry.getKey().clone(), (BitSet) entry.getValue().clone())));
+                }
 
-                while (!lhsCandidates.isEmpty()) {
-                    ObjectObjectImmutablePair<BitSet, Boolean> candidate = lhsCandidates.removeFirst();
-                    BitSet lhsCandidate = candidate.left();
+                boolean isSpecializedHappend = false;
+                for (Future<ValidationResult> future : futures) {
+                    ValidationResult result = future.get();
 
-                    if (candidate.right()) {
-                        confirmedLhsForBit.add(lhsCandidate); // Already validated in tree
-                        continue;
+                    BitSet lhs = result.lhs();
+                    BitSet validRhs = result.validRhs();
+                    BitSet invalidRhs = (BitSet) result.rhs().clone();
+                    invalidRhs.andNot(validRhs);
+
+                    totalCandidateCount += result.rhs().cardinality();
+                    invalidFDCount += invalidRhs.cardinality();
+
+                    if (!validRhs.isEmpty()) {
+                        this.root.markAsValidate(lhs, validRhs);
                     }
 
-                    ValidationTask task = new ValidationTask(lhsCandidate, rhsBit);
-                    ValidationResult result = task.call();
-
-                    if (result.validRhs().equals(rhsBit)) {
-                        this.root.markAsValidate(lhsCandidate, rhsBit);
-                        confirmedLhsForBit.add(lhsCandidate);
-                        validFDCount++;
-                    } else {
-                        BitSet specialized = this.root.specializePositiveCover(lhsCandidate, rhsAttr);
-                        specialized.andNot(rhsCandidate);
-                        log.info("Rhs: {} Invalid Lhs: {} Specialized: {}", rhsAttr, lhsCandidate, specialized);
-
-                        for (int attr = specialized.nextSetBit(0); attr >= 0; attr = specialized.nextSetBit(attr + 1)) {
-                            BitSet newLhs = (BitSet) lhsCandidate.clone();
-                            newLhs.set(attr);
-                            lhsCandidates.add(new ObjectObjectImmutablePair<>(newLhs, false));
+                    if (!invalidRhs.isEmpty()) {
+                        for (int attr = invalidRhs.nextSetBit(0); attr >= 0; attr = invalidRhs.nextSetBit(attr + 1)) {
+                            this.root.specializePositiveCover(lhs, attr);
                         }
-
+                        isSpecializedHappend = true;
                         suggestions.addAll(result.suggestions());
-                        invalidFDCount++;
                     }
                 }
 
-                if (confirmedLhsForBit.isEmpty()) {
-                    // This rhs bit has no valid minimal lhs therefore entire rhsCandidate has no solution
-                    rhsCandidateValid = false;
-                    break;
+                if(!isSpecializedHappend){
+                    break; //Everything Validated! No need check again.
                 }
 
-                minimalLhsPerBit.put(rhsAttr, confirmedLhsForBit);
-            }
-
-            log.info("All Rhs validated lhs find is done! {}", rhsCandidateValid);
-
-            if (rhsCandidateValid) {
-                //Create the final result using iterative merging
-                List<BitSet> result = null;
-
-                for (int rhsAttr = rhsCandidate.nextSetBit(0); rhsAttr >= 0; rhsAttr = rhsCandidate.nextSetBit(rhsAttr + 1)) {
-                    List<BitSet> bitPaths = minimalLhsPerBit.get(rhsAttr);
-                    if (result == null) {
-                        result = new ArrayList<>(bitPaths);
-                    } else {
-                        result = minimalCrossProduct(result, bitPaths);
-                    }
-                }
-
-                if (result != null) {
-                    for (BitSet mergedLhs : result) {
-                        confirmList.add(new ObjectObjectImmutablePair<>(mergedLhs, rhsCandidate));
-                    }
+                if (invalidFDCount > totalCandidateCount * validationThreshold) {
+                    log.debug("Returning to sampling. IC:{} TC:{}", invalidFDCount, totalCandidateCount);
+                    return suggestions;
                 }
             }
 
-            rhsCandidateIterator.remove();
+            log.debug("Target Rhs: {} validated all candidates", candidateRhs);
+            this.validatedRhs.or(targetRhs);
 
-            if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
-                return suggestions;
+            List<BitSet> result = null;
+
+            for (int rhsAttr = candidateRhs.nextSetBit(0); rhsAttr >= 0; rhsAttr = candidateRhs.nextSetBit(rhsAttr + 1)) {
+                List<BitSet> bitPaths = this.root.getValidatedLhsPathsForRhs(rhsAttr, candidateRhs);
+                if (result == null) {
+                    result = new ArrayList<>(bitPaths);
+                } else {
+                    result = minimalCrossProduct(result, bitPaths);
+                }
             }
+
+            if (result != null) {
+                for (BitSet mergedLhs : result) {
+                    confirmList.add(new ObjectObjectImmutablePair<>(mergedLhs, candidateRhs));
+                }
+            }
+
+            rhsCombinationIterator.remove();
         }
 
         return null;
@@ -277,7 +278,7 @@ public class FDValidator {
         inductPositiveCover(newNegativeCover);
 
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
-        int validFDCount   = 0;
+        int totalCandidateCount   = 0;
         int invalidFDCount = 0;
 
         Iterator<ObjectObjectImmutablePair<BitSet, BitSet>> iterator = pendingList.iterator();
@@ -287,7 +288,7 @@ public class FDValidator {
             BitSet lhs = candidate.left();
             BitSet rhs = candidate.right();
 
-            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPath(lhs, rhs);
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsCompositionForLhs(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
 
@@ -311,7 +312,7 @@ public class FDValidator {
             BitSet invalidRhs = (BitSet) remainingRhs.clone();
             invalidRhs.andNot(validRhs);
 
-            validFDCount   += validRhs.cardinality();
+            totalCandidateCount += remainingRhs.cardinality();
             invalidFDCount += invalidRhs.cardinality();
 
             if (!validRhs.isEmpty()) {
@@ -329,7 +330,8 @@ public class FDValidator {
 
                 suggestions.addAll(result.suggestions());
 
-                if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
+                if (invalidFDCount > totalCandidateCount * validationThreshold) {
+                    log.debug("Returning to sampling. IC:{} TC:{}", invalidFDCount, totalCandidateCount);
                     return suggestions;
                 }
             }
@@ -345,7 +347,7 @@ public class FDValidator {
         inductPositiveCover(newNegativeCover);
 
         Set<IntIntImmutablePair> suggestions = new HashSet<>();
-        int validFDCount   = 0;
+        int totalCandidateCount   = 0;
         int invalidFDCount = 0;
 
         Iterator<ObjectObjectImmutablePair<BitSet, BitSet>> iterator = pendingList.iterator();
@@ -356,7 +358,7 @@ public class FDValidator {
             BitSet rhs = candidate.right();
 
             // Check posCover status first
-            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsForLhsPath(lhs, rhs);
+            ObjectObjectImmutablePair<BitSet, BitSet> status = this.root.getRhsCompositionForLhs(lhs, rhs);
             BitSet confirmedRhs = status.left();
             BitSet remainingRhs = status.right();
 
@@ -380,7 +382,7 @@ public class FDValidator {
             BitSet invalidRhs = (BitSet) remainingRhs.clone();
             invalidRhs.andNot(validRhs);
 
-            validFDCount   += validRhs.cardinality();
+            totalCandidateCount += remainingRhs.cardinality();
             invalidFDCount += invalidRhs.cardinality();
 
             if (!validRhs.isEmpty()) {
@@ -399,7 +401,9 @@ public class FDValidator {
                 }
 
                 suggestions.addAll(result.suggestions());
-                if (validFDCount > 0 && invalidFDCount > validFDCount * validationThreshold) {
+
+                if (invalidFDCount > totalCandidateCount * validationThreshold) {
+                    log.debug("Returning to sampling. IC:{} TC:{}", invalidFDCount, totalCandidateCount);
                     return suggestions;
                 }
             }

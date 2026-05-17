@@ -148,35 +148,38 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
         // Group lhs by relationIndex, only if that relation is in rhsRelationIndexes
         IntOpenHashSet lhsRelationIndexSet = new IntOpenHashSet(lhsRelationIndexes);
 
-        Map<Integer, Set<BitSet>> rhsMapByRelation = new HashMap<>();
-        for (AttributeBitSet lhsAbs : rhsAttributes) {
-            int lhsRelationIndex = lhsAbs.getRelationIndex();
-            if (!lhsRelationIndexSet.contains(lhsRelationIndex)){
+        Map<Integer, Set<BitSet>> rhsMapByLhsRelation = new HashMap<>();
+        for (AttributeBitSet rhsAbs : rhsAttributes) {
+            int rhsRelationIndex = rhsAbs.getRelationIndex();
+            if (!lhsRelationIndexSet.contains(rhsRelationIndex)){
                 continue;
             }
-            rhsMapByRelation.computeIfAbsent(lhsRelationIndex, k -> new ObjectOpenHashSet<>()).add(lhsAbs.getAttributeIndexSet());
+            rhsMapByLhsRelation.computeIfAbsent(rhsRelationIndex, k -> new ObjectOpenHashSet<>()).add(rhsAbs.getAttributeIndexSet());
         }
 
         // Process each relation independently
-        for (Map.Entry<Integer, Set<BitSet>> entry : rhsMapByRelation.entrySet()) {
+        for (Map.Entry<Integer, Set<BitSet>> entry : rhsMapByLhsRelation.entrySet()) {
             int relationIndex = entry.getKey();
-            Set<BitSet> rhsCandidateList = entry.getValue();
+            Set<BitSet> rhsCombinations = entry.getValue();
+            try{
+                Sampler sampler = this.profilingContext.getSampler(relationIndex);
+                FDValidator validator = this.profilingContext.getFDValidator(relationIndex);
 
-            Sampler sampler = this.profilingContext.getSampler(relationIndex);
-            FDValidator validator = this.profilingContext.getFDValidator(relationIndex);
+                List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmedFDList = new ArrayList<>();
+                Set<IntIntImmutablePair> suggestions = new HashSet<>();
 
-            List<ObjectObjectImmutablePair<BitSet, BitSet>> confirmedFDList = new ArrayList<>();
-            Set<IntIntImmutablePair> suggestions = new HashSet<>();
+                do {
+                    NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
+                    suggestions = validator.validateFreeLock(this.executor, newNonFds, rhsCombinations, confirmedFDList);
+                } while (suggestions != null);
 
-            do {
-                NegativeCover newNonFds = validator.isInitialValidation() && !sampler.isInitialSampling() ? sampler.getNegCover() : sampler.run(suggestions);
-                suggestions = validator.validateFreeLock(newNonFds, rhsCandidateList, confirmedFDList);
-            } while (suggestions != null);
-
-            for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {
-                AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, confirmedPair.left());
-                AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, confirmedPair.right());
-                result.add(lhsAbs, rhsAbs);
+                for (ObjectObjectImmutablePair<BitSet, BitSet> confirmedPair : confirmedFDList) {
+                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, confirmedPair.left());
+                    AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, confirmedPair.right());
+                    result.add(lhsAbs, rhsAbs);
+                }
+            }catch (ExecutionException | InterruptedException e){
+                throw  new RuntimeException("Issue Occurred when profiling Relation: "+ relationIndex + "for rhs Candidates", e);
             }
         }
 

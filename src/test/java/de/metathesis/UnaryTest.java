@@ -11,7 +11,7 @@ public class UnaryTest extends BaseTest{
     @Test
     @Order(0)
     public void warmUp() {
-        runQuery("SELECT X, Y FROM CC(*) X, CC(*) Y WHERE UCC(X)");
+        runQuery("SELECT X FROM CC(*) X WHERE UCC(X)");
     }
 
     @Test

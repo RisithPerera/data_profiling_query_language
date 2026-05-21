@@ -73,7 +73,7 @@ public class HolisticProfileStrategy implements Strategy{
                 }
 
                 //joined.toFile("b1_holl.txt");
-                //System.out.println(joined);
+                System.out.println(joined);
                 System.out.println("Joined Result — Size: " + joined.size());
 
                 System.out.println(schema.stream()

@@ -786,6 +786,8 @@ public class ResultSet implements Collection<List<String>> {
     }
 
     public void printResults(){
+        System.out.println(String.join(", ", columnNames));
+
         for (List<Set<ColumnIdentifier>> row : getRows2()) {
             for (int i = 0; i < row.size(); i++) {
                 if (i > 0) System.out.print(", ");

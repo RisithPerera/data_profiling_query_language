@@ -43,6 +43,7 @@ public class InputConfiguration implements Configuration {
 	private String FILE_STATISTIC_NAME = "statistics.txt";
 	private String FILE_RESULT_NAME = "results.txt";
 	private Boolean WRITE_RESULTS = true;
+    private Boolean NORMALIZE_RESULTS = true;
 
 	private Boolean VALIDATE_PARALLEL = true;
 	private Boolean ENABLE_MEMORY_GUARDIAN = true;
@@ -124,7 +125,7 @@ public class InputConfiguration implements Configuration {
             throw new RuntimeException(e);
         }
     }
-	private void loadDataSetSettings() {
+	public void loadDataSetSettings() {
 		if(dataSetHashMap.containsKey(DATA_SET)) {
 			DataSet currentDataSet = dataSetHashMap.get(DATA_SET);
 			this.DATA_SET = currentDataSet.DATA_SET;
@@ -205,6 +206,7 @@ public class InputConfiguration implements Configuration {
 		config.setProperty("FILE_STATISTIC_NAME", FILE_STATISTIC_NAME);
 		config.setProperty("FILE_RESULT_NAME", FILE_RESULT_NAME);
 		config.setProperty("WRITE_RESULTS", String.valueOf(WRITE_RESULTS));
+        config.setProperty("NORMALIZE_RESULTS", String.valueOf(NORMALIZE_RESULTS));
 		config.setProperty("VALIDATE_PARALLEL", String.valueOf(VALIDATE_PARALLEL));
 		config.setProperty("ENABLE_MEMORY_GUARDIAN", String.valueOf(ENABLE_MEMORY_GUARDIAN));
 		return config;
@@ -232,6 +234,7 @@ public class InputConfiguration implements Configuration {
 		FILE_STATISTIC_NAME = config.getProperty("FILE_STATISTIC_NAME");
 		FILE_RESULT_NAME = config.getProperty("FILE_RESULT_NAME");
 		WRITE_RESULTS = Boolean.parseBoolean(config.getProperty("WRITE_RESULTS"));
+        NORMALIZE_RESULTS = Boolean.parseBoolean(config.getProperty("NORMALIZE_RESULTS"));
 		VALIDATE_PARALLEL = Boolean.parseBoolean(config.getProperty("VALIDATE_PARALLEL"));
 		ENABLE_MEMORY_GUARDIAN = Boolean.parseBoolean(config.getProperty("ENABLE_MEMORY_GUARDIAN"));
 	}
@@ -400,6 +403,14 @@ public class InputConfiguration implements Configuration {
 	public void setWRITE_RESULTS(Boolean WRITE_RESULTS) {
 		this.WRITE_RESULTS = WRITE_RESULTS;
 	}
+
+    public Boolean getNORMALIZE_RESULTS() {
+        return NORMALIZE_RESULTS;
+    }
+
+    public void setNORMALIZE_RESULTS(Boolean NORMALIZE_RESULTS) {
+        this.NORMALIZE_RESULTS = NORMALIZE_RESULTS;
+    }
 
 	public Boolean getVALIDATE_PARALLEL() {
 		return VALIDATE_PARALLEL;

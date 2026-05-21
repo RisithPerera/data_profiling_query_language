@@ -1,6 +1,7 @@
 package de.metathesis.profilers.structures;
 
 import de.metathesis.structures.Relation;
+import de.metathesis.utils.Utility;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,50 +12,36 @@ public class INDUnaryCover {
     private static final Logger log = LogManager.getLogger(INDUnaryCover.class);
 
     // forward:  unaryINDs.get(lhsRel).get(rhsRel).get(rhsCol) = set of lhsCols
-    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> forward = new ConcurrentHashMap<>();
+    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> reverse = new ConcurrentHashMap<>();
 
     // reverse: unaryINDsRev.get(lhsRel).get(rhsRel).get(lhsCol) = set of rhsCols
-    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> reverse = new ConcurrentHashMap<>();
+    private final Map<Integer, Map<Integer, Map<Integer, BitSet>>> forward = new ConcurrentHashMap<>();
 
     // tracks which (lhsRel, rhsRel) pairs have been computed for unary INDs
     private final ConcurrentHashMap<Long, Boolean> computedPairs = new ConcurrentHashMap<>();
 
     public BitSet getLhsCols(int lhsRel, int rhsRel, int rhsCol) {
-        return (BitSet) forward
+        return (BitSet) reverse
                 .getOrDefault(lhsRel, Collections.emptyMap())
                 .getOrDefault(rhsRel, Collections.emptyMap())
                 .getOrDefault(rhsCol, new BitSet()).clone();
     }
 
     public BitSet getRhsCols(int lhsRel, int rhsRel, int lhsCol) {
-        return (BitSet) reverse
+        return (BitSet) forward
                 .getOrDefault(lhsRel, Collections.emptyMap())
                 .getOrDefault(rhsRel, Collections.emptyMap())
                 .getOrDefault(lhsCol, new BitSet()).clone();
     }
 
-    public boolean contains(int lhsRel, int lhsCol, int rhsRel, int rhsCol) {
-        return reverse
-                .getOrDefault(lhsRel, Collections.emptyMap())
-                .getOrDefault(rhsRel, Collections.emptyMap())
-                .getOrDefault(lhsCol, new BitSet())
-                .get(rhsCol);
-    }
-
-    public List<int[]> getBindings(int lhsRel, int rhsRel) {
-        Map<Integer, BitSet> rhsMap = forward
+    public Map<Integer, BitSet> getUnaryINDs(int lhsRel, int rhsRel) {
+        Map<Integer, BitSet> inner = forward
                 .getOrDefault(lhsRel, Collections.emptyMap())
                 .getOrDefault(rhsRel, Collections.emptyMap());
 
-        List<int[]> bindings = new ArrayList<>();
-        for (Map.Entry<Integer, BitSet> entry : rhsMap.entrySet()) {
-            int rhsCol = entry.getKey();
-            BitSet lhsCols = entry.getValue();
-            for (int lhsCol = lhsCols.nextSetBit(0); lhsCol >= 0; lhsCol = lhsCols.nextSetBit(lhsCol + 1)) {
-                bindings.add(new int[]{lhsCol, rhsCol});
-            }
-        }
-        return bindings;
+        Map<Integer, BitSet> copy = new HashMap<>();
+        inner.forEach((k, v) -> copy.put(k, (BitSet) v.clone()));
+        return copy;
     }
 
     public void ensureUnaryComputed(Relation lhsRelation, Relation rhsRelation) {
@@ -77,10 +64,8 @@ public class INDUnaryCover {
         int lhsNumCols = lhsRelation.getNumOfAttributes();
         int rhsNumCols = rhsRelation.getNumOfAttributes();
 
-        Map<String, BitSet> invertedRhs = rhsRelation.getInvertedAttributeValues();
-
         for (int lc = 0; lc < lhsNumCols; lc++) {
-            String[] lhsVals = lhsRelation.getSortedAttributeSet()[lc];
+            String[] lhsVals = lhsRelation.getUniqueAttributeValues()[lc];
 
             BitSet candidates = new BitSet();
             candidates.set(0, rhsNumCols);
@@ -92,7 +77,7 @@ public class INDUnaryCover {
                     continue;
                 }
 
-                if (rhsRelation.getSortedAttributeSet()[rc].length < lhsVals.length){
+                if (rhsRelation.getUniqueAttributeValues()[rc].length < lhsVals.length){
                     candidates.clear(rc);
                 }
             }
@@ -103,7 +88,7 @@ public class INDUnaryCover {
 
             for (String v : lhsVals) {
                 if (candidates.isEmpty()) break;
-                BitSet rhsColsWithV = invertedRhs.get(v);
+                BitSet rhsColsWithV = rhsRelation.getInvertedAttributeValues().get(v);
                 if (rhsColsWithV == null || rhsColsWithV.isEmpty()) {
                     candidates.clear();
                     break;
@@ -119,21 +104,21 @@ public class INDUnaryCover {
 
     private void add(int lhsRel, int lhsCol, int rhsRel, int rhsCol) {
         // forward
-        forward.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
+        reverse.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(rhsCol, k -> new BitSet())
                 .set(lhsCol);
 
         // reverse
-        reverse.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
+        forward.computeIfAbsent(lhsRel, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(rhsRel, k -> new ConcurrentHashMap<>())
                 .computeIfAbsent(lhsCol, k -> new BitSet())
                 .set(rhsCol);
     }
 
     public void clear(){
-        this.forward.clear();
         this.reverse.clear();
+        this.forward.clear();
         this.computedPairs.clear();
     }
 
@@ -148,7 +133,7 @@ public class INDUnaryCover {
 
         // group by (lhsRel, rhsRel) pair
         boolean firstPair = true;
-        for (Map.Entry<Integer, Map<Integer, Map<Integer, BitSet>>> lhsEntry : forward.entrySet()) {
+        for (Map.Entry<Integer, Map<Integer, Map<Integer, BitSet>>> lhsEntry : reverse.entrySet()) {
             int lhsRel = lhsEntry.getKey();
 
             for (Map.Entry<Integer, Map<Integer, BitSet>> rhsRelEntry : lhsEntry.getValue().entrySet()) {

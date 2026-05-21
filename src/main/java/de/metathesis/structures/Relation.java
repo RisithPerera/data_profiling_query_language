@@ -17,7 +17,7 @@ public class Relation {
     //Relation Data
     private volatile int numOfRecords = -1;
     private volatile String[][] attributeValues;
-    private volatile String[][] sortedAttributeValues; //For INDs
+    private volatile String[][] uniqueAttributeValues; //For INDs
     private volatile Map<String, BitSet> invertedAttributeValues; //For INDs
     private volatile PositionListIndex[] unaryPLIs;
     private volatile int[][] compressedRecords;
@@ -54,16 +54,16 @@ public class Relation {
         return this.attributeValues;
     }
 
-    public String[][] getSortedAttributeSet() {
+    public String[][] getUniqueAttributeValues() {
         assert isDataLoaded() : "Relation Data not loaded yet: " + this.relationalInput.relationName();
-        if (this.sortedAttributeValues == null) {
+        if (this.uniqueAttributeValues == null) {
             synchronized (this) {
-                if (this.sortedAttributeValues == null) {
-                    this.sortedAttributeValues = buildSortedValueSets(getAttributeValues());
+                if (this.uniqueAttributeValues == null) {
+                    this.uniqueAttributeValues = buildUniqueValueSets(getAttributeValues());
                 }
             }
         }
-        return this.sortedAttributeValues;
+        return this.uniqueAttributeValues;
     }
 
     public Map<String, BitSet> getInvertedAttributeValues() {
@@ -71,7 +71,7 @@ public class Relation {
         if (this.invertedAttributeValues == null) {
             synchronized (this) {
                 if (this.invertedAttributeValues == null) {
-                    this.invertedAttributeValues = buildInvertedIndex(getSortedAttributeSet());
+                    this.invertedAttributeValues = buildInvertedIndex(getUniqueAttributeValues());
                 }
             }
         }
@@ -107,11 +107,11 @@ public class Relation {
         return Arrays.stream(getUnaryPLIs()).allMatch(PositionListIndex::isUnique);
     }
 
-    private String[][] buildSortedValueSets(String[][] columns) {
+    private String[][] buildUniqueValueSets(String[][] columns) {
         String[][] sorted = new String[columns.length][];
 
         for (int col = 0; col < columns.length; col++) {
-            TreeSet<String> valueSet = new TreeSet<>();
+            Set<String> valueSet = new HashSet<>();
 
             for (int r = 0; r < columns[col].length; r++) {
                 String v = columns[col][r];

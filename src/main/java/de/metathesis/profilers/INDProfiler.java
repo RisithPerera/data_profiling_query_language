@@ -11,9 +11,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
@@ -46,6 +44,8 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
     }
 
     private INDResult profileFreeFree(int[] lhsRelations, int[] rhsRelations, int level) {
+        log.debug("IND Profiling(Free: {}, Free: {}) At Level: {}", lhsRelations, rhsRelations, level);
+
         INDResult result = new INDResult();
         if(level == 0) return result;
 
@@ -61,23 +61,47 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // compute unary INDs for this pair if not already done
                 this.profilingContext.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
-                // flatten unary bindings for this pair into (lhsCol, rhsCol) pairs
-                List<int[]> unaryBindings = this.profilingContext.getIndUnaryCover().getBindings(lhsRel, rhsRel);
+                Map<Integer, BitSet> unaryINDs = this.profilingContext.getIndUnaryCover().getUnaryINDs(lhsRel, rhsRel);
 
-                if (level == 1) {
-                    for (int[] binding : unaryBindings) {
-                        result.add(
-                                new AttributeBitSet(lhsRel, new int[]{binding[0]}),
-                                new AttributeBitSet(rhsRel, new int[]{binding[1]})
-                        );
+                if(level == 1){
+                    for(int lhsAttr : unaryINDs.keySet()) {
+                        BitSet rhsCols = unaryINDs.get(lhsAttr);
+                        for (int rhsAttr = rhsCols.nextSetBit(0); rhsAttr >= 0; rhsAttr = rhsCols.nextSetBit(rhsAttr + 1)) {
+                            result.add(new AttributeBitSet(lhsRel, lhsAttr), new AttributeBitSet(rhsRel, rhsAttr));
+                        }
                     }
                     continue;
                 }
 
-                // level N — need at least level bindings to form a candidate
-                if (unaryBindings.size() < level) continue;
+                int[] lhsPool = unaryINDs.keySet().stream().mapToInt(Integer::intValue).toArray();
+                if (lhsPool.length < level) continue;
 
-                combineBindings(unaryBindings, level, 0, new int[level], new int[level], 0, lhsRel, rhsRel, lhsRelation, rhsRelation, result);
+                int[][] lhsCombinations = Utility.combinations(lhsPool, level);
+
+                outer: for(int[] lhsCols : lhsCombinations){
+                    // for each lhs position, get valid rhs cols from unary INDs
+                    BitSet[] validRhsPerPosition = new BitSet[lhsCols.length];
+                    for (int pos = 0; pos < lhsCols.length; pos++) {
+                        BitSet rhsCandidates = (BitSet) unaryINDs.get(lhsCols[pos]).clone();
+
+                        // same relation — remove lhs cols which included in given rhs
+                        if (lhsRel == rhsRel) {
+                            for (int lhsAttr : lhsCols) rhsCandidates.clear(lhsAttr);
+                        }
+
+                        if (rhsCandidates.isEmpty()) continue outer;
+                        validRhsPerPosition[pos] = rhsCandidates;
+                    }
+
+                    String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
+
+                    for (int[] rhsCols : Utility.cartesianProduct(validRhsPerPosition)) {
+                        String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
+                        if (isIncluded(lhsTuples, rhsTuples)) {
+                            result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, rhsCols));
+                        }
+                    }
+                }
             }
         }
 
@@ -86,6 +110,8 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
     //Checked
     private INDResult profileFreeLock(int[] lhsRelations, ObjectOpenHashSet<AttributeBitSet> rhsAttrs) {
+        log.debug("IND Profiling(Free: {}, Lock: {} Candidates)", lhsRelations, rhsAttrs.size());
+
         INDResult result = new INDResult();
 
         for (AttributeBitSet rhs : rhsAttrs) {
@@ -114,15 +140,15 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // for each rhs position, get valid lhs cols from unary INDs
                 BitSet[] validLhsPerPosition = new BitSet[rhsCols.length];
                 for (int pos = 0; pos < rhsCols.length; pos++) {
-                    BitSet valid = this.profilingContext.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
+                    BitSet lhsCandidates = this.profilingContext.getIndUnaryCover().getLhsCols(lhsRel, rhsRel, rhsCols[pos]);
 
                     // same relation — remove lhs cols which included in given rhs
                     if (lhsRel == rhsRel) {
-                        for (int rc : rhsCols) valid.clear(rc);
+                        for (int rhsAttr : rhsCols) lhsCandidates.clear(rhsAttr);
                     }
 
-                    if (valid.isEmpty()) continue outer;
-                    validLhsPerPosition[pos] = valid;
+                    if (lhsCandidates.isEmpty()) continue outer;
+                    validLhsPerPosition[pos] = lhsCandidates;
                 }
 
                 String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
@@ -141,6 +167,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
     //Checked
     private INDResult profileLockFree(ObjectOpenHashSet<AttributeBitSet> lhsAttrs, int[] rhsRelations){
+        log.debug("IND Profiling(Lock: {} Candidates, Free: {})", lhsAttrs.size(), rhsRelations);
         INDResult result = new INDResult();
 
         for (AttributeBitSet lhs : lhsAttrs) {
@@ -158,8 +185,8 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
                 if(lhsCols.length == 1){
                     BitSet rhsCols = this.profilingContext.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[0]);
-                    for (int attr = rhsCols.nextSetBit(0); attr >= 0; attr = rhsCols.nextSetBit(attr + 1)) {
-                        result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, attr));
+                    for (int rhsAttr = rhsCols.nextSetBit(0); rhsAttr >= 0; rhsAttr = rhsCols.nextSetBit(rhsAttr + 1)) {
+                        result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, rhsAttr));
                     }
                     continue;
                 }
@@ -167,24 +194,20 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
                 // for each lhs position, get valid rhs cols from unary INDs
                 BitSet[] validRhsPerPosition = new BitSet[lhsCols.length];
                 for (int pos = 0; pos < lhsCols.length; pos++) {
-                    BitSet valid = this.profilingContext.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[pos]);
+                    BitSet rhsCandidates = this.profilingContext.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[pos]);
 
                     // same relation — remove lhs cols which included in given rhs
                     if (lhsRel == rhsRel) {
-                        for (int rhsAttr : lhsCols) valid.clear(rhsAttr);
+                        for (int lhsAttr : lhsCols) rhsCandidates.clear(lhsAttr);
                     }
 
-                    if (valid.isEmpty()) continue outer;
-                    validRhsPerPosition[pos] = valid;
+                    if (rhsCandidates.isEmpty()) continue outer;
+                    validRhsPerPosition[pos] = rhsCandidates;
                 }
 
                 String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
 
                 for (int[] rhsCols : Utility.cartesianProduct(validRhsPerPosition)) {
-                    if (lhsRel == rhsRel && !Utility.isDisjoint(lhsCols, rhsCols)){
-                        continue;
-                    }
-
                     String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
                     if (isIncluded(lhsTuples, rhsTuples)) {
                         result.add(new AttributeBitSet(lhsRel, lhsCols), new AttributeBitSet(rhsRel, rhsCols));
@@ -198,7 +221,7 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
     //Checked
     private INDResult profileLockLock(ObjectOpenHashSet<AttributeBitSet> lhsAttrs, ObjectOpenHashSet<AttributeBitSet> rhsAttrs) {
-
+        log.debug("IND Profiling(Lock: {} Candidates, Lock: {} Candidates)", lhsAttrs.size(), rhsAttrs.size());
         INDResult result = new INDResult();
 
         for (AttributeBitSet lhs : lhsAttrs) {
@@ -219,11 +242,11 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
 
                 Relation rhsRelation = profilingContext.getRelation(rhsRel);
 
-                // unary gate — LHS is locked so no permutation, check position by position
+                //LHS is locked so no permutation, check position by position
                 this.profilingContext.getIndUnaryCover().ensureUnaryComputed(lhsRelation, rhsRelation);
 
                 for (int pos = 0; pos < lhsCols.length; pos++) {
-                    if (!this.profilingContext.getIndUnaryCover().contains(lhsRel, lhsCols[pos], rhsRel, rhsCols[pos])) {
+                    if (!this.profilingContext.getIndUnaryCover().getRhsCols(lhsRel, rhsRel, lhsCols[pos]).get(rhsCols[pos])) {
                         continue outer;
                     }
                 }
@@ -237,61 +260,6 @@ public class INDProfiler extends AbstractProfiler<INDRequest, INDResult> {
             }
         }
         return result;
-    }
-
-    /* ------------------- Utility Methods ------------------- */
-    private void combineBindings(List<int[]> bindings, int level, int start, int[] lhsCols, int[] rhsCols, int pos,
-                                 int lhsRel, int rhsRel, Relation lhsRelation, Relation rhsRelation, INDResult result) {
-
-        if (pos == level) {
-            // full tuple check
-            String[] lhsTuples = buildTuples(lhsRelation.getAttributeValues(), lhsCols);
-            String[] rhsTuples = buildTuples(rhsRelation.getAttributeValues(), rhsCols);
-            if (isIncluded(lhsTuples, rhsTuples)) {
-                result.add(new AttributeBitSet(lhsRel, lhsCols.clone()), new AttributeBitSet(rhsRel, rhsCols.clone()));
-            }
-            return;
-        }
-
-        for (int i = start; i <= bindings.size() - (level - pos); i++) {
-            int[] binding = bindings.get(i);
-            int lhsCol = binding[0];
-            int rhsCol = binding[1];
-
-            // lhs cols must be distinct
-            boolean lhsDup = false;
-            for (int j = 0; j < pos; j++) {
-                if (lhsCols[j] == lhsCol) { lhsDup = true; break; }
-            }
-            if (lhsDup) continue;
-
-            // rhs cols must be distinct
-            boolean rhsDup = false;
-            for (int j = 0; j < pos; j++) {
-                if (rhsCols[j] == rhsCol) { rhsDup = true; break; }
-            }
-            if (rhsDup) continue;
-
-            // same relation — lhs and rhs cols must be disjoint
-            if (lhsRel == rhsRel) {
-                boolean conflict = false;
-                for (int j = 0; j < pos; j++) {
-                    if (lhsCols[j] == rhsCol || rhsCols[j] == lhsCol) {
-                        conflict = true; break;
-                    }
-                }
-                if (!conflict) {
-                    // also check current binding against itself
-                    if (lhsCol == rhsCol) conflict = true;
-                }
-                if (conflict) continue;
-            }
-
-            lhsCols[pos] = lhsCol;
-            rhsCols[pos] = rhsCol;
-
-            combineBindings(bindings, level, i + 1, lhsCols, rhsCols, pos + 1, lhsRel, rhsRel, lhsRelation, rhsRelation, result);
-        }
     }
 
     // build tuples for an ordered int[] of cols (not BitSet — preserves permutation order)

@@ -70,37 +70,29 @@ public class Utility {
         return (int) res;
     }
 
-    public static BitSet[] generateApriori(BitSet remainingAttrs, int size) {
-        int cols = remainingAttrs.cardinality();
-        if (size == 0) return new BitSet[]{new BitSet()};
-        if (size > cols) return new BitSet[0];
+    public static int[][] combinations(int[] pool, int k) {
+        int n = pool.length;
+        int count = 1;
+        for (int i = 0; i < k; i++) count = count * (n - i) / (i + 1);
 
-        // Map virtual index -> actual attribute index
-        int[] attrMap = new int[cols];
-        int i = 0;
-        for (int attr = remainingAttrs.nextSetBit(0); attr >= 0; attr = remainingAttrs.nextSetBit(attr + 1)) {
-            attrMap[i++] = attr;
-        }
+        int[][] result = new int[count][k];
+        int[] indices = new int[k];
+        for (int i = 0; i < k; i++) indices[i] = i;
 
-        int count = Utility.binomial(cols, size);
-        BitSet[] result = new BitSet[count];
-
-        BigInteger mask  = BigInteger.ONE.shiftLeft(size).subtract(BigInteger.ONE);
-        BigInteger limit = BigInteger.ONE.shiftLeft(cols);
-
-        int idx = 0;
-        while (mask.compareTo(limit) < 0) {
-            // toBitSet gives virtual positions, remap to actual attributes
-            BitSet virtual = Utility.toBitSet(mask, cols);
-            BitSet combo = new BitSet();
-            for (int bit = virtual.nextSetBit(0); bit >= 0; bit = virtual.nextSetBit(bit + 1)) {
-                combo.set(attrMap[bit]);
+        int r = 0;
+        while (r < count) {
+            for (int i = 0; i < k; i++) {
+                result[r][i] = pool[indices[i]];
             }
-            result[idx++] = combo;
+            r++;
 
-            BigInteger c = mask.and(mask.negate());
-            BigInteger r = mask.add(c);
-            mask = r.or(r.xor(mask).shiftRight(2).divide(c));
+            int pos = k - 1;
+            while (pos >= 0 && indices[pos] == n - k + pos) pos--;
+            if (pos < 0) break;
+            indices[pos]++;
+            for (int i = pos + 1; i < k; i++) {
+                indices[i] = indices[i - 1] + 1;
+            }
         }
 
         return result;
@@ -127,15 +119,6 @@ public class Utility {
                 cartesianProductRecursive(sets, pos + 1, current, result);
             }
         }
-    }
-
-    public static boolean isDisjoint(int[] a, int[] b) {
-        for (int k : a) {
-            for (int i : b) {
-                if (k == i) return false;
-            }
-        }
-        return true;
     }
 
     public static void match(BitSet agree, int[] row1, int[] row2){

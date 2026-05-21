@@ -137,7 +137,7 @@ public final class Instructor {
         int globalMaxLevel = Utility.max(relationSizesMap.values());
 
         Map<String, ExecutionNode> executionGraph = new LinkedHashMap<>(); //All Graph Nodes
-        //globalMaxLevel = 2;
+
         for (int level = 0; level <= globalMaxLevel; level++) {
             // Maps last Execution Node (Edge) used by the variable
             Map<String, ExecutionNode> firstNodeByVariable = new HashMap<>();
@@ -213,41 +213,46 @@ public final class Instructor {
     private List<Edge> getEdgeOrder(Map<Edge, Graph.SetMembership> setMembershipMap) {
         List<Edge> ordered = new ArrayList<>();
         List<Edge> remaining = new ArrayList<>(setMembershipMap.keySet());
+        Set<String> lockedVariables = new HashSet<>();
 
-        // Add all U first, then all F, then all I_MINUS
-        for (Graph.SetMembership target : List.of(Graph.SetMembership.U, Graph.SetMembership.F)) {
+        List<List<Graph.SetMembership>> priorityLevels = List.of(
+                List.of(Graph.SetMembership.U, Graph.SetMembership.F),
+                List.of(Graph.SetMembership.U_PLUS, Graph.SetMembership.F_PLUS),
+                List.of(Graph.SetMembership.I_MINUS, Graph.SetMembership.I)
+        );
+
+        //Finding anchor nodes
+        for (List<Graph.SetMembership> level : priorityLevels) {
             for (Iterator<Edge> it = remaining.iterator(); it.hasNext(); ) {
                 Edge edge = it.next();
-                if (target.equals(setMembershipMap.get(edge))) {
+                if (level.contains(setMembershipMap.get(edge))) {
                     ordered.add(edge);
+                    lockedVariables.add(edge.leftName);
+                    lockedVariables.add(edge.rightName);
                     it.remove();
                 }
             }
+
+            if (!ordered.isEmpty()) break;
         }
 
-        // BFS expansion from all seen variables so far
-        Set<String> seenVariables = new HashSet<>();
-        for (Edge edge : ordered) {
-            seenVariables.add(edge.leftName);
-            seenVariables.add(edge.rightName);
-        }
-
+        //Finding connected nodes
         while (!remaining.isEmpty()) {
             boolean found = false;
-
             for (Iterator<Edge> it = remaining.iterator(); it.hasNext(); ) {
                 Edge edge = it.next();
-
-                if (seenVariables.contains(edge.leftName) || seenVariables.contains(edge.rightName)) {
+                if (lockedVariables.contains(edge.leftName) || lockedVariables.contains(edge.rightName)) {
                     ordered.add(edge);
-                    seenVariables.add(edge.leftName);
-                    seenVariables.add(edge.rightName);
+                    lockedVariables.add(edge.leftName);
+                    lockedVariables.add(edge.rightName);
                     it.remove();
                     found = true;
                 }
             }
-
-            if (!found) break;
+            if (!found){
+                ordered.addAll(remaining);
+                break;
+            }
         }
 
         return ordered;

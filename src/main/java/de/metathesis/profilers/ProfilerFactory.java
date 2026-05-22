@@ -12,15 +12,18 @@ import de.metathesis.profilers.results.Result;
 import lombok.Getter;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 @Getter
 public final class ProfilerFactory {
+    private final Executor executor;
     private final UCCProfiler uccProfiler;
     private final INDProfiler indProfiler;
     private final FDProfiler fdProfiler;
 
     public ProfilerFactory(ExecutorService executor) {
+        this.executor = executor;
         this.uccProfiler = new UCCProfiler(executor);
         this.indProfiler = new INDProfiler(executor);
         this.fdProfiler  = new FDProfiler(executor);

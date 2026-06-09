@@ -124,7 +124,7 @@ public class INDUnaryCover {
 
     @Override
     public String toString() {
-        return toJson();
+        return toJson2();
     }
 
     public String toJson() {
@@ -163,5 +163,44 @@ public class INDUnaryCover {
 
         sb.append("\n  }\n}");
         return sb.toString();
+    }
+
+    public String toJson2(){
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n");
+        sb.append("  \"forward\": {\n");
+        appendMap(sb, forward);
+        sb.append("  },\n");
+        sb.append("  \"reverse\": {\n");
+        appendMap(sb, reverse);
+        sb.append("  }\n");
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private void appendMap(StringBuilder sb, Map<Integer, Map<Integer, Map<Integer, BitSet>>> map) {
+        boolean firstPair = true;
+        for (Map.Entry<Integer, Map<Integer, Map<Integer, BitSet>>> lhsEntry : map.entrySet()) {
+            int lhsRel = lhsEntry.getKey();
+            for (Map.Entry<Integer, Map<Integer, BitSet>> rhsRelEntry : lhsEntry.getValue().entrySet()) {
+                int rhsRel = rhsRelEntry.getKey();
+
+                if (!firstPair) sb.append(",\n");
+                sb.append("    \"R").append(lhsRel).append(", R").append(rhsRel).append("\": {");
+
+                boolean firstCol = true;
+                for (Map.Entry<Integer, BitSet> colEntry : rhsRelEntry.getValue().entrySet()) {
+                    if (!firstCol) sb.append(", ");
+                    sb.append(colEntry.getKey())
+                            .append(": ")
+                            .append(Utility.bitSetToJsonArray(colEntry.getValue()));
+                    firstCol = false;
+                }
+
+                sb.append("}");
+                firstPair = false;
+            }
+        }
+        sb.append("\n");
     }
 }

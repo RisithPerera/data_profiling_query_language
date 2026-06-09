@@ -63,11 +63,27 @@ public class FDProfiler extends AbstractProfiler<FDRequest, FDResult> {
                 } while (suggestions != null);
 
                 for(ObjectObjectImmutablePair<BitSet, BitSet> pair : results){
-                    AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, pair.left());
+                    //TODO: This needs to discuss
+                    if(level == 0 && pair.left().isEmpty()){
 
-                    for (int attr = pair.right().nextSetBit(0); attr >= 0; attr = pair.right().nextSetBit(attr + 1)) {
-                        AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, attr);
-                        result.add(lhsAbs, rhsAbs);
+                        for (int rhsAttr = pair.right().nextSetBit(0); rhsAttr >= 0; rhsAttr = pair.right().nextSetBit(rhsAttr + 1)) {
+                            AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, rhsAttr);
+                            BitSet total = new BitSet(validator.getNumAttributes());
+                            total.set(0, validator.getNumAttributes());
+                            total.clear(rhsAttr);
+
+                            for (int lhsAttr = total.nextSetBit(0); lhsAttr >= 0; lhsAttr = total.nextSetBit(lhsAttr + 1)) {
+                                AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, lhsAttr);
+                                result.add(lhsAbs, rhsAbs);
+                            }
+                        }
+                    }else{
+                        AttributeBitSet lhsAbs = new AttributeBitSet(relationIndex, pair.left());
+
+                        for (int attr = pair.right().nextSetBit(0); attr >= 0; attr = pair.right().nextSetBit(attr + 1)) {
+                            AttributeBitSet rhsAbs = new AttributeBitSet(relationIndex, attr);
+                            result.add(lhsAbs, rhsAbs);
+                        }
                     }
                 }
             }catch (ExecutionException | InterruptedException e){

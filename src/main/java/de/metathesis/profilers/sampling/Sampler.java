@@ -37,7 +37,7 @@ public class Sampler {
         }
     }
 
-    public NegativeCover run(Set<IntIntImmutablePair> comparisonSuggestions) {
+    public synchronized NegativeCover run(Set<IntIntImmutablePair> comparisonSuggestions) {
         int numAttributes = relation.getNumOfAttributes();
         int[][] compressedRecords = relation.getCompressedRecords();
         NegativeCover newNonFds = new NegativeCover();

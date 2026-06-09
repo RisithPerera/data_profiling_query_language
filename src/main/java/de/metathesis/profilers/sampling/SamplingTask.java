@@ -5,6 +5,8 @@ import de.metathesis.structures.PositionListIndex;
 import de.metathesis.utils.Utility;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -12,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class SamplingTask implements Comparable<SamplingTask> {
+    private static final Logger log = LogManager.getLogger(SamplingTask.class);
 
     @Getter
     private final int attributeIndex;
@@ -67,7 +70,7 @@ public class SamplingTask implements Comparable<SamplingTask> {
                     this.numNewViolations++;
                 }
 
-                //System.out.printf("Attr: %d (%d, %d) Comp: %d, Violations: %d\n", this.attributeIndex, r1, r2, this.numComparisons, this.numNewViolations);
+                //log.debug("Attr: {} Tuple: ({}, {}) Comp: {}, Violations: {}", this.attributeIndex, r1, r2, this.numComparisons, this.numNewViolations);
             }
         }
     }

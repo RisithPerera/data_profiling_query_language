@@ -8,7 +8,7 @@ import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.listener.ComplitionListener;
 import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
-import de.metathesis.Preprocessor;
+import de.metathesis.ProfilingContext;
 import de.metathesis.structures.DatasetConfig;
 import org.junit.jupiter.api.*;
 
@@ -53,7 +53,7 @@ public class TripleDependencyTest {
             System.out.println("#Candidates: " + query.getMetaData().getNumberOfCandidates());
             System.out.println("#Rows: " + resultSize);
         });
-        Preprocessor.getInstance().clear();
+        ProfilingContext.getInstance().clear();
     }
 
     @Test

@@ -133,6 +133,12 @@ public class QueryTest {
         runQuery("SELECT X, Y, Z FROM CC(*) X, CC(*) Y, CC(*) Z WHERE UCC(Z) AND FD(Z,X) AND IND(X,Y) AND UCC(Y)");
     }
 
+    @Test
+    public void testQ11() {
+        runQuery("SELECT X, Y, Z, P, R FROM CC(*) X, CC(*) Y, CC(*) Z, CC(*) P, CC(*) R " +
+                "WHERE IND(X,Z) AND FD(Z,P) AND IND(X,Y) AND IND(Y,R) AND UCC(R)");
+    }
+
     private void runQuery(String query){
         List<ResultSet> resultSetList = metaserve.executeQuery(query);
         for(ResultSet table : resultSetList){

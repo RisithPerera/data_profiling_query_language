@@ -27,7 +27,6 @@ public class FDValidator {
     private final int numAttributes;
     private final int[][] compressed;
     private final PositionListIndex[] plis;
-    private final BitSet validatedRhs = new BitSet();
 
     private final double validationThreshold = 0.01;
 
@@ -86,9 +85,9 @@ public class FDValidator {
                     }
 
                     if (seen.containsKey(key)) {
-                        Int2IntMap existingRhs = seen.get(key);
+                        Int2IntMap rhsPreClusterIds = seen.get(key);
                         for (int r = validRhs.nextSetBit(0); r >= 0; r = validRhs.nextSetBit(r + 1)) {
-                            if (FDValidator.this.compressed[record][r] == -1 || FDValidator.this.compressed[record][r] != existingRhs.get(r)) {
+                            if (FDValidator.this.compressed[record][r] == -1 || FDValidator.this.compressed[record][r] != rhsPreClusterIds.get(r)) {
                                 suggestions.add(new IntIntImmutablePair(record, representative.getInt(key)));
                                 validRhs.clear(r);
                                 if (validRhs.isEmpty()) {
@@ -97,11 +96,11 @@ public class FDValidator {
                             }
                         }
                     } else {
-                        Int2IntMap rhsVals = new Int2IntOpenHashMap();
+                        Int2IntMap rhsClusterIds = new Int2IntOpenHashMap();
                         for (int rhsAttr = validRhs.nextSetBit(0); rhsAttr >= 0; rhsAttr = validRhs.nextSetBit(rhsAttr + 1)) {
-                            rhsVals.put(rhsAttr, FDValidator.this.compressed[record][rhsAttr]);
+                            rhsClusterIds.put(rhsAttr, FDValidator.this.compressed[record][rhsAttr]);
                         }
-                        seen.put(key, rhsVals);
+                        seen.put(key, rhsClusterIds);
                         representative.put(key, record);
                     }
                 }
@@ -130,7 +129,7 @@ public class FDValidator {
 
         // Validate until no more possible candidates at size <= level
         while (true) {
-            Map<BitSet, BitSet> candidates = this.root.getLhsPathsUpToDepth(level);
+            Map<BitSet, BitSet> candidates = this.root.getUnvalidatedCandidatesUpToDepth(level);
             if (candidates.isEmpty()) break;
 
             log.info("Level: {} Found FD candidates: {}", level, candidates.size());
@@ -196,11 +195,10 @@ public class FDValidator {
         while (rhsCombinationIterator.hasNext()) {
             BitSet candidateRhs = rhsCombinationIterator.next();
             BitSet targetRhs = (BitSet) candidateRhs.clone();
-            //targetRhs.andNot(validatedRhs); //TODO: This needs to discuss further
 
             // Validate until no more possible candidates at size <= level
             while (!targetRhs.isEmpty()) {
-                Map<BitSet, BitSet> candidates = this.root.getCandidateLhsPathsForRhs(targetRhs);
+                Map<BitSet, BitSet> candidates = this.root.getUnvalidatedCandidatesForRhs(targetRhs);
                 if (candidates.isEmpty()) break;
 
                 log.info("Target Rhs: {} Found FD candidates: {}", targetRhs, candidates.size());
@@ -246,7 +244,6 @@ public class FDValidator {
             }
 
             log.debug("Target Rhs: {} validated all candidates", candidateRhs);
-            this.validatedRhs.or(targetRhs);
 
             List<BitSet> result = null;
 

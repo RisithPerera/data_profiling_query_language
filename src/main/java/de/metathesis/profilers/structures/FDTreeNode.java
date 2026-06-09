@@ -136,12 +136,12 @@ public class FDTreeNode {
         }
     }
 
-    public Map<BitSet, BitSet> getLhsPathsUpToDepth(int targetDepth) {
+    public Map<BitSet, BitSet> getUnvalidatedCandidatesUpToDepth(int targetDepth) {
         access.readLock().lock();
         log.debug("GetLhsPathsAtDepth GET readLock");
         try {
             Map<BitSet, BitSet> candidates = new LinkedHashMap<>();
-            getLhsPathsUpToDepthRecursive(this, new BitSet(numAttributes), 0, targetDepth, candidates);
+            getUnvalidatedCandidatesUpToDepthRecursive(this, new BitSet(numAttributes), 0, targetDepth, candidates);
             return candidates;
         } finally {
             access.readLock().unlock();
@@ -149,8 +149,8 @@ public class FDTreeNode {
         }
     }
 
-    private void getLhsPathsUpToDepthRecursive(FDTreeNode node, BitSet currentLhs, int currentDepth,
-                                               int targetDepth, Map<BitSet, BitSet> candidates) {
+    private void getUnvalidatedCandidatesUpToDepthRecursive(FDTreeNode node, BitSet currentLhs, int currentDepth,
+                                                            int targetDepth, Map<BitSet, BitSet> candidates) {
 
         if (node.rhsAttributes.isEmpty()) return;
 
@@ -168,7 +168,7 @@ public class FDTreeNode {
         for (int i = 0; i < node.children.length; i++) {
             if (node.children[i] != null) {
                 currentLhs.set(i);
-                getLhsPathsUpToDepthRecursive(node.children[i], currentLhs, currentDepth + 1, targetDepth, candidates);
+                getUnvalidatedCandidatesUpToDepthRecursive(node.children[i], currentLhs, currentDepth + 1, targetDepth, candidates);
                 currentLhs.clear(i);
             }
         }
@@ -210,12 +210,12 @@ public class FDTreeNode {
         }
     }
 
-    public Map<BitSet, BitSet> getCandidateLhsPathsForRhs(BitSet targetRhs) {
+    public Map<BitSet, BitSet> getUnvalidatedCandidatesForRhs(BitSet targetRhs) {
         access.readLock().lock();
         log.debug("GetCandidateLhsPathsForRhs GET readLock");
         try {
             Map<BitSet, BitSet> candidates = new LinkedHashMap<>();
-            getCandidateLhsPathsForRhsRecursive(this, new BitSet(numAttributes), targetRhs, candidates);
+            getUnvalidatedCandidatesForRhsRecursive(this, new BitSet(numAttributes), targetRhs, candidates);
             return candidates;
         } finally {
             access.readLock().unlock();
@@ -223,7 +223,7 @@ public class FDTreeNode {
         }
     }
 
-    private void getCandidateLhsPathsForRhsRecursive(FDTreeNode node, BitSet currentLhs, BitSet targetRhs, Map<BitSet, BitSet> candidates) {
+    private void getUnvalidatedCandidatesForRhsRecursive(FDTreeNode node, BitSet currentLhs, BitSet targetRhs, Map<BitSet, BitSet> candidates) {
 
         // If subtree has no overlap with targetRhs, skip the branch
         BitSet subtreeRelevance = (BitSet) node.rhsAttributes.clone();
@@ -242,9 +242,10 @@ public class FDTreeNode {
         if (node.children == null) return;
 
         for (int i = 0; i < node.children.length; i++) {
-            if (node.children[i] != null) {
+            //skip paths containing targetRhs bits because lhs path should not contain given target rhs
+            if (!targetRhs.get(i) && node.children[i] != null) {
                 currentLhs.set(i);
-                getCandidateLhsPathsForRhsRecursive(node.children[i], currentLhs, targetRhs, candidates);
+                getUnvalidatedCandidatesForRhsRecursive(node.children[i], currentLhs, targetRhs, candidates);
                 currentLhs.clear(i);
             }
         }

@@ -2,7 +2,6 @@ package de.metathesis.utils;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
@@ -39,15 +38,6 @@ public class Utility {
         return bs.stream().toArray();
     }
 
-    // Convert BigInteger mask to BitSet
-    public static BitSet toBitSet(BigInteger mask, int cols) {
-        BitSet bs = new BitSet(cols);
-        for (int i = 0; i < cols; i++) {
-            if (mask.testBit(i)) bs.set(i);
-        }
-        return bs;
-    }
-
     public static IntArrayList buildKey(BitSet remainingLhs, int[] compressedRecord) {
         IntArrayList key = new IntArrayList();
         for (int attr = remainingLhs.nextSetBit(0); attr >= 0; attr = remainingLhs.nextSetBit(attr + 1)) {
@@ -58,16 +48,6 @@ public class Utility {
             key.add(v);
         }
         return key;
-    }
-
-    public static int binomial(int n, int k) {
-        if (k < 0 || k > n) return 0;
-        if (k == 0 || k == n) return 1;
-        long res = 1;
-        for (int i = 1; i <= k; i++) {
-            res = res * (n - i + 1) / i;
-        }
-        return (int) res;
     }
 
     public static int[][] combinations(int[] pool, int k) {

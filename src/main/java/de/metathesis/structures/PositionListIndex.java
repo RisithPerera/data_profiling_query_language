@@ -34,34 +34,6 @@ public class PositionListIndex {
         return (this.clusters.size() == 1) && (this.clusters.getFirst().size() == this.numOfRecords);
     }
 
-    public int getNumNonUniqueValues() {
-        return clusters.size();
-    }
-
-    private IntArrayList intersectCluster(IntArrayList list1, IntArrayList list2) {
-        IntArrayList res = new IntArrayList();
-
-        int i = 0;
-        int j = 0;
-
-        while (i < list1.size() && j < list2.size()) {
-            int a = list1.getInt(i);
-            int b = list2.getInt(j);
-
-            if (a == b) {
-                res.add(a);
-                i++;
-                j++;
-            } else if (a < b) {
-                i++;
-            } else {
-                j++;
-            }
-        }
-
-        return res;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

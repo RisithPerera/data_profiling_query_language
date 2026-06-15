@@ -1,7 +1,6 @@
 package de.metaserve.parser.query;
 
 import de.metaserve.parser.graph.Condition;
-import de.metaserve.util.exceptions.TablesDiscoveryException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 
 import java.io.File;

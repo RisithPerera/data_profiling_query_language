@@ -1,6 +1,6 @@
 package de.metathesis.structures;
 
-import de.metanome.algorithm_integration.input.RelationalInput;
+import de.metaserve.input.RelationalInput;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Getter;

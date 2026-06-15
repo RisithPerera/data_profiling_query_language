@@ -1,13 +1,13 @@
 package de.metaserve;
 
 import de.metaserve.engine.Metaserve;
-import de.metaserve.util.listener.ComplitionListener;
-import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.configuration.EngineConfiguration;
 import de.metaserve.util.configuration.InputConfiguration;
 import de.metaserve.util.exceptions.DPQLException;
 import de.metaserve.util.exceptions.Exceptions;
+import de.metaserve.util.listener.CompletionListener;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
+import de.metathesis.structures.ResultTable;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -16,8 +16,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
-
-
 
 public class Main {
 
@@ -38,7 +36,7 @@ public class Main {
 		try (Scanner scanner = new Scanner(System.in)) {
 
 			Metaserve metaserve = new Metaserve();
-			metaserve.addListener((ComplitionListener) (query, resultSet, totalTime, resultSize) -> {
+			metaserve.addListener((CompletionListener) (query, resultSet, totalTime, resultSize) -> {
                 log("Query completed in " + totalTime + " ms, rows: " + resultSize);
                 if (query != null && query.getMetaData() != null) {
                     System.out.println("-- Metadata --");
@@ -66,7 +64,7 @@ public class Main {
 
 				try {
 					Instant start = Instant.now();
-					List<ResultSet> resultSetList = metaserve.executeQuery(line);
+					List<ResultTable> resultSetList = metaserve.executeQuery(line);
 					Instant end = Instant.now();
 					long elapsedMs = Duration.between(start, end).toMillis();
 
@@ -75,7 +73,7 @@ public class Main {
 						continue;
 					}
 
-					ResultSet first = resultSetList.get(0);
+					ResultTable first = resultSetList.get(0);
 					System.out.println("-- Result (showing first set of " + resultSetList.size() + ") --");
 					System.out.println(first);
 					System.out.println();

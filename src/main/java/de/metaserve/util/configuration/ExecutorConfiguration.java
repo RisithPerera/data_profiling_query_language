@@ -4,7 +4,7 @@ import java.util.Properties;
 
 public class ExecutorConfiguration implements Configuration{
 
-    private Executor EXECUTOR_TYPE = Executor.DPAL;
+    private Executor EXECUTOR_TYPE = Executor.HOLISTIC;
     private Output OUTPUT_TYPE = Output.DEFAULT;
 
     public ExecutorConfiguration(){
@@ -46,7 +46,6 @@ public class ExecutorConfiguration implements Configuration{
     }
 
     public enum Executor{
-        DPAL,
         HOLISTIC
     }
 

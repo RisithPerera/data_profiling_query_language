@@ -1,6 +1,6 @@
 package de.metathesis.profilers;
 
-import de.metanome.algorithm_integration.input.InputIterationException;
+import de.metaserve.util.exceptions.InputIterationException;
 import de.metathesis.profilers.requests.SearchSpace;
 import de.metathesis.profilers.requests.UCCRequest;
 import de.metathesis.profilers.results.UCCResult;

@@ -1,19 +1,18 @@
 package de.metaserve.executor.strategy;
 
-import de.metanome.algorithm_integration.AlgorithmConfigurationException;
-import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metaserve.engine.QueryEngine;
 import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.parser.query.QueryMetadata;
 import de.metaserve.util.configuration.InputConfiguration;
+import de.metaserve.util.exceptions.AlgorithmConfigurationException;
+import de.metaserve.util.exceptions.InputGenerationException;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import de.metathesis.Instructor;
 import de.metathesis.ResultFormatter;
 import de.metathesis.profilers.results.Result;
 import de.metathesis.structures.ResultTable;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -81,7 +80,7 @@ public class HolisticProfileStrategy implements Strategy{
                         .collect(Collectors.joining(", ")));
             }
 
-        } catch (AlgorithmConfigurationException |InputGenerationException e) {
+        } catch (AlgorithmConfigurationException | InputGenerationException e) {
             throw new RuntimeException(e);
         } finally {
             metadata.update(QueryEngine.QueryState.COMPUTED_MIN);

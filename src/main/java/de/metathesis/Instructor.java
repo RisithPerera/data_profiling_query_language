@@ -1,12 +1,12 @@
 package de.metathesis;
 
-import de.metanome.algorithm_integration.AlgorithmConfigurationException;
-import de.metanome.algorithm_integration.input.InputGenerationException;
 import de.metaserve.executor.min.graph.Graph;
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
+import de.metaserve.util.exceptions.AlgorithmConfigurationException;
+import de.metaserve.util.exceptions.InputGenerationException;
 import de.metathesis.profilers.ProfilerFactory;
 import de.metathesis.profilers.results.FDResult;
 import de.metathesis.profilers.results.INDResult;

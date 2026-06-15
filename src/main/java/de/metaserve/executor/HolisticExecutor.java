@@ -6,7 +6,7 @@ import de.metaserve.executor.strategy.HolisticProfileStrategy;
 import de.metaserve.executor.strategy.Strategy;
 import de.metaserve.parser.query.Query;
 import de.metaserve.util.configuration.ExecutorConfiguration;
-import de.metaserve.util.result.ResultSet;
+import de.metathesis.structures.ResultTable;
 
 import java.util.List;
 
@@ -19,7 +19,7 @@ public class HolisticExecutor implements Executor {
     }
 
     @Override
-    public List<ResultSet> executeQuery(Query query) {
+    public List<ResultTable> executeQuery(Query query) {
         Graph graph = Graph.fromConditions(query.getConditions());
         graph.computeSetMembership();
 

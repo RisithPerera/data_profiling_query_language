@@ -1,15 +1,16 @@
 package de.metaserve.engine;
 
 import de.metaserve.executor.Executor;
-import de.metaserve.util.listener.Listenable;
-import de.metaserve.util.listener.QueryExecutionListener;
-import de.metaserve.parser.query.Query;
-import de.metaserve.util.result.ResultSet;
 import de.metaserve.optimizer.Optimizer;
 import de.metaserve.parser.Parser;
+import de.metaserve.parser.query.Query;
 import de.metaserve.util.configuration.EngineConfiguration;
 import de.metaserve.util.exceptions.DPQLException;
+import de.metaserve.util.listener.Listenable;
+import de.metaserve.util.listener.QueryExecutionListener;
+import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
+import de.metathesis.structures.ResultTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +71,7 @@ public class Metaserve implements QueryEngine, AutoCloseable, Listenable<QueryEx
     }
 
     @Override
-    public List<ResultSet> executeQuery(String queryString) throws DPQLException {
+    public List<ResultTable> executeQuery(String queryString) throws DPQLException {
         if (!(state.equals(QueryState.AWAITING_QUERY) || state.equals(QueryState.QUERY_COMPLETED) || state.equals(QueryState.ERROR))) {
             throw new DPQLException("Engine is currently occupied!");
         }
@@ -87,15 +88,16 @@ public class Metaserve implements QueryEngine, AutoCloseable, Listenable<QueryEx
             query.getMetaData().update(QueryState.QUERY_OPTIMIZING);
 
             state = QueryState.QUERY_EXECUTING;
-            List<ResultSet> resultSet = executor.executeQuery(optimizedQuery);
-            if(resultSet == null)
+            List<ResultTable> resultSet = executor.executeQuery(optimizedQuery);
+            if(resultSet == null) {
                 throw new RuntimeException("Query execution failed, due to a missing result set!");
+            }
             query.getMetaData().update(QueryState.QUERY_EXECUTING);
             state = QueryState.QUERY_COMPLETED;
 
             // Notify all listeners of the query execution completion
             for (QueryExecutionListener listener : executionListeners) {
-                listener.onQueryCompleted(optimizedQuery, resultSet, optimizedQuery.getMetaData().getTime(), resultSet.get(0).size());
+                listener.onQueryCompleted(optimizedQuery, resultSet, optimizedQuery.getMetaData().getTime(), 0);
             }
 
             return resultSet;

@@ -1,14 +1,13 @@
 package de.metaserve.executor.min.graph;
 
+import de.metaserve.executor.min.constraints.CardinalityConstraint;
+import de.metaserve.executor.min.constraints.Interval;
+import de.metaserve.executor.min.constraints.SizeConstraint;
 import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
 import de.metaserve.executor.min.results.GraphMetadata;
-import de.metaserve.executor.min.results.ResultNode;
-import de.metaserve.executor.min.constraints.CardinalityConstraint;
-import de.metaserve.executor.min.constraints.Interval;
-import de.metaserve.executor.min.constraints.SizeConstraint;
 import de.metaserve.parser.graph.*;
 import de.metaserve.util.common.Pair;
 import de.metaserve.util.common.Triple;
@@ -650,25 +649,6 @@ public class Graph {
             copy.edges.add(edge.copy(mapping));
         }
         return copy;
-    }
-
-    public List<ResultNode> getResultNodes(Edge min) {
-        List<ResultNode> result = new ArrayList<>();
-        ResultNode lhsNode = getResultNode(min.leftName);
-        result.add(lhsNode);
-        if (!(min instanceof UCCEdge)){
-            ResultNode rhsNode = getResultNode(min.rightName);
-            result.add(rhsNode);
-        }
-        return result;
-    }
-
-    public ResultNode getResultNode(String name) {
-        ResultNode lhsNode = new ResultNode(name);
-        for (Edge edge : getEdges(name)){
-            lhsNode.add(edge);
-        }
-        return lhsNode;
     }
 
     public List<Triple<Boolean, Edge, Boolean>> getNeighborsWithDir(Edge min) {

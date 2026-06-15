@@ -1,7 +1,7 @@
 package de.metaserve.executor.min.results;
 
-import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.Graph;
+import de.metaserve.executor.min.graph.edge.Edge;
 
 import java.util.HashMap;
 import java.util.HashSet;

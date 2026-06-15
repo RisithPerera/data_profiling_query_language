@@ -1,9 +1,9 @@
 package de.metaserve.executor.min.graph.edge;
 
-import de.metanome.algorithm_integration.results.Result;
 import de.metaserve.executor.min.graph.Node;
 import de.metaserve.executor.min.results.ResultsContainer;
 import de.metaserve.util.common.Triple;
+import de.metathesis.profilers.results.Result;
 import lombok.Setter;
 
 import java.util.ArrayList;

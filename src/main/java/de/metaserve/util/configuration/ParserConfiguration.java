@@ -1,8 +1,7 @@
 package de.metaserve.util.configuration;
 
 
-import java.io.IOException;
-import java.util.*;
+import java.util.Properties;
 
 public class ParserConfiguration implements Configuration{
 

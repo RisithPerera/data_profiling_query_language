@@ -1,8 +1,9 @@
 package de.metaserve.engine;
 
-import de.metaserve.util.result.ResultSet;
 import de.metaserve.util.configuration.EngineConfiguration;
 import de.metaserve.util.exceptions.DPQLException;
+import de.metaserve.util.result.ResultSet;
+import de.metathesis.structures.ResultTable;
 
 import java.util.List;
 
@@ -18,7 +19,7 @@ public interface QueryEngine {
      *  @return the results set of the query
      *  @throws DPQLException if the query engine encounters an error while executing the query
      */
-    List<ResultSet> executeQuery(String queryString) throws DPQLException;
+    List<ResultTable> executeQuery(String queryString) throws DPQLException;
 
     /**
      *  Closes the query engine.

@@ -1,12 +1,14 @@
 package de.metaserve.util.cli;
 
 import de.metaserve.DPQLLexer;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.misc.Interval;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DPQLConsoleHighlighter {

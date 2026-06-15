@@ -1,10 +1,9 @@
 package de.metathesis;
 
-import de.metanome.MetanomeHelper;
-import de.metanome.algorithm_integration.AlgorithmConfigurationException;
-import de.metanome.algorithm_integration.input.InputGenerationException;
-import de.metanome.algorithm_integration.input.RelationalInput;
-import de.metanome.algorithm_integration.input.RelationalInputGenerator;
+import de.metaserve.input.RelationalInput;
+import de.metaserve.input.RelationalInputGenerator;
+import de.metaserve.util.exceptions.AlgorithmConfigurationException;
+import de.metaserve.util.exceptions.InputGenerationException;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metathesis.profilers.sampling.Sampler;
 import de.metathesis.profilers.structures.INDUnaryCover;
@@ -56,7 +55,7 @@ public final class ProfilingContext {
                         .orElseGet(() -> {
                             int id = this.relationMap.size();
                             try {
-                                RelationalInputGenerator inputGenerator = MetanomeHelper.getInput(relationName);
+                                RelationalInputGenerator inputGenerator = getInput(relationName);
                                 RelationalInput relationalInput = inputGenerator.generateNewCopy();
                                 assert Objects.nonNull(relationalInput) : "Input generation failed!";
 
@@ -206,6 +205,10 @@ public final class ProfilingContext {
 //            }
 //            comparator.incrementActiveKey();
 //        }
+    }
+
+    public static RelationalInputGenerator getInput(String fileName) throws AlgorithmConfigurationException {
+        return InputConfigurationSingleton.get().getInputGenerator(fileName);
     }
 
     public void clear(){

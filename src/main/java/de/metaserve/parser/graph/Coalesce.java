@@ -1,6 +1,6 @@
 package de.metaserve.parser.graph;
 
-import de.metanome.algorithm_integration.ColumnIdentifier;
+import de.metaserve.input.ColumnIdentifier;
 import de.metaserve.util.result.ResultSet;
 
 import java.util.Optional;

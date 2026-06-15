@@ -2,7 +2,10 @@ package de.metaserve.parser.graph;
 
 import de.metaserve.util.common.Pair;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class FD extends Dependency{
     public static final String NAME = "FD";

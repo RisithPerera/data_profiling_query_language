@@ -1,6 +1,7 @@
 package de.metathesis.profilers;
 
-import de.metanome.algorithm_integration.input.InputIterationException;
+
+import de.metaserve.util.exceptions.InputIterationException;
 
 import java.util.concurrent.CompletableFuture;
 

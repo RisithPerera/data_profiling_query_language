@@ -1,12 +1,14 @@
 package de.metaserve.util.common;
 
-import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.Graph;
+import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.INDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
 
 import java.io.*;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GraphUtil {
 

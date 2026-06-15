@@ -4,7 +4,8 @@ import de.metaserve.executor.min.graph.edge.Edge;
 import de.metaserve.executor.min.graph.edge.FDEdge;
 import de.metaserve.executor.min.graph.edge.UCCEdge;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GraphAtom {
 

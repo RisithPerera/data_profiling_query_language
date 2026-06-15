@@ -2,20 +2,15 @@ package de.metaserve.parser;
 
 import de.metaserve.DPQLLexer;
 import de.metaserve.DPQLParser;
-import de.metaserve.util.listener.Listenable;
-import de.metaserve.util.listener.ParserListener;
 import de.metaserve.parser.query.Query;
 import de.metaserve.util.configuration.ParserConfiguration;
 import de.metaserve.util.exceptions.ParseException;
+import de.metaserve.util.listener.Listenable;
+import de.metaserve.util.listener.ParserListener;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import de.metaserve.util.singletons.ParserConfigurationSingleton;
 import org.antlr.v4.gui.TreeViewer;
-import org.antlr.v4.runtime.BaseErrorListener;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.NoViableAltException;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 

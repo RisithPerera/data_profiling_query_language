@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.metaserve.engine.Metaserve;
 import de.metaserve.util.configuration.ExecutorConfiguration;
 import de.metaserve.util.configuration.InputConfiguration;
-import de.metaserve.util.listener.ComplitionListener;
+import de.metaserve.util.listener.CompletionListener;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import de.metathesis.structures.DatasetConfig;
 import org.junit.jupiter.api.BeforeAll;
@@ -67,7 +67,7 @@ public class SingleDependencyTest {
         long[] result = {-1, -1};
 
         Metaserve metaserve = new Metaserve();
-        metaserve.addListener((ComplitionListener) (q, resultSet, totalTime, resultSize) -> {
+        metaserve.addListener((CompletionListener) (q, resultSet, totalTime, resultSize) -> {
             result[0] = resultSize;
         });
 

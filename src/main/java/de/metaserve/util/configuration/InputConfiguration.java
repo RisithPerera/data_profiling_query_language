@@ -2,25 +2,18 @@ package de.metaserve.util.configuration;
 
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
-import de.metanome.algorithm_integration.AlgorithmConfigurationException;
-import de.metanome.algorithm_integration.configuration.ConfigurationSettingFileInput;
-import de.metanome.algorithm_integration.input.RelationalInputGenerator;
-import de.metanome.algorithm_integration.results.BasicStatistic;
-import de.metanome.algorithm_integration.results.Result;
-import de.metanome.backend.input.file.DefaultFileInputGenerator;
-import de.metanome.Metanome;
-import de.metanome.util.ExtendedConfigurationSettingFileInput;
-import de.metanome.util.ExtendedDefaultFileInputGenerator;
+import de.metaserve.input.ConfigurationSettingFileInput;
+import de.metaserve.input.DefaultFileInputGenerator;
+import de.metaserve.input.RelationalInputGenerator;
 import de.metaserve.util.CardMap;
-import de.metaserve.util.singletons.EngineConfigurationSingleton;
-import de.metaserve.util.singletons.InputConfigurationSingleton;
+import de.metaserve.util.exceptions.AlgorithmConfigurationException;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Properties;
 
 public class InputConfiguration implements Configuration {
 	private String IO_FOLDER = "io";
@@ -64,45 +57,6 @@ public class InputConfiguration implements Configuration {
 			this.loadDataSets();
 		} catch (RuntimeException e) {
 			throw new RuntimeException("Could not load Input config", e);
-		}
-	}
-
-	public static long getCard(String name) {
-		long card;
-		String tableName = name.split("."+ InputConfigurationSingleton.get().getFILE_ENDING())[0];
-		if(InputConfiguration.cardMap == null || InputConfiguration.cardMap.get(tableName) == null) {
-			boolean cache = EngineConfigurationSingleton.get().isCache();
-			EngineConfigurationSingleton.get().setCache(true);
-			InputConfigurationSingleton.get().buildCardMap(Arrays.asList(tableName));
-			EngineConfigurationSingleton.get().setCache(cache);
-		}
-		if(InputConfiguration.cardMap.get(name) == null){
-			card = InputConfiguration.cardMap.get(name.split(",")[0]);
-		} else {
-			card = InputConfiguration.cardMap.get(name);
-		}
-		return card;
-	}
-
-	public static long getCard(String schema, String table, String name) {
-		if(InputConfiguration.cardMap == null || InputConfiguration.cardMap.get(table) == null) {
-			boolean cache = EngineConfigurationSingleton.get().isCache();
-			EngineConfigurationSingleton.get().setCache(true);
-			InputConfigurationSingleton.get().buildCardMap(Arrays.asList(table));
-			EngineConfigurationSingleton.get().setCache(cache);
-		}
-		String search;
-		if(schema.equals("")){
-			search = table + "." + InputConfigurationSingleton.get().getFILE_ENDING() + "." + name;
-		} else {
-			search = schema + "." + table + "." + InputConfigurationSingleton.get().getFILE_ENDING() + "." + name;
-		}
-		search = search.toLowerCase();
-		search.hashCode();
-		if(InputConfiguration.cardMap.containsKey(search)){
-			return InputConfiguration.cardMap.get(search);
-		} else {
-			return -1L;
 		}
 	}
 
@@ -150,24 +104,12 @@ public class InputConfiguration implements Configuration {
 		return path /*.substring(0, System.getProperty("user.dir").lastIndexOf(File.separator)) */+ File.separator + IO_FOLDER + File.separator + RESULT_FOLDER + File.separator + DATA_SET + File.separator;
 	}
 
-	public String getMetaDataPath(){
-		return getInputPath() +  "Metadata" + File.separator;
-	}
-
 	public String getFileInputPath(String name){
 		return getInputPath() + name + "." + FILE_ENDING;
 	}
 
-	public String getFileResultPath(String name, String dependency){
-		return getInputPath() + name + File.separator + dependency + "_" + FILE_RESULT_NAME;
-	}
-
-	public String getFileStatisticPath(String name, String dependency){
-		return getInputPath() + name + File.separator + dependency + "_" + FILE_STATISTIC_NAME;
-	}
-
 	public RelationalInputGenerator getInputGenerator(String fileName) throws AlgorithmConfigurationException {
-		return new ExtendedDefaultFileInputGenerator(new ExtendedConfigurationSettingFileInput(
+		return new DefaultFileInputGenerator(new ConfigurationSettingFileInput(
 				getFileInputPath(fileName),
 				true,
 				FILE_VALUE_SEPARATOR.charAt(0),
@@ -239,14 +181,6 @@ public class InputConfiguration implements Configuration {
 		ENABLE_MEMORY_GUARDIAN = Boolean.parseBoolean(config.getProperty("ENABLE_MEMORY_GUARDIAN"));
 	}
 
-	public void buildCardMap(List<String> tables) {
-		List<Result> cardResults = Metanome.getInstance().executeCARD(tables.toArray(new String[tables.size()]));
-		for (Result result : cardResults) {
-			BasicStatistic bs = (BasicStatistic) result;
-			Long nofv = (Long) bs.getStatisticMap().get("Number of Distinct Values").getValue();
-			cardMap.put(bs.getColumnCombination().getColumnIdentifiers().iterator().next().toString(), nofv);
-		}
-	}
 
 	public String getIO_FOLDER() {
 		return IO_FOLDER;

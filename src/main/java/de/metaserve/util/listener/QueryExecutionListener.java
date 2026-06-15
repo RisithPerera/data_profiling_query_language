@@ -3,6 +3,7 @@ package de.metaserve.util.listener;
 import de.metaserve.engine.QueryEngine;
 import de.metaserve.parser.query.Query;
 import de.metaserve.util.result.ResultSet;
+import de.metathesis.structures.ResultTable;
 
 import java.util.List;
 
@@ -25,7 +26,7 @@ public interface QueryExecutionListener extends Listener{
      * @param totalTime  The total time it took to execute the query, in milliseconds.
      * @param resultSize The size of the result set, in number of rows.
      */
-    void onQueryCompleted(Query query, List<ResultSet> resultSet, long totalTime, int resultSize);
+    void onQueryCompleted(Query query, List<ResultTable> resultSet, long totalTime, int resultSize);
 
     /**
      * Called when the query engine is closed.

@@ -4,7 +4,7 @@ import de.metaserve.util.singletons.ExecutorConfigurationSingelton;
 import de.metaserve.util.singletons.InputConfigurationSingleton;
 import de.metaserve.util.singletons.ParserConfigurationSingleton;
 
-import java.io.*;
+import java.io.IOException;
 import java.util.Properties;
 
 public class EngineConfiguration implements Configuration{

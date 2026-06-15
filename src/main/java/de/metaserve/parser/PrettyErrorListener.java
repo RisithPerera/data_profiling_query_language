@@ -1,9 +1,11 @@
 package de.metaserve.parser;
 
 import de.metaserve.util.cli.DPQLConsoleHighlighter;
-import de.metaserve.util.exceptions.DPQLException;
 import de.metaserve.util.exceptions.ParseException;
-import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.Token;
 
 public class PrettyErrorListener extends BaseErrorListener {
 

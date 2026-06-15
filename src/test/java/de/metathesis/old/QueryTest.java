@@ -5,10 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.metaserve.engine.Metaserve;
 import de.metaserve.util.configuration.ExecutorConfiguration;
 import de.metaserve.util.configuration.InputConfiguration;
-import de.metaserve.util.listener.ComplitionListener;
-import de.metaserve.util.result.ResultSet;
+import de.metaserve.util.listener.CompletionListener;
 import de.metaserve.util.singletons.EngineConfigurationSingleton;
 import de.metathesis.structures.DatasetConfig;
+import de.metathesis.structures.ResultTable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +47,7 @@ public class QueryTest {
     @BeforeEach
     public void setup() {
         metaserve = new Metaserve();
-        metaserve.addListener((ComplitionListener) (query, resultSet, totalTime, resultSize) -> {
+        metaserve.addListener((CompletionListener) (query, resultSet, totalTime, resultSize) -> {
             System.out.println("#Dependencies: " + query.getMetaData().getNumberOfReduction());
             System.out.println("#Dependency Map: " + query.getMetaData().getMap());
             System.out.println("#Candidates: " + query.getMetaData().getNumberOfCandidates());
@@ -140,8 +140,8 @@ public class QueryTest {
     }
 
     private void runQuery(String query){
-        List<ResultSet> resultSetList = metaserve.executeQuery(query);
-        for(ResultSet table : resultSetList){
+        List<ResultTable> resultSetList = metaserve.executeQuery(query);
+        for(ResultTable table : resultSetList){
             System.out.println("-- Result (showing first set of " + table.size() + ") --");
             //System.out.println(table);
             //System.out.println();

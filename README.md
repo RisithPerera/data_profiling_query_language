@@ -103,18 +103,50 @@ The engine was evaluated against 38 DPQL query patterns across 5 datasets:
 | Sakila | 2.9 MB | 15 |
 | AdventureWorks | 90.4 MB | 67 |
 
+Datasets can be downloaded from this like: https://drive.google.com/file/d/1hxErQkLSeWK_H9mVPJnO3xwI1_KXCyeM/view?usp=sharing
+
 The holistic engine consistently outperforms the baseline (independent execution + post-processing matching) in both result completeness and execution time.
 
----
+The result python validation scripts can be found inside 'scripts/validation'
 
-## Executor Modes
 
-The engine supports two executor modes selectable via a parameter:
-
-- `BASELINE` — runs HyFD, HyUCC, and BINDER independently over the entire dataset, then matches results to the query pattern in post-processing. This replicates the current DPQL implementation.
-- `HOLISTIC` — runs the constraint-driven execution engine proposed in this work.
-
-Both modes reside in the same codebase and can be switched without changing any profiling logic.
+| Ref | Query | Constraints | Application Area | Application |
+|-----|-------|-------------|-----------------|-------------|
+| `b1` | `FD(X,Y) AND UCC(Y)` | Fv⁺ : U |  |  |
+| `b2` | `FD(X,Y) AND UCC(X)` | F⁺ : U |  |  |
+| `b3` | `IND(X,Y) AND UCC(Y)` | I⁺ : U | Data Linkage / Query Optimization | Foreign Key / Foreign Key Rule |
+| `b4` | `IND(X,Y) AND UCC(X)` | I⁺ : U |  |  |
+| `b5` | `IND(X,Y) AND FD(Y,Z)` | I⁺ : F |  |  |
+| `b6` | `IND(X,Y) AND FD(X,Z)` | I⁺ : F |  |  |
+| `b7` | `IND(X,Y) AND FD(Z,Y)` | I⁻ : F |  |  |
+| `b8` | `IND(X,Y) AND FD(Z,X)` | I⁻ : F |  |  |
+| `b9` | `IND(X,Y) AND IND(X,Z)` | I⁻ : I⁻ |  |  |
+| `b10` | `IND(X,Y) AND IND(Y,Z)` | I⁻ : I⁻ |  |  |
+| `t1` | `UCC(X) AND IND(X,Y) AND UCC(Y)` | U : I⁺ : U | Schema Normalization | Redundant Normalization |
+| `t2` | `FD(X,W) AND IND(X,Y) AND FD(Y,Z)` | F⁺ : I⁺ : F⁺ | Data Linkage / Data Analytics | Embedded-Embedded Link / Cross-Table Common Cause |
+| `t3` | `FD(W,X) AND IND(X,Y) AND FD(Z,Y)` | F : I⁻ : F | Data Analytics | Cross-Table Common Effect |
+| `t4` | `FD(X,W) AND IND(X,Y) AND FD(Z,Y)` | F : I⁺ : Fv⁺ | Machine Learning | Cross-Table Redundant ML Feature |
+| `t5` | `FD(W,X) AND IND(X,Y) AND FD(Y,Z)` | Fv⁺ : I⁺ : F |  |  |
+| `t6` | `IND(X,Z) AND IND(X,Y) AND UCC(Y)` | I⁺ : I⁺ : U |  |  |
+| `t7` | `IND(Z,X) AND IND(X,Y) AND UCC(Y)` | I⁺ : I⁺ : U |  |  |
+| `t8` | `IND(Y,Z) AND IND(X,Y) AND UCC(Y)` | I⁺ : I⁺ : U | Query Optimization | Transitive Join Rule |
+| `t9` | `IND(Z,Y) AND IND(X,Y) AND UCC(Y)` | I⁺ : I⁺ : U |  |  |
+| `t10` | `IND(X,Z) AND IND(X,Y) AND UCC(X)` | I⁺ : I⁺ : U |  |  |
+| `t11` | `IND(Z,X) AND IND(X,Y) AND UCC(X)` | I⁺ : I⁺ : U |  |  |
+| `t12` | `IND(Y,Z) AND IND(X,Y) AND UCC(X)` | I⁺ : I⁺ : U |  |  |
+| `t13` | `IND(Z,Y) AND IND(X,Y) AND UCC(X)` | I⁺ : I⁺ : U |  |  |
+| `t14` | `FD(X,Z) AND IND(X,Y) AND UCC(Y)` | F⁺ : I⁺ : U | Data Linkage | Embedded Link |
+| `t15` | `FD(Z,X) AND IND(X,Y) AND UCC(Y)` | Fv⁺ : I⁺ : U |  |  |
+| `t16` | `FD(Y,Z) AND IND(X,Y) AND UCC(Y)` | F⁺ : I⁺ : U |  |  |
+| `t17` | `FD(Z,Y) AND IND(X,Y) AND UCC(Y)` | Fv⁺ : I⁺ : U |  |  |
+| `t18` | `FD(X,Z) AND IND(X,Y) AND UCC(X)` | F⁺ : I⁺ : U |  |  |
+| `t19` | `FD(Z,X) AND IND(X,Y) AND UCC(X)` | Fv⁺ : I⁺ : U |  |  |
+| `t20` | `FD(Y,Z) AND IND(X,Y) AND UCC(X)` | F⁺ : I⁺ : U⁺ |  |  |
+| `t21` | `FD(Z,Y) AND IND(X,Y) AND UCC(X)` | Fv⁺ : I⁺ : U |  |  |
+| `t22` | `FD(X,Z) AND IND(X,Y) AND UCC(Z)` | Fv⁺ : I⁺ : U |  |  |
+| `t23` | `FD(Z,X) AND IND(X,Y) AND UCC(Z)` | F⁺ : I⁻ : U |  |  |
+| `t24` | `FD(Y,Z) AND IND(X,Y) AND UCC(Z)` | Fv⁺ : I⁺ : U |  |  |
+| `t25` | `FD(Z,Y) AND IND(X,Y) AND UCC(Z)` | F⁺ : I⁻ : U |  |  |
 
 ---
 
@@ -129,13 +161,15 @@ Both modes reside in the same codebase and can be switched without changing any 
 ## Related Work
 
 This engine builds on the following algorithms and frameworks:
-- [HyFD](https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2016_papenbrock_a.pdf) — Hybrid Functional Dependency Discovery
-- [HyUCC](https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/2017/paper.pdf) — Hybrid Unique Column Combination Discovery
-- [DeMarchi et al.](https://www.researchgate.net/publication/225160065_Efficient_Algorithms_for_Mining_Inclusion_Dependencies) — Efficient Algorithms for Mining Inclusion Dependencies
-- [DPQL](https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2023_seeger_dpql.pdf) — Data Profiling Query Language
+- [HyFD](https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2016_papenbrock_a.pdf) - Hybrid Functional Dependency Discovery
+- [HyUCC](https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/2017/paper.pdf) - Hybrid Unique Column Combination Discovery
+- [DeMarchi et al.](https://www.researchgate.net/publication/225160065_Efficient_Algorithms_for_Mining_Inclusion_Dependencies) - Efficient Algorithms for Mining Inclusion Dependencies
+- [DPQL](https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2023_seeger_dpql.pdf) - Data Profiling Query Language
+- [DPQL Applications](https://dl.gi.de/server/api/core/bitstreams/f7da8905-3d8c-4f67-ac81-816059499340/content) - Applications of Data Profiling Query Language
+- [Minimality](https://dl.acm.org/doi/pdf/10.1145/3799992) - Profiling Minimal Data Dependency Combinations
 
 ---
 
-## Supervisor
+## Supervisors
 
 Developed under the supervision of **Prof. Dr. Thorsten Papenbrock** and **Marcian Seeger** at the Big Data Analytics Research Group, Philipps-Universität Marburg.
